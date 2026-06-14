@@ -2361,13 +2361,33 @@
       appearance:textfield!important;
     }
 
+
+    /* ==============================
+       2026/06/15 V28 分頁順序與符號
+       ============================== */
+    .tab-btn{
+      display:inline-flex!important;
+      align-items:center!important;
+      gap:6px!important;
+    }
+
+    .tab-icon{
+      display:inline-flex!important;
+      align-items:center!important;
+      justify-content:center!important;
+      width:18px!important;
+      flex:0 0 18px!important;
+      line-height:1!important;
+      font-size:16px!important;
+    }
+
   </style>
 </head>
 <body>
   <div class="app">
     <header class="topbar">
       <div class="brand">
-        <small>庫存系統｜V27</small>
+        <small>庫存系統｜V28</small>
         <h1>庫存系統</h1>
         <p></p>
       </div>
@@ -2393,14 +2413,14 @@
     </header>
 
     <nav class="tabs">
-      <button class="tab-btn active" data-tab="dashboard">總覽</button>
-      <button class="tab-btn" data-tab="product">商品資訊</button>
-      <button class="tab-btn" data-tab="stock">庫存資料</button>
-      <button class="tab-btn" data-tab="purchase">進貨 / 到貨</button>
-      <button class="tab-btn" data-tab="ship">商品出貨</button>
-      <button class="tab-btn" data-tab="records">出貨紀錄</button>
-      <button class="tab-btn" data-tab="actions">所有動作紀錄</button>
-      <button class="tab-btn" data-tab="settings">設定</button>
+      <button class="tab-btn active" data-tab="dashboard"><span class="tab-icon">📊</span>總覽</button>
+      <button class="tab-btn" data-tab="ship"><span class="tab-icon">📦</span>商品出貨</button>
+      <button class="tab-btn" data-tab="stock"><span class="tab-icon">📋</span>庫存資料</button>
+      <button class="tab-btn" data-tab="purchase"><span class="tab-icon">🚚</span>進貨 / 到貨</button>
+      <button class="tab-btn" data-tab="records"><span class="tab-icon">🧾</span>出貨紀錄</button>
+      <button class="tab-btn" data-tab="actions"><span class="tab-icon">🕘</span>所有動作紀錄</button>
+      <button class="tab-btn" data-tab="product"><span class="tab-icon">🏷️</span>商品資訊</button>
+      <button class="tab-btn" data-tab="settings"><span class="tab-icon">⚙️</span>設定</button>
     </nav>
 
     <section class="summary" id="summary"></section>
