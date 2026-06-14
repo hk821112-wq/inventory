@@ -2147,13 +2147,96 @@
       min-width:0!important;
     }
 
+
+    /* ==============================
+       2026/06/15 V23 庫存資料查詢列單行化
+       庫存資料 + 查詢文字 + 輸入框 + 三個按鈕排成一整排，降低高度
+       ============================== */
+    #stock .stock-sticky-header.stock-single-line-header{
+      display:grid!important;
+      grid-template-columns:auto minmax(360px,1fr) auto auto auto!important;
+      align-items:end!important;
+      gap:10px!important;
+      margin:-20px -20px 18px!important;
+      padding:14px 20px!important;
+    }
+
+    #stock .stock-sticky-header.stock-single-line-header h2{
+      margin:0!important;
+      height:38px!important;
+      line-height:38px!important;
+      white-space:nowrap!important;
+      flex:0 0 auto!important;
+    }
+
+    #stock .stock-search-inline{
+      min-width:0!important;
+      display:flex!important;
+      align-items:end!important;
+      gap:10px!important;
+    }
+
+    #stock .stock-search-inline label{
+      margin:0!important;
+      height:38px!important;
+      line-height:38px!important;
+      white-space:nowrap!important;
+      flex:0 0 auto!important;
+    }
+
+    #stock .stock-search-inline input{
+      min-width:0!important;
+      width:100%!important;
+      height:38px!important;
+      min-height:38px!important;
+      margin:0!important;
+    }
+
+    #stock .stock-sticky-header.stock-single-line-header .btn{
+      height:38px!important;
+      min-height:38px!important;
+      padding:8px 14px!important;
+      white-space:nowrap!important;
+      align-self:end!important;
+    }
+
+    @media(max-width:1180px){
+      #stock .stock-sticky-header.stock-single-line-header{
+        grid-template-columns:auto minmax(260px,1fr) auto auto!important;
+      }
+      #stock .stock-sticky-header.stock-single-line-header #btnStockShowNextDayOnly{
+        grid-column:1 / -1!important;
+        justify-self:end!important;
+      }
+    }
+
+    @media(max-width:760px){
+      #stock .stock-sticky-header.stock-single-line-header{
+        grid-template-columns:1fr!important;
+        align-items:stretch!important;
+      }
+      #stock .stock-search-inline{
+        display:grid!important;
+        grid-template-columns:1fr!important;
+        gap:6px!important;
+      }
+      #stock .stock-search-inline label{
+        height:auto!important;
+        line-height:1.2!important;
+      }
+      #stock .stock-sticky-header.stock-single-line-header #btnStockShowNextDayOnly{
+        grid-column:auto!important;
+        justify-self:stretch!important;
+      }
+    }
+
   </style>
 </head>
 <body>
   <div class="app">
     <header class="topbar">
       <div class="brand">
-        <small>庫存系統｜V22</small>
+        <small>庫存系統｜V23</small>
         <h1>庫存系統</h1>
         <p></p>
       </div>
@@ -2290,9 +2373,15 @@
           </div>
         </article>
         <article class="card span-12 stock-table-card">
-          <div class="stock-sticky-header">
-            <div class="stock-title-row"><h2>庫存資料</h2><button class="btn primary" id="btnStockShowNextDayOnly" type="button">顯示已開啟隔日配商品</button></div>
-            <div class="search-row"><div><label>編號查詢 / 關鍵字查詢</label><input id="stockSearch" placeholder="M001 或 黑色 或 品項"></div><button class="btn primary" id="btnStockSearch">查詢</button><button class="btn ghost" id="btnShowAllStock">顯示全部</button></div>
+          <div class="stock-sticky-header stock-single-line-header">
+            <h2>庫存資料</h2>
+            <div class="stock-search-inline">
+              <label for="stockSearch">編號查詢 / 關鍵字查詢</label>
+              <input id="stockSearch" placeholder="M001 或 黑色 或 品項">
+            </div>
+            <button class="btn primary" id="btnStockSearch" type="button">查詢</button>
+            <button class="btn ghost" id="btnShowAllStock" type="button">顯示全部</button>
+            <button class="btn primary" id="btnStockShowNextDayOnly" type="button">顯示已開啟隔日配商品</button>
           </div>
           <div id="stockTable"></div>
         </article>
