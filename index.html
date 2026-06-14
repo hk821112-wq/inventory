@@ -2344,13 +2344,30 @@
       }
     }
 
+
+    /* ==============================
+       2026/06/15 V26 手動校正輸入框與出貨失敗提示
+       1. 移除新的現貨庫存右側上下箭頭
+       2. 商品出貨失敗時播放提示音，並寫入最近掃描狀態
+       ============================== */
+    #adjustQty::-webkit-outer-spin-button,
+    #adjustQty::-webkit-inner-spin-button{
+      -webkit-appearance:none!important;
+      margin:0!important;
+    }
+
+    #adjustQty{
+      -moz-appearance:textfield!important;
+      appearance:textfield!important;
+    }
+
   </style>
 </head>
 <body>
   <div class="app">
     <header class="topbar">
       <div class="brand">
-        <small>庫存系統｜V25</small>
+        <small>庫存系統｜V26</small>
         <h1>庫存系統</h1>
         <p></p>
       </div>
@@ -3838,7 +3855,7 @@ function renderShipQueue(){
     color:r.color,
     beforeStock:r.beforeStock,
     afterStock:r.afterStock,
-    message:r.id?'同步完成':'本機完成'
+    message:r.message || (r.id?'同步完成':'本機完成')
   }));
   const rows=[...localRows,...realtimeRows].slice(0,6);
   if(!rows.length){
@@ -3894,11 +3911,62 @@ function addShipQueue(){
   processShipQueue();
 }
 function handleShip(){addShipQueue()}
+function playShipFailSound(){
+  try{
+    const AudioCtx=window.AudioContext||window.webkitAudioContext;
+    if(!AudioCtx)return;
+    const ctx=playShipFailSound.ctx||(playShipFailSound.ctx=new AudioCtx());
+    if(ctx.state==='suspended')ctx.resume();
+    const now=ctx.currentTime;
+    const makeBeep=(offset,freq,duration)=>{
+      const osc=ctx.createOscillator();
+      const gain=ctx.createGain();
+      osc.type='square';
+      osc.frequency.setValueAtTime(freq,now+offset);
+      gain.gain.setValueAtTime(0.001,now+offset);
+      gain.gain.exponentialRampToValueAtTime(0.18,now+offset+0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001,now+offset+duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now+offset);
+      osc.stop(now+offset+duration+0.02);
+    };
+    makeBeep(0,260,0.12);
+    makeBeep(0.16,180,0.18);
+  }catch(err){
+    console.warn('播放失敗音效失敗：',err?.message||err);
+  }
+}
+function pushFailedShipPreview(row){
+  if(!row)return;
+  state.previews.unshift({
+    time:new Date().toLocaleString('zh-TW',{hour12:false}),
+    action:row.action||'',
+    itemName:row.itemName||'',
+    color:row.color||'',
+    code:row.code||'',
+    beforeStock:row.beforeStock??'',
+    afterStock:row.afterStock??'',
+    totalStock:'',
+    status:'失敗',
+    message:row.message||'處理失敗'
+  });
+  state.previews=state.previews.slice(0,100);
+}
 async function processShipQueue(){
   if(shipQueueRunning)return;
   const row=shipQueue.find(x=>x.status==='待處理');
   if(!row)return;
-  if(!currentUser){row.status='失敗';row.message='請先登入';renderShipQueue();return;}
+  if(!currentUser){
+    row.status='失敗';
+    row.message='請先登入';
+    playShipFailSound();
+    pushFailedShipPreview(row);
+    renderShipQueue();
+    renderShipPreview();
+    keepShipCodeReady();
+    return;
+  }
   shipQueueRunning=true;
   row.status='處理中';
   row.message='正在寫入資料庫';
@@ -3939,6 +4007,8 @@ async function processShipQueue(){
         target.message=data?.message||'處理失敗';
         target.beforeStock=data?.beforeStock??target.beforeStock;
         target.afterStock=data?.afterStock??target.afterStock;
+        playShipFailSound();
+        pushFailedShipPreview(target);
       }
     }
     renderSummary();
@@ -3950,7 +4020,11 @@ async function processShipQueue(){
   }catch(err){
     row.status='失敗';
     row.message='系統錯誤：'+(err.message||err);
+    playShipFailSound();
+    pushFailedShipPreview(row);
     renderShipQueue();
+    renderShipPreview();
+    keepShipCodeReady();
   }finally{
     shipQueueRunning=false;
     processShipQueue();
