@@ -2230,13 +2230,127 @@
       }
     }
 
+
+    /* ==============================
+       2026/06/15 V24 庫存資料搜尋框寬度縮小
+       搜尋輸入框改成約 1/6 畫面寬度，不再吃滿整排
+       ============================== */
+    #stock .stock-sticky-header.stock-single-line-header{
+      grid-template-columns:auto auto auto auto auto!important;
+      justify-content:start!important;
+    }
+
+    #stock .stock-search-inline{
+      flex:0 0 auto!important;
+      width:auto!important;
+    }
+
+    #stock .stock-search-inline input#stockSearch{
+      width:clamp(220px,16vw,340px)!important;
+      min-width:220px!important;
+      max-width:340px!important;
+      flex:0 0 auto!important;
+    }
+
+    @media(max-width:760px){
+      #stock .stock-search-inline input#stockSearch{
+        width:100%!important;
+        max-width:none!important;
+      }
+    }
+
+
+    /* ==============================
+       2026/06/15 V25 手動校正現貨優化
+       1. 新的現貨庫存按 Enter 直接校正
+       2. 校正後右上角顯示品項 / 編號 / 顏色 / 校正數量
+       ============================== */
+    #stock .stock-adjust-tool-card #adjustStatusPanel{
+      flex:1 1 auto!important;
+      min-width:0!important;
+      width:auto!important;
+      height:38px!important;
+      min-height:38px!important;
+      margin:0 0 0 16px!important;
+      padding:0!important;
+      display:flex!important;
+      align-items:center!important;
+      justify-content:flex-end!important;
+      gap:8px!important;
+      flex-wrap:nowrap!important;
+      overflow:visible!important;
+      color:#ffffff!important;
+      opacity:1!important;
+      font-size:14px!important;
+      line-height:38px!important;
+      font-weight:1000!important;
+      white-space:nowrap!important;
+    }
+
+    #stock .stock-adjust-tool-card #adjustStatusPanel .pill{
+      height:34px!important;
+      min-height:34px!important;
+      padding:6px 12px!important;
+      border-radius:999px!important;
+      font-size:17px!important;
+      line-height:1!important;
+      font-weight:1000!important;
+      display:inline-flex!important;
+      align-items:center!important;
+      justify-content:center!important;
+      white-space:nowrap!important;
+      flex:0 0 auto!important;
+      box-shadow:0 10px 20px rgba(15,23,42,.08)!important;
+    }
+
+    #stock .stock-adjust-tool-card #adjustStatusPanel .pill.item-pill{
+      max-width:260px!important;
+      overflow:hidden!important;
+      text-overflow:ellipsis!important;
+      background:#1e293b!important;
+      color:#ffffff!important;
+      border:1px solid #475569!important;
+    }
+
+    #stock .stock-adjust-tool-card #adjustStatusPanel .pill.code-pill{
+      background:#075985!important;
+      color:#dff6ff!important;
+      border:1px solid rgba(125,211,252,.45)!important;
+    }
+
+    #stock .stock-adjust-tool-card #adjustStatusPanel .pill.color-pill{
+      background:#92400e!important;
+      color:#fff7d6!important;
+      border:1px solid rgba(253,186,116,.45)!important;
+    }
+
+    #stock .stock-adjust-tool-card #adjustStatusPanel .pill.stock-pill{
+      background:#166534!important;
+      color:#dcfce7!important;
+      border:1px solid rgba(134,239,172,.45)!important;
+    }
+
+    @media(max-width:1280px){
+      #stock .stock-adjust-tool-card #adjustStatusPanel{
+        gap:6px!important;
+        margin-left:12px!important;
+      }
+      #stock .stock-adjust-tool-card #adjustStatusPanel .pill{
+        font-size:15px!important;
+        padding:5px 9px!important;
+      }
+      #stock .stock-adjust-tool-card #adjustStatusPanel .pill.item-pill{
+        max-width:210px!important;
+      }
+    }
+
   </style>
 </head>
 <body>
   <div class="app">
     <header class="topbar">
       <div class="brand">
-        <small>庫存系統｜V23</small>
+        <small>庫存系統｜V25</small>
         <h1>庫存系統</h1>
         <p></p>
       </div>
@@ -2355,7 +2469,7 @@
         <article class="card span-6 stock-tool-card compact stock-adjust-tool-card stock-tool-card-final2">
           <div class="stock-tool-head-final2">
             <h2>手動校正現貨</h2>
-            <div class="stock-tool-head-spacer-final2"></div>
+            <div class="adjust-status-panel" id="adjustStatusPanel">尚未校正</div>
           </div>
 
           <div class="stock-tool-body-final2 manual">
@@ -3618,6 +3732,17 @@ window.toggleWarningExcludeByCode=async code=>{
     await appAlert('警告排除更新失敗，已還原畫面：'+friendlyErrorMessage(err),'系統錯誤',{danger:true});
   }
 }
+function showAdjustStatus(product){
+  const el = $('adjustStatusPanel');
+  if(!el || !product) return;
+
+  el.innerHTML = `
+    <span class="pill item-pill">品項 ${esc(product.itemName || '-')}</span>
+    <span class="pill code-pill">編號 ${esc(product.code || '-')}</span>
+    <span class="pill color-pill">顏色 ${esc(product.color || '-')}</span>
+    <span class="pill stock-pill">校正數量 ${toNum(product.currentStock)}</span>
+  `;
+}
 function showInboundStatus(product){
   const el = $('inboundStatusPanel');
   if(!el || !product) return;
@@ -3675,7 +3800,16 @@ async function inbound(){
   input.focus();
   await callStockFast('inboundStock',{code,qty:1,source:'N欄入庫掃描'},r=>showInboundStatus(r.product));
 }
-function adjustStock(){callStockFast('adjustStock',{code:$('adjustCode').value,qty:$('adjustQty').value,reason:'手動校正現貨'},()=>{$('adjustCode').value='';$('adjustQty').value=''})}
+function adjustStock(){
+  const code=$('adjustCode').value;
+  const qty=$('adjustQty').value;
+  callStockFast('adjustStock',{code,qty,reason:'手動校正現貨'},r=>{
+    showAdjustStatus(r.product);
+    $('adjustCode').value='';
+    $('adjustQty').value='';
+    $('adjustCode').focus();
+  });
+}
 function keepShipCodeReady(){setTimeout(()=>{$('shipCode').focus();$('shipCode').select()},40)}
 function setShipAction(action){
   $('shipAction').value=action;
@@ -3997,6 +4131,8 @@ function bindEvents(){
   $('btnInbound').onclick=inbound;
   $('inboundCode').onkeydown=e=>{if(e.key==='Enter')inbound()};
   $('btnAdjustStock').onclick=adjustStock;
+  $('adjustCode').onkeydown=e=>{if(e.key==='Enter'){$('adjustQty').focus();$('adjustQty').select();}};
+  $('adjustQty').onkeydown=e=>{if(e.key==='Enter')adjustStock()};
   $('btnShip').onclick=handleShip;
   $('btnClearQueue').onclick=clearFinishedQueue;
   $('shipCode').onkeydown=e=>{if(e.key==='Enter')handleShip()};
