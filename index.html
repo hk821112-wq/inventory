@@ -2367,7 +2367,7 @@
   <div class="app">
     <header class="topbar">
       <div class="brand">
-        <small>庫存系統｜V26</small>
+        <small>庫存系統｜V27</small>
         <h1>庫存系統</h1>
         <p></p>
       </div>
@@ -3842,10 +3842,10 @@ function renderShipQueue(){
   const el=$('shipQueueTable');
   if(!el)return;
   const localRows=shipQueue
-    .filter(q=>q.status==='待處理'||q.status==='處理中'||q.status==='失敗')
+    .filter(q=>q.status==='待處理'||q.status==='處理中')
     .slice(-5)
     .reverse();
-  const realtimeRows=(state.previews||[]).slice(0,6).map(r=>({
+  const realtimeRows=(state.previews||[]).filter(r=>(r.status||'完成')==='完成').slice(0,6).map(r=>({
     id:r.id||'',
     time:shortTimeText(r.time),
     code:r.code,
