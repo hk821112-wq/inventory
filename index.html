@@ -3363,7 +3363,15 @@ window.deleteProduct=async code=>{const p=findProduct(code);if(!p)return;const o
 function resetProductForm(){$('productFormTitle').textContent='新增商品資訊';$('productForm').reset();$('editProductCode').value=''}
 function addOrder(){callApi('addPurchase',{code:$('orderCode').value,batchIndex:$('orderBatch').value,qty:$('orderQty').value,orderDate:$('orderDate').value||todayInputDate()},()=>{$('orderQty').value='';$('orderDate').value=todayInputDate()})}
 function uiAddArrival(){const code=$('arrivalCode').value,print=$('arrivalPrint').value==='yes';callApi('addArrival',{code,batchIndex:$('arrivalBatch').value,qty:$('arrivalQty').value},r=>{$('arrivalQty').value='';if(print&&r.product&&r.actualQty)printLabels(r.product,r.actualQty);if(r.message)appAlert(r.message,'完成')})}
-window.uiDeletePurchaseBatch=async (code,batchIndex)=>{const p=findProduct(code);if(!p)return;const b=p.batches[batchIndex],ordered=toNum(b.ordered),arrived=Math.min(toNum(b.arrived),ordered);if(ordered<=0&&arrived<=0)return appAlert('此批次目前沒有進貨紀錄可以刪除','無法刪除');const ok=await appConfirm(`${p.itemName} / ${p.color} / ${p.code}\n${batchNames[batchIndex]} 目前進度：${arrived}/${ordered}\n\n刪除只會清空這一批進貨進度與日期，不會回扣 現貨庫存。`,'確定刪除進貨批次？',{danger:true,confirmText:'確定刪除'});if(ok)callApi('deletePurchaseBatch',{code,batchIndex},r=>appAlert(r.message||'批次已刪除','完成'))}
+window.uiDeletePurchaseBatch=async (code,batchIndex)=>{
+  const p=findProduct(code);
+  if(!p)return;
+  const b=p.batches[batchIndex],ordered=toNum(b.ordered),arrived=Math.min(toNum(b.arrived),ordered);
+  if(ordered<=0&&arrived<=0)return appAlert('此批次目前沒有進貨紀錄可以刪除','無法刪除');
+  callApi('deletePurchaseBatch',{code,batchIndex});
+}
+
+
 
 function patchNextDayDeliveryUi(itemName){
   const key=nextDayKey(itemName);
@@ -3398,21 +3406,12 @@ window.toggleNextDayDeliveryByCode=async code=>{
   if(!p)return appAlert('找不到商品','隔日配設定失敗',{danger:true});
   const active=isNextDayItem(p.itemName);
   const next=!active;
-  const ok=await appConfirm(
-    `${p.itemName}
-
-${next?'開啟':'關閉'}同品項所有顏色的「隔日配」提醒？
-${next?'開啟後，按鈕會顯示 ON；若顏色現貨為 0，會出現缺貨警告與警告排除按鈕。':'關閉後，同品項隔日配提醒會取消。'}`,
-    next?'開啟隔日配提醒':'關閉隔日配提醒',
-    {confirmText:next?'開啟':'關閉',cancelText:'取消'}
-  );
-  if(!ok)return;
 
   const itemName=p.itemName;
   const oldValues=state.products.map(x=>({code:x.code,nextDayDelivery:!!x.nextDayDelivery}));
   state.products.forEach(x=>{if(nextDayKey(x.itemName)===nextDayKey(itemName))x.nextDayDelivery=next});
 
-  // 只局部更新目前畫面，不 render 整張表，避免庫存資料 / 進貨到貨頁面跳到最上面
+  // 直接執行，不跳確認視窗；只局部更新目前畫面，避免庫存資料 / 進貨到貨頁面跳到最上面
   patchNextDayDeliveryUi(itemName);
   showMiniToast(next?'已開啟隔日配':'已關閉隔日配');
 
@@ -3551,15 +3550,9 @@ window.toggleSoldOut=async code=>{
 
   const next=!p.isSoldOut;
   const old=!!p.isSoldOut;
-  const title=next?'標記售罄？':'取消售罄？';
-  const confirmText=next?'標記售罄':'取消售罄';
   const note=next?'標記為「售罄」後，表示這個商品不再進貨。':'取消售罄後，商品會回到「缺貨」狀態，可再次進貨或補庫存。';
-  const ok=await appConfirm(`${p.itemName} / ${p.color} / ${p.code}
 
-${note}`,title,{danger:next,confirmText});
-  if(!ok)return;
-
-  // 先局部更新畫面，不重新載入整頁，避免視窗跳到最上面
+  // 直接執行，不跳確認視窗；只局部更新畫面，不重新載入整頁，避免視窗跳到最上面
   p.isSoldOut=next;
   updateStockRow(p);
   updatePurchaseRow(p);
