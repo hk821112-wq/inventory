@@ -2121,18 +2121,44 @@
     }
 
 
+
+    /* ==============================
+       2026/06/15 操作列與系統狀態修正
+       1. 隱藏「字體 0」狀態文字，只保留放大 / 縮小按鈕
+       2. 系統狀態表格移除橫向拖桿
+       3. 系統狀態表格不沿用全站表格最小寬度
+       ============================== */
+    .font-size-status{
+      display:none!important;
+    }
+
+    #dashboard .system-status-card .table-wrap{
+      overflow-x:hidden!important;
+    }
+
+    #dashboard .system-status-card table{
+      min-width:0!important;
+      width:100%!important;
+      table-layout:auto!important;
+    }
+
+    #dashboard .system-status-card th:last-child,
+    #dashboard .system-status-card td:last-child{
+      min-width:0!important;
+    }
+
   </style>
 </head>
 <body>
   <div class="app">
     <header class="topbar">
       <div class="brand">
-        <small>Supabase 資料庫版｜V22</small>
+        <small>庫存系統｜V22</small>
         <h1>庫存系統</h1>
-        <p>資料儲存在 Supabase，多台電腦開同一個網頁即可共用。</p>
+        <p></p>
       </div>
       <div class="top-actions">
-        <input class="auth-input" id="authEmail" placeholder="Supabase Email" autocomplete="username">
+        <input class="auth-input" id="authEmail" placeholder="Email" autocomplete="username">
         <input class="auth-input" id="authPassword" type="password" placeholder="Password" autocomplete="current-password">
         <button class="btn primary" id="btnLogin">登入</button>
         <button class="btn ghost" id="btnLogout" style="display:none">登出</button>
@@ -2145,7 +2171,7 @@
         <button class="btn ghost" id="btnExportJson">匯出 JSON</button>
         <label class="btn ghost" for="importJson">匯入 JSON</label>
         <input id="importJson" type="file" accept="application/json" style="display:none" />
-        <label class="btn green" for="appendJson">追加匯入 JSON</label>
+        <label class="btn ghost" for="appendJson">追加匯入 JSON</label>
         <input id="appendJson" type="file" accept="application/json" style="display:none" />
         <button class="btn ghost" id="btnExportCsv">匯出庫存 CSV</button>
         <button class="btn red" id="btnClearAll">清空資料</button>
@@ -2167,9 +2193,9 @@
 
     <section class="tab active" id="dashboard">
       <div class="grid">
-        <article class="card span-7">
+        <article class="card span-7 system-status-card">
           <h2>系統狀態</h2>
-          <div class="notice success"><strong>目前是多人共用架構：</strong>所有操作會寫入 Supabase 資料庫。</div>
+          <div class="notice success"><strong>目前是多人共用架構：</strong>所有操作會即時同步更新。</div>
           <div class="table-wrap">
             <table>
               <thead><tr><th>功能</th><th>說明</th></tr></thead>
@@ -2365,7 +2391,7 @@
             <div class="field full"><button class="btn primary" id="btnSaveSettings">儲存設定</button></div>
           </div>
         </article>
-        <article class="card span-6"><h2>使用注意</h2><div class="notice warning">這版資料已改存在 Supabase。多台電腦使用同一個網頁即可共用資料。</div><ul><li>大量操作時請等畫面顯示完成。</li><li>出貨由 Supabase 資料庫函式保護，避免多台設備同時扣錯庫存。</li><li>仍建議定期匯出 JSON 或試算表備份。</li></ul></article>
+        <article class="card span-6"><h2>使用注意</h2><div class="notice warning">多台電腦使用同一個網頁即可共用資料。</div><ul><li>大量操作時請等畫面顯示完成。</li><li>出貨由資料庫函式保護，避免多台設備同時扣錯庫存。</li><li>仍建議定期匯出 JSON 或試算表備份。</li></ul></article>
       </div>
     </section>
   </div>
@@ -2395,6 +2421,7 @@ const SUPABASE_URL="https://eqtgvszttihfduioijof.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdGd2c3p0dGloZmR1aW9pam9mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExOTI0NDksImV4cCI6MjA5Njc2ODQ0OX0.THWTNYot4U-UZhMAsS-qjh-p9M8oVrWIh6mPsdOgfOg";
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 let currentUser=null;
+let sessionLoginPassword='';
 const state={products:[],sales:[],actions:[],previews:[],settings:{feePlatform:.055,feeService:.02,feeExtra:.02,feeOther:0,shippingBase:60,lowStockThreshold:3},filters:{product:'',stock:'',stockNextDayOnly:false,purchaseNextDayOnly:false},actionFilters:{startDate:''},salesFilters:{actionMode:'all',dateRange:'today',customStart:'',customEnd:''}};
 const shipQueue=[];
 let shipQueueRunning=false;
@@ -2493,7 +2520,7 @@ function appAlert(message,title='提醒',opts={}){return appModal({type:'alert',
 function appConfirm(message,title='請確認',opts={}){return appModal({type:'confirm',title,message,confirmText:opts.confirmText||'確定',cancelText:opts.cancelText||'取消',danger:!!opts.danger,icon:opts.icon||'?'})}
 function appPrompt(message,defaultValue='',title='請輸入',opts={}){return appModal({type:'prompt',title,message,defaultValue,confirmText:opts.confirmText||'確定',cancelText:opts.cancelText||'取消',inputType:opts.inputType||'text',placeholder:opts.placeholder||'',hint:opts.hint||'',required:!!opts.required,icon:opts.icon||'✎'})}
 
-function requireLogin(){if(!currentUser)throw new Error('請先登入 Supabase 帳號')}
+function requireLogin(){if(!currentUser)throw new Error('請先登入帳號')}
 function fmtTime(v){return v?new Date(v).toLocaleString('zh-TW',{hour12:false}):''}
 function emptyBatches(){return Array.from({length:5},()=>({ordered:0,arrived:0,orderDate:''}))}
 function mapProduct(row,batchMap){const batches=emptyBatches();(batchMap[row.id]||[]).forEach(b=>{const i=toNum(b.batch_no)-1;if(i>=0&&i<5)batches[i]={ordered:toNum(b.ordered_qty),arrived:toNum(b.arrived_qty),orderDate:b.order_date||''}});return{id:row.id,itemName:row.item_name||'',color:row.color||'',code:normalizeCode(row.code),shopeeUrl:row.shopee_url||'',purchaseUrl:row.purchase_url||'',cost:toNum(row.cost),price:toNum(row.price),currentStock:toNum(row.current_stock),totalSales:toNum(row.total_sales),isSoldOut:!!row.is_sold_out,nextDayDelivery:!!row.next_day_delivery,nextDayWarningExcluded:!!row.next_day_warning_excluded,batches,createdAt:fmtTime(row.created_at),updatedAt:fmtTime(row.updated_at)}}
@@ -2707,8 +2734,46 @@ function duplicateProductCodeMessage(products,oldCode=''){
 }
 async function getSessionUser(){const {data,error}=await db.auth.getSession();dbError(error);currentUser=data.session?.user||null;return currentUser}
 function updateAuthUI(){const logged=!!currentUser;$('btnLogin').style.display=logged?'none':'inline-flex';$('btnLogout').style.display=logged?'inline-flex':'none';$('authPassword').style.display=logged?'none':'inline-block';$('authEmail').style.display=logged?'none':'inline-block';$('authStatus').textContent=logged?('已登入：'+(currentUser.email||'')):'未登入';$('authStatus').classList.toggle('ok',logged);$('authStatus').classList.toggle('fail',!logged)}
-async function login(){const email=$('authEmail').value.trim();const password=$('authPassword').value.trim();if(!email||!password)return appAlert('請輸入 Email 和密碼','登入提醒');setLoading(true);try{const {data,error}=await db.auth.signInWithPassword({email,password});dbError(error);currentUser=data.user;updateAuthUI();await loadData();setupRealtime();$('shipCode').focus()}catch(err){await appAlert('登入失敗：'+(err.message||err),'登入失敗',{danger:true})}finally{setLoading(false)}}
-async function logout(){setLoading(true);try{teardownRealtime();await db.auth.signOut();currentUser=null;state.products=[];state.sales=[];state.actions=[];state.previews=[];updateAuthUI();renderAll()}finally{setLoading(false)}}
+async function login(){const email=$('authEmail').value.trim();const password=$('authPassword').value.trim();if(!email||!password)return appAlert('請輸入 Email 和密碼','登入提醒');setLoading(true);try{const {data,error}=await db.auth.signInWithPassword({email,password});dbError(error);currentUser=data.user;sessionLoginPassword=password;updateAuthUI();await loadData();setupRealtime();$('shipCode').focus()}catch(err){sessionLoginPassword='';await appAlert('登入失敗：'+(err.message||err),'登入失敗',{danger:true})}finally{setLoading(false)}}
+async function logout(){setLoading(true);try{teardownRealtime();await db.auth.signOut();currentUser=null;sessionLoginPassword='';state.products=[];state.sales=[];state.actions=[];state.previews=[];updateAuthUI();renderAll()}finally{setLoading(false)}}
+async function verifyLoginPassword(password){
+  if(!password||!currentUser)return false;
+  if(sessionLoginPassword&&password===sessionLoginPassword)return true;
+  const email=currentUser.email||'';
+  if(!email)return false;
+  const {data,error}=await db.auth.signInWithPassword({email,password});
+  if(error)return false;
+  if(data?.user){
+    currentUser=data.user;
+    sessionLoginPassword=password;
+    updateAuthUI();
+    return true;
+  }
+  return false;
+}
+async function confirmClearAllWithPassword(){
+  const first=await appConfirm('確定清空所有資料？建議先匯出備份。','清空資料',{danger:true,confirmText:'繼續'});
+  if(!first)return;
+
+  const second=await appConfirm('再次確認：清空後無法復原。','二次確認',{danger:true,confirmText:'下一步'});
+  if(!second)return;
+
+  const password=await appPrompt('請輸入目前登入密碼，確認後才會清空所有資料。','','輸入登入密碼',{inputType:'password',confirmText:'確認清空',cancelText:'取消',required:true,icon:'🔒',hint:'密碼需與目前登入帳號的密碼相同。'});
+  if(password===null)return;
+
+  setLoading(true);
+  try{
+    const ok=await verifyLoginPassword(password);
+    if(!ok){
+      await appAlert('密碼錯誤，已取消清空資料。','驗證失敗',{danger:true});
+      return;
+    }
+  }finally{
+    setLoading(false);
+  }
+
+  callApi('clearAll',{});
+}
 async function fetchPaged(makeQuery, pageSize = 1000) {
   let all = [];
   let from = 0;
@@ -2800,7 +2865,7 @@ async function fetchAllState() {
 
     return {
       time: fmtTime(r.created_at),
-      source: 'Supabase',
+      source: '系統',
       action: r.action || '',
       itemName: r.item_name || '',
       color: r.color || '',
@@ -2824,7 +2889,7 @@ async function fetchAllState() {
   };
 }
 async function logAction(action,product,oldValue='',newValue='',beforeStock=null,afterStock=null,note=''){const row={product_id:product?.id||null,action,item_name:product?.itemName||product?.item_name||'',color:product?.color||'',code:normalizeCode(product?.code||''),old_value:String(oldValue??''),new_value:String(newValue??''),before_stock:beforeStock,after_stock:afterStock,note};const {error}=await db.from('stock_logs').insert(row);dbError(error)}
-async function createProducts(payload){const rows=(payload.products||[]).map(p=>({code:normalizeCode(p.code),item_name:p.itemName||'',color:p.color||'',shopee_url:p.shopeeUrl||'',purchase_url:p.purchaseUrl||'',cost:toNum(p.cost),price:toNum(p.price),current_stock:0,total_sales:0,next_day_delivery:isNextDayItem(p.itemName),next_day_warning_excluded:false}));if(!rows.length)throw new Error('沒有要新增的商品');const {data,error}=await db.from('products').insert(rows).select();dbError(error);for(const r of data||[])await logAction('新增商品資訊',{id:r.id,itemName:r.item_name,color:r.color,code:r.code},'',r.code,0,0,'Supabase 新增商品');return{message:'已新增 '+rows.length+' 筆商品'}}
+async function createProducts(payload){const rows=(payload.products||[]).map(p=>({code:normalizeCode(p.code),item_name:p.itemName||'',color:p.color||'',shopee_url:p.shopeeUrl||'',purchase_url:p.purchaseUrl||'',cost:toNum(p.cost),price:toNum(p.price),current_stock:0,total_sales:0,next_day_delivery:isNextDayItem(p.itemName),next_day_warning_excluded:false}));if(!rows.length)throw new Error('沒有要新增的商品');const {data,error}=await db.from('products').insert(rows).select();dbError(error);for(const r of data||[])await logAction('新增商品資訊',{id:r.id,itemName:r.item_name,color:r.color,code:r.code},'',r.code,0,0,'系統新增商品');return{message:'已新增 '+rows.length+' 筆商品'}}
 async function updateProduct(payload){
   const oldCode=normalizeCode(payload.oldCode);
   const p=payload.product||{};
@@ -3620,7 +3685,7 @@ async function processShipQueue(){
   if(!currentUser){row.status='失敗';row.message='請先登入';renderShipQueue();return;}
   shipQueueRunning=true;
   row.status='處理中';
-  row.message='正在寫入 Supabase';
+  row.message='正在寫入資料庫';
   renderShipQueue();
   try{
     const {data,error}=await db.rpc('ship_product',{p_code:row.code,p_action:row.action});
@@ -3870,7 +3935,7 @@ function bindEvents(){
   if($('actionStartDate'))$('actionStartDate').onkeydown=e=>{if(e.key==='Enter'){state.actionFilters.startDate=$('actionStartDate').value;renderActions()}};
   if($('btnPurchaseJump'))$('btnPurchaseJump').onclick=purchaseJumpToCode;
   if($('purchaseJumpCode'))$('purchaseJumpCode').onkeydown=e=>{if(e.key==='Enter')purchaseJumpToCode()};
-  $('btnClearAll').onclick=async()=>{const first=await appConfirm('確定清空所有資料？建議先匯出備份。','清空資料',{danger:true,confirmText:'繼續'});if(!first)return;const second=await appConfirm('再次確認：清空後無法復原。','二次確認',{danger:true,confirmText:'確定清空'});if(second)callApi('clearAll',{})};
+  $('btnClearAll').onclick=confirmClearAllWithPassword;
 }
 bindEvents();initTheme();initUiFontSize();if($('orderDate'))$('orderDate').value=todayInputDate();initAuth();
 </script>
