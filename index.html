@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>庫存系統</title>
+  <title>卡仕羊庫存系統</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&display=swap" rel="stylesheet">
@@ -74,6 +74,8 @@
     .empty{padding:28px;text-align:center;color:var(--muted);background:#f9fafb;border:1px dashed #d1d5db;border-radius:16px}.log-box{max-height:520px;overflow:auto}
     .nextday-btn{min-height:30px;padding:5px 10px;border-radius:999px;background:#fff;color:#9f1239;border:1px solid #fecdd3;font-size:12px;font-weight:1000;white-space:nowrap}
     .nextday-btn.active{background:#16a34a;color:#fff;border-color:#16a34a;box-shadow:0 8px 16px rgba(22,163,74,.16)}
+    .longstock-btn{min-height:30px;padding:5px 10px;border-radius:999px;background:#fff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:12px;font-weight:1000;white-space:nowrap}
+    .longstock-btn.active{background:#2563eb;color:#fff;border-color:#2563eb;box-shadow:0 8px 16px rgba(37,99,235,.16)}
     .nextday-row td{background:#f0fdf4}
     .nextday-row:hover td{background:#dcfce7}
     .warning-exclude-btn{margin-left:8px;min-height:26px;padding:3px 8px;border-radius:999px;background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;font-size:12px;font-weight:1000;white-space:nowrap}
@@ -532,6 +534,19 @@
       color:#fff;
       border-color:#22c55e;
       box-shadow:0 8px 16px rgba(22,163,74,.2);
+    }
+
+    body.dark-mode .longstock-btn{
+      background:#0f172a;
+      color:#93c5fd;
+      border-color:#1d4ed8;
+    }
+
+    body.dark-mode .longstock-btn.active{
+      background:#2563eb;
+      color:#fff;
+      border-color:#60a5fa;
+      box-shadow:0 8px 16px rgba(37,99,235,.26);
     }
 
     body.dark-mode .nextday-row td{
@@ -2387,7 +2402,7 @@
   <div class="app">
     <header class="topbar">
       <div class="brand">
-        <small>庫存系統｜V28</small>
+        <small>庫存系統｜V29 長備貨</small>
         <h1>庫存系統</h1>
         <p></p>
       </div>
@@ -2696,6 +2711,8 @@ function nextDayKey(itemName){return String(itemName||'').trim()}
 function isNextDayItem(itemName){const key=nextDayKey(itemName);return !!key&&state.products.some(p=>nextDayKey(p.itemName)===key&&!!p.nextDayDelivery)}
 function nextDayButton(p){const active=isNextDayItem(p.itemName);return `<button type="button" class="nextday-btn ${active?'active':''}" title="同品項一起標記隔日配" onclick="toggleNextDayDeliveryByCode('${esc(p.code)}')">${active?'隔日配 ON':'隔日配'}</button>`}
 function nextDayRowClass(p){return isNextDayItem(p.itemName)?' nextday-row':''}
+function isLongStockItem(itemName){const key=nextDayKey(itemName);return !!key&&state.products.some(p=>nextDayKey(p.itemName)===key&&!!p.longStock)}
+function longStockButton(p){const active=isLongStockItem(p.itemName);return `<button type="button" class="longstock-btn ${active?'active':''}" title="同品項一起標記長備貨" onclick="toggleLongStockByCode('${esc(p.code)}')">${active?'長備貨 ON':'長備貨'}</button>`}
 function isNextDayStockWarning(p){return isNextDayItem(p.itemName)&&toNum(p.currentStock)<=0&&!p.nextDayWarningExcluded}
 function nextDayStockWarnings(){return state.products.filter(isNextDayStockWarning).sort((a,b)=>String(a.itemName).localeCompare(String(b.itemName),'zh-Hant',{numeric:true})||String(a.code).localeCompare(String(b.code),'en',{numeric:true}))}
 function warningExcludeButton(p){
@@ -2763,7 +2780,7 @@ function appPrompt(message,defaultValue='',title='請輸入',opts={}){return app
 function requireLogin(){if(!currentUser)throw new Error('請先登入帳號')}
 function fmtTime(v){return v?new Date(v).toLocaleString('zh-TW',{hour12:false}):''}
 function emptyBatches(){return Array.from({length:5},()=>({ordered:0,arrived:0,orderDate:''}))}
-function mapProduct(row,batchMap){const batches=emptyBatches();(batchMap[row.id]||[]).forEach(b=>{const i=toNum(b.batch_no)-1;if(i>=0&&i<5)batches[i]={ordered:toNum(b.ordered_qty),arrived:toNum(b.arrived_qty),orderDate:b.order_date||''}});return{id:row.id,itemName:row.item_name||'',color:row.color||'',code:normalizeCode(row.code),shopeeUrl:row.shopee_url||'',purchaseUrl:row.purchase_url||'',cost:toNum(row.cost),price:toNum(row.price),currentStock:toNum(row.current_stock),totalSales:toNum(row.total_sales),isSoldOut:!!row.is_sold_out,nextDayDelivery:!!row.next_day_delivery,nextDayWarningExcluded:!!row.next_day_warning_excluded,batches,createdAt:fmtTime(row.created_at),updatedAt:fmtTime(row.updated_at)}}
+function mapProduct(row,batchMap){const batches=emptyBatches();(batchMap[row.id]||[]).forEach(b=>{const i=toNum(b.batch_no)-1;if(i>=0&&i<5)batches[i]={ordered:toNum(b.ordered_qty),arrived:toNum(b.arrived_qty),orderDate:b.order_date||''}});return{id:row.id,itemName:row.item_name||'',color:row.color||'',code:normalizeCode(row.code),shopeeUrl:row.shopee_url||'',purchaseUrl:row.purchase_url||'',cost:toNum(row.cost),price:toNum(row.price),currentStock:toNum(row.current_stock),totalSales:toNum(row.total_sales),isSoldOut:!!row.is_sold_out,nextDayDelivery:!!row.next_day_delivery,nextDayWarningExcluded:!!row.next_day_warning_excluded,longStock:!!row.long_stock,batches,createdAt:fmtTime(row.created_at),updatedAt:fmtTime(row.updated_at)}}
 function productLookupMaps(products=state.products){
   return {
     byId:Object.fromEntries((products||[]).map(p=>[p.id,p])),
@@ -2824,6 +2841,7 @@ function applyRealtimeProductRow(row){
   p.isSoldOut=!!row.is_sold_out;
   p.nextDayDelivery=!!row.next_day_delivery;
   p.nextDayWarningExcluded=!!row.next_day_warning_excluded;
+  p.longStock=!!row.long_stock;
   p.updatedAt=fmtTime(row.updated_at);
   if(oldCode&&oldCode!==code){
     scheduleRealtimeFullRefresh();
@@ -3129,7 +3147,7 @@ async function fetchAllState() {
   };
 }
 async function logAction(action,product,oldValue='',newValue='',beforeStock=null,afterStock=null,note=''){const row={product_id:product?.id||null,action,item_name:product?.itemName||product?.item_name||'',color:product?.color||'',code:normalizeCode(product?.code||''),old_value:String(oldValue??''),new_value:String(newValue??''),before_stock:beforeStock,after_stock:afterStock,note};const {error}=await db.from('stock_logs').insert(row);dbError(error)}
-async function createProducts(payload){const rows=(payload.products||[]).map(p=>({code:normalizeCode(p.code),item_name:p.itemName||'',color:p.color||'',shopee_url:p.shopeeUrl||'',purchase_url:p.purchaseUrl||'',cost:toNum(p.cost),price:toNum(p.price),current_stock:0,total_sales:0,next_day_delivery:isNextDayItem(p.itemName),next_day_warning_excluded:false}));if(!rows.length)throw new Error('沒有要新增的商品');const {data,error}=await db.from('products').insert(rows).select();dbError(error);for(const r of data||[])await logAction('新增商品資訊',{id:r.id,itemName:r.item_name,color:r.color,code:r.code},'',r.code,0,0,'系統新增商品');return{message:'已新增 '+rows.length+' 筆商品'}}
+async function createProducts(payload){const rows=(payload.products||[]).map(p=>({code:normalizeCode(p.code),item_name:p.itemName||'',color:p.color||'',shopee_url:p.shopeeUrl||'',purchase_url:p.purchaseUrl||'',cost:toNum(p.cost),price:toNum(p.price),current_stock:0,total_sales:0,next_day_delivery:isNextDayItem(p.itemName),next_day_warning_excluded:false,long_stock:isLongStockItem(p.itemName)}));if(!rows.length)throw new Error('沒有要新增的商品');const {data,error}=await db.from('products').insert(rows).select();dbError(error);for(const r of data||[])await logAction('新增商品資訊',{id:r.id,itemName:r.item_name,color:r.color,code:r.code},'',r.code,0,0,'系統新增商品');return{message:'已新增 '+rows.length+' 筆商品'}}
 async function updateProduct(payload){
   const oldCode=normalizeCode(payload.oldCode);
   const p=payload.product||{};
@@ -3221,12 +3239,25 @@ async function toggleNextDayDelivery(payload){
   }
   return{message:enabled?'已開啟同品項隔日配提醒':'已關閉同品項隔日配提醒'};
 }
+async function toggleLongStock(payload){
+  const itemName=nextDayKey(payload.itemName);
+  if(!itemName)throw new Error('找不到品項，無法設定長備貨');
+  const enabled=!!payload.enabled;
+  const matched=state.products.filter(p=>nextDayKey(p.itemName)===itemName);
+  if(!matched.length)throw new Error('找不到同品項商品：'+itemName);
+  const {error}=await db.from('products').update({long_stock:enabled}).eq('item_name',itemName);
+  dbError(error);
+  for(const p of matched){
+    await logAction(enabled?'開啟長備貨':'關閉長備貨',p,enabled?'OFF':'ON',enabled?'ON':'OFF',p.currentStock,p.currentStock,'同品項長備貨聯動');
+  }
+  return{message:enabled?'已開啟同品項長備貨':'已關閉同品項長備貨'};
+}
 async function addPurchase(payload){const code=normalizeCode(payload.code);const p=findProduct(code);if(!p)throw new Error('找不到商品：'+code);const idx=Number(payload.batchIndex);const qty=Math.floor(toNum(payload.qty));if(idx<0||idx>4)throw new Error('批次錯誤');if(qty<=0)throw new Error('進貨數量必須大於 0');const b=p.batches[idx]||{ordered:0,arrived:0,orderDate:''};const nextOrdered=toNum(b.ordered)+qty;const row={product_id:p.id,batch_no:idx+1,ordered_qty:nextOrdered,arrived_qty:toNum(b.arrived),order_date:payload.orderDate||todayInputDate()};const {error}=await db.from('purchase_batches').upsert(row,{onConflict:'product_id,batch_no'});dbError(error);await logAction(`第${idx+1}批進貨`,p,`${b.arrived}/${b.ordered}`,`${b.arrived}/${nextOrdered}`,p.currentStock,p.currentStock,`進貨日期 ${row.order_date}，進貨數量 +${qty}`);return{message:'進貨登記完成'}}
 async function dbAddArrival(payload){const code=normalizeCode(payload.code);const p=findProduct(code);if(!p)throw new Error('找不到商品：'+code);const idx=Number(payload.batchIndex);const qty=Math.floor(toNum(payload.qty));if(idx<0||idx>4)throw new Error('批次錯誤');if(qty<=0)throw new Error('到貨數量必須大於 0');const b=p.batches[idx]||{ordered:0,arrived:0,orderDate:''};const remaining=Math.max(toNum(b.ordered)-toNum(b.arrived),0);if(remaining<=0)throw new Error('此批次沒有尚未到貨數量，請先登記進貨');const actual=Math.min(qty,remaining);const nextArrived=toNum(b.arrived)+actual;let {error}=await db.from('purchase_batches').upsert({product_id:p.id,batch_no:idx+1,ordered_qty:toNum(b.ordered),arrived_qty:nextArrived,order_date:b.orderDate||null},{onConflict:'product_id,batch_no'});dbError(error);error=(await db.from('products').update({current_stock:toNum(p.currentStock)+actual,is_sold_out:false}).eq('id',p.id)).error;dbError(error);await logAction(`第${idx+1}批到貨`,p,`${b.arrived}/${b.ordered}`,`${nextArrived}/${b.ordered}`,p.currentStock,p.currentStock+actual,`到貨 +${actual}，現貨 ${p.currentStock} → ${p.currentStock+actual}`);const product={...p,currentStock:p.currentStock+actual,batches:p.batches.map((x,i)=>i===idx?{...x,arrived:nextArrived}:x)};return{message:'到貨完成',actualQty:actual,product}}
 async function dbDeletePurchaseBatch(payload){const code=normalizeCode(payload.code);const p=findProduct(code);if(!p)throw new Error('找不到商品：'+code);const idx=Number(payload.batchIndex);const b=p.batches[idx]||{};if(toNum(b.ordered)<=0&&toNum(b.arrived)<=0)throw new Error('此批次目前沒有進貨紀錄可以刪除');const {error}=await db.from('purchase_batches').delete().eq('product_id',p.id).eq('batch_no',idx+1);dbError(error);await logAction(`第${idx+1}批進貨刪除`,p,`${b.arrived}/${b.ordered}`,'0/0',p.currentStock,p.currentStock,'清空此批進貨進度');return{message:'批次已刪除'}}
 async function changeStock(payload,mode){const code=normalizeCode(payload.code);const p=findProduct(code);if(!p)throw new Error('找不到商品：'+code);let qty=Math.floor(toNum(payload.qty));if(mode==='adjust')qty=Math.floor(toNum(payload.qty));else if(qty<=0)qty=1;const before=toNum(p.currentStock);let after=before;let action='';let note='';if(mode==='inbound'){after=before+qty;action='手動入庫';note=(payload.source||'入庫')+' +'+qty}else if(mode==='decrease'){after=Math.max(before-qty,0);action='手動扣庫存';note='現貨 -'+qty}else if(mode==='adjust'){after=qty;action='手動校正現貨';note=payload.reason||'盤點校正'}const updateRow={current_stock:after};if(after>0)updateRow.is_sold_out=false;const {data,error}=await db.from('products').update(updateRow).eq('id',p.id).select().single();dbError(error);await logAction(action,p,before,after,before,after,note);return{message:'庫存已更新',product:{...p,currentStock:after,isSoldOut:!!data.is_sold_out}}}
 async function updateSettings(payload){const s=payload.settings||{};const rows=Object.entries(s).map(([key,value])=>({key,value:toNum(value)}));const {error}=await db.from('settings').upsert(rows,{onConflict:'key'});dbError(error);return{message:'設定已儲存'}}
-async function replaceAllData(payload){if(!Array.isArray(payload.products))throw new Error('JSON 格式不正確');await clearAll();const rows=payload.products.map(p=>({code:normalizeCode(p.code),item_name:p.itemName||'',color:p.color||'',shopee_url:p.shopeeUrl||'',purchase_url:p.purchaseUrl||'',cost:toNum(p.cost),price:toNum(p.price),current_stock:toNum(p.currentStock),total_sales:toNum(p.totalSales),next_day_delivery:!!p.nextDayDelivery,next_day_warning_excluded:!!p.nextDayWarningExcluded}));if(rows.length){const {data,error}=await db.from('products').insert(rows).select();dbError(error);const idByCode=Object.fromEntries((data||[]).map(r=>[normalizeCode(r.code),r.id]));const batchRows=[];(payload.products||[]).forEach(p=>{const pid=idByCode[normalizeCode(p.code)];(p.batches||[]).forEach((b,i)=>{if(toNum(b.ordered)||toNum(b.arrived)||b.orderDate)batchRows.push({product_id:pid,batch_no:i+1,ordered_qty:toNum(b.ordered),arrived_qty:toNum(b.arrived),order_date:b.orderDate||null})})});if(batchRows.length)dbError((await db.from('purchase_batches').insert(batchRows)).error)}if(payload.settings)await updateSettings({settings:payload.settings});return{message:'匯入完成'}}
+async function replaceAllData(payload){if(!Array.isArray(payload.products))throw new Error('JSON 格式不正確');await clearAll();const rows=payload.products.map(p=>({code:normalizeCode(p.code),item_name:p.itemName||'',color:p.color||'',shopee_url:p.shopeeUrl||'',purchase_url:p.purchaseUrl||'',cost:toNum(p.cost),price:toNum(p.price),current_stock:toNum(p.currentStock),total_sales:toNum(p.totalSales),next_day_delivery:!!p.nextDayDelivery,next_day_warning_excluded:!!p.nextDayWarningExcluded,long_stock:!!p.longStock}));if(rows.length){const {data,error}=await db.from('products').insert(rows).select();dbError(error);const idByCode=Object.fromEntries((data||[]).map(r=>[normalizeCode(r.code),r.id]));const batchRows=[];(payload.products||[]).forEach(p=>{const pid=idByCode[normalizeCode(p.code)];(p.batches||[]).forEach((b,i)=>{if(toNum(b.ordered)||toNum(b.arrived)||b.orderDate)batchRows.push({product_id:pid,batch_no:i+1,ordered_qty:toNum(b.ordered),arrived_qty:toNum(b.arrived),order_date:b.orderDate||null})})});if(batchRows.length)dbError((await db.from('purchase_batches').insert(batchRows)).error)}if(payload.settings)await updateSettings({settings:payload.settings});return{message:'匯入完成'}}
 async function appendImportData(payload) {
   if (!Array.isArray(payload.products)) throw new Error('JSON 格式不正確');
 
@@ -3242,6 +3273,7 @@ async function appendImportData(payload) {
     total_sales: toNum(p.totalSales),
     next_day_delivery: !!p.nextDayDelivery,
     next_day_warning_excluded: !!p.nextDayWarningExcluded,
+    long_stock: !!p.longStock,
     batches: Array.isArray(p.batches) ? p.batches : []
   })).filter(p => p.code);
 
@@ -3283,7 +3315,8 @@ async function appendImportData(payload) {
     current_stock: p.current_stock,
     total_sales: p.total_sales,
     next_day_delivery: p.next_day_delivery,
-    next_day_warning_excluded: p.next_day_warning_excluded
+    next_day_warning_excluded: p.next_day_warning_excluded,
+    long_stock: p.long_stock
   }));
 
   const { data, error } = await db.from('products').insert(rows).select();
@@ -3321,7 +3354,7 @@ async function appendImportData(payload) {
 
 async function clearAll(){for(const t of ['sales_logs','stock_logs','purchase_batches','products']){const {error}=await db.from(t).delete().neq('id','00000000-0000-0000-0000-000000000000');dbError(error)}return{message:'已清空資料'}}
 async function sortProducts(){state.products.sort((a,b)=>String(a.code).localeCompare(String(b.code),'en',{numeric:true}));return{message:'已依編號排序'}}
-async function apiSupabase(action,payload){payload=payload||{};requireLogin();let result={};if(action==='getAllData')return{ok:true,state:await fetchAllState(),result:{}};if(action==='createProducts')result=await createProducts(payload);else if(action==='updateProduct')result=await updateProduct(payload);else if(action==='deleteProduct')result=await dbDeleteProduct(payload);else if(action==='toggleNextDayDelivery')result=await toggleNextDayDelivery(payload);else if(action==='addPurchase')result=await addPurchase(payload);else if(action==='addArrival')result=await dbAddArrival(payload);else if(action==='deletePurchaseBatch')result=await dbDeletePurchaseBatch(payload);else if(action==='inboundStock')result=await changeStock(payload,'inbound');else if(action==='decreaseStock')result=await changeStock(payload,'decrease');else if(action==='adjustStock')result=await changeStock(payload,'adjust');else if(action==='updateSettings')result=await updateSettings(payload);else if(action==='sortProducts')result=await sortProducts(payload);else if(action==='replaceAllData')result=await replaceAllData(payload);else if(action==='appendImportData')result=await appendImportData(payload);else if(action==='clearAll')result=await clearAll(payload);else throw new Error('未知 API 動作：'+action);return{ok:true,state:await fetchAllState(),result}}
+async function apiSupabase(action,payload){payload=payload||{};requireLogin();let result={};if(action==='getAllData')return{ok:true,state:await fetchAllState(),result:{}};if(action==='createProducts')result=await createProducts(payload);else if(action==='updateProduct')result=await updateProduct(payload);else if(action==='deleteProduct')result=await dbDeleteProduct(payload);else if(action==='toggleNextDayDelivery')result=await toggleNextDayDelivery(payload);else if(action==='toggleLongStock')result=await toggleLongStock(payload);else if(action==='addPurchase')result=await addPurchase(payload);else if(action==='addArrival')result=await dbAddArrival(payload);else if(action==='deletePurchaseBatch')result=await dbDeletePurchaseBatch(payload);else if(action==='inboundStock')result=await changeStock(payload,'inbound');else if(action==='decreaseStock')result=await changeStock(payload,'decrease');else if(action==='adjustStock')result=await changeStock(payload,'adjust');else if(action==='updateSettings')result=await updateSettings(payload);else if(action==='sortProducts')result=await sortProducts(payload);else if(action==='replaceAllData')result=await replaceAllData(payload);else if(action==='appendImportData')result=await appendImportData(payload);else if(action==='clearAll')result=await clearAll(payload);else throw new Error('未知 API 動作：'+action);return{ok:true,state:await fetchAllState(),result}}
 async function callApi(action,payload,cb){setLoading(true);try{const res=await apiSupabase(action,payload||{});if(!res||!res.ok){await appAlert(res?.message||'操作失敗','操作失敗',{danger:true});return null}if(res.state)Object.assign(state,res.state);renderAll();if(cb)cb(res.result||{});return res}catch(err){const msg=friendlyErrorMessage(err);const isDup=msg.includes('編號重複');await appAlert(msg,isDup?'編號重複':'系統錯誤',{danger:!isDup,icon:isDup?'!':undefined});return null}finally{setLoading(false)}}
 function loadData(){return callApi('getAllData',{},()=>{})}
 function activeTabId(){const el=document.querySelector('.tab.active');return el?el.id:'dashboard'}
@@ -3346,13 +3379,13 @@ function toggleStockNextDayOnly(){state.filters.stockNextDayOnly=!state.filters.
 function togglePurchaseNextDayOnly(){state.filters.purchaseNextDayOnly=!state.filters.purchaseNextDayOnly;renderPurchase()}
 function renderDashboard(){
   const rows=nextDayStockWarnings();
-  $('lowStockList').innerHTML=rows.length?`<div class="notice danger"><strong>隔日配缺貨警告：</strong>有 ${rows.length} 個顏色已開啟隔日配但現貨為 0，請補貨或按「警告排除」。</div><div class="table-wrap"><table><thead><tr><th>隔日配</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>現貨</th><th>進貨庫存</th><th>未到貨</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr class="nextday-row"><td>${nextDayButton(p)}</td><td>${statusFor(p)}</td><td>${esc(p.itemName)}</td><td>${colorWithWarning(p)}</td><td><span class="code">${esc(p.code)}</span></td><td>${toNum(p.currentStock)}</td><td>${totalStock(p)}</td><td>${pendingQty(p)}</td><td><button class="btn small green" onclick="quickInbound('${esc(p.code)}')">+1庫存</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">目前沒有隔日配缺貨警告。</div>'
+  $('lowStockList').innerHTML=rows.length?`<div class="notice danger"><strong>隔日配缺貨警告：</strong>有 ${rows.length} 個顏色已開啟隔日配但現貨為 0，請補貨或按「警告排除」。</div><div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>現貨</th><th>進貨庫存</th><th>未到貨</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr class="nextday-row"><td>${nextDayButton(p)}</td><td>${longStockButton(p)}</td><td>${statusFor(p)}</td><td>${esc(p.itemName)}</td><td>${colorWithWarning(p)}</td><td><span class="code">${esc(p.code)}</span></td><td>${toNum(p.currentStock)}</td><td>${totalStock(p)}</td><td>${pendingQty(p)}</td><td><button class="btn small green" onclick="quickInbound('${esc(p.code)}')">+1庫存</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">目前沒有隔日配缺貨警告。</div>'
 }
 function renderProducts(){const rows=productRows(state.filters.product);$('productTable').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>品項</th><th>顏色</th><th>編號</th><th>蝦皮</th><th>進貨</th><th>成本</th><th>售價</th><th>利潤</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr><td>${esc(p.itemName)}</td><td>${esc(p.color)}</td><td><span class="code">${esc(p.code)}</span></td><td>${p.shopeeUrl?`<a href="${esc(p.shopeeUrl)}" target="_blank">開啟</a>`:'-'}</td><td>${p.purchaseUrl?`<a href="${esc(p.purchaseUrl)}" target="_blank">開啟</a>`:'-'}</td><td>$${money(p.cost)}</td><td>$${money(p.price)}</td><td>$${money(profit(p))}</td><td><div class="action-buttons"><button class="btn small green" onclick="editProduct('${esc(p.code)}')">編輯</button><button class="btn small primary" onclick="copyProduct('${esc(p.code)}')">複製</button><button class="btn small red" onclick="deleteProduct('${esc(p.code)}')">刪除</button></div></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">尚無商品。</div>'}
 function renderStock(){
   updateNextDayFilterButtons();
   const rows=stockRows();
-  $('stockTable').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>隔日配</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>條碼</th><th>現貨</th><th>進貨</th><th>未到貨</th><th>總成本</th><th>累積銷量</th><th>累積成本</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr data-stock-code="${esc(p.code)}" class="${nextDayRowClass(p).trim()}"><td data-stock-nextday>${nextDayButton(p)}</td><td data-stock-status>${statusFor(p)}</td><td>${p.shopeeUrl?`<a href="${esc(p.shopeeUrl)}" target="_blank">${esc(p.itemName)}</a>`:esc(p.itemName)}</td><td data-stock-color>${colorWithWarning(p)}</td><td><span class="code stock-code-btn" title="點擊帶入手動校正現貨並複製編號" onclick="fillAdjustCode('${esc(p.code)}')">${esc(p.code)}</span></td><td><span class="stock-barcode stock-barcode-click" title="點擊列印標籤" onclick="printLabelsForCode('${esc(p.code)}',1)">*${esc(p.code)}*</span></td><td data-stock-current><span class="stock-edit" title="點擊直接修改現貨" onclick="quickAdjustStock('${esc(p.code)}')">${toNum(p.currentStock)}</span></td><td data-stock-total>${totalStock(p)}</td><td data-stock-pending>${pendingQty(p)}</td><td data-stock-total-cost>$${money(totalCost(p))}</td><td data-stock-sales>${toNum(p.totalSales)}</td><td data-stock-sales-cost>$${money(salesCost(p))}</td><td><div class="stock-actions"><button class="btn small green" onclick="quickInbound('${esc(p.code)}')">+1庫存</button><button class="btn small orange" onclick="quickDecreaseStock('${esc(p.code)}')">-1庫存</button><button class="btn small primary" onclick="quickShip('${esc(p.code)}')">出貨</button><button class="btn small purple" onclick="printLabelsForCode('${esc(p.code)}',1)">印標籤</button><button class="btn small red" onclick="zeroStock('${esc(p.code)}')">歸零庫存</button></div></td></tr>`).join('')}</tbody></table></div>`:`<div class="empty">${state.filters.stockNextDayOnly?'目前沒有已開啟隔日配的商品。':'查無庫存資料。'}</div>`;
+  $('stockTable').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>條碼</th><th>現貨</th><th>進貨</th><th>未到貨</th><th>總成本</th><th>累積銷量</th><th>累積成本</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr data-stock-code="${esc(p.code)}" class="${nextDayRowClass(p).trim()}"><td data-stock-nextday>${nextDayButton(p)}</td><td data-stock-longstock>${longStockButton(p)}</td><td data-stock-status>${statusFor(p)}</td><td>${p.shopeeUrl?`<a href="${esc(p.shopeeUrl)}" target="_blank">${esc(p.itemName)}</a>`:esc(p.itemName)}</td><td data-stock-color>${colorWithWarning(p)}</td><td><span class="code stock-code-btn" title="點擊帶入手動校正現貨並複製編號" onclick="fillAdjustCode('${esc(p.code)}')">${esc(p.code)}</span></td><td><span class="stock-barcode stock-barcode-click" title="點擊列印標籤" onclick="printLabelsForCode('${esc(p.code)}',1)">*${esc(p.code)}*</span></td><td data-stock-current><span class="stock-edit" title="點擊直接修改現貨" onclick="quickAdjustStock('${esc(p.code)}')">${toNum(p.currentStock)}</span></td><td data-stock-total>${totalStock(p)}</td><td data-stock-pending>${pendingQty(p)}</td><td data-stock-total-cost>$${money(totalCost(p))}</td><td data-stock-sales>${toNum(p.totalSales)}</td><td data-stock-sales-cost>$${money(salesCost(p))}</td><td><div class="stock-actions"><button class="btn small green" onclick="quickInbound('${esc(p.code)}')">+1庫存</button><button class="btn small orange" onclick="quickDecreaseStock('${esc(p.code)}')">-1庫存</button><button class="btn small primary" onclick="quickShip('${esc(p.code)}')">出貨</button><button class="btn small purple" onclick="printLabelsForCode('${esc(p.code)}',1)">印標籤</button><button class="btn small red" onclick="zeroStock('${esc(p.code)}')">歸零庫存</button></div></td></tr>`).join('')}</tbody></table></div>`:`<div class="empty">${state.filters.stockNextDayOnly?'目前沒有已開啟隔日配的商品。':'查無庫存資料。'}</div>`;
 }
 function patchLocalProduct(product){
   if(!product||!product.code)return null;
@@ -3375,6 +3408,7 @@ function updateStockRow(product){
   const setText=(sel,text)=>{const el=row.querySelector(sel);if(el)el.textContent=text};
   row.classList.toggle('nextday-row',isNextDayItem(p.itemName));
   set('[data-stock-nextday]',nextDayButton(p));
+  set('[data-stock-longstock]',longStockButton(p));
   set('[data-stock-status]',statusFor(p));
   set('[data-stock-color]',colorWithWarning(p));
   renderNextDayWarningFloat();
@@ -3395,11 +3429,12 @@ function updatePurchaseRow(product){
   if(!row)return false;
   row.classList.toggle('nextday-row',isNextDayItem(p.itemName));
   if(row.children[0])row.children[0].innerHTML=nextDayButton(p);
-  if(row.children[1])row.children[1].innerHTML=statusFor(p);
-  if(row.children[3])row.children[3].innerHTML=colorWithWarning(p);
+  if(row.children[1])row.children[1].innerHTML=longStockButton(p);
+  if(row.children[2])row.children[2].innerHTML=statusFor(p);
+  if(row.children[4])row.children[4].innerHTML=colorWithWarning(p);
   renderNextDayWarningFloat();
-  if(row.children[5])row.children[5].textContent=toNum(p.currentStock);
-  if(row.children[6])row.children[6].textContent=totalStock(p);
+  if(row.children[6])row.children[6].textContent=toNum(p.currentStock);
+  if(row.children[7])row.children[7].textContent=totalStock(p);
   return true;
 }
 
@@ -3442,11 +3477,11 @@ function renderPurchase(){
     return;
   }
 
-  $('purchaseTable').innerHTML=`<div class="table-wrap"><table><thead><tr><th>隔日配</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>現貨</th><th>進貨</th>${batchNames.map(b=>`<th>${b}</th>`).join('')}</tr></thead><tbody>${rows.map(p=>{
+  $('purchaseTable').innerHTML=`<div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>現貨</th><th>進貨</th>${batchNames.map(b=>`<th>${b}</th>`).join('')}</tr></thead><tbody>${rows.map(p=>{
     const itemCell=p.shopeeUrl?`<a href="${esc(p.shopeeUrl)}" target="_blank">${esc(p.itemName)}</a>`:esc(p.itemName);
     const colorCell=colorWithWarning(p);
     const codeCell=`<button type="button" class="code code-btn" title="點擊補印標籤" onclick="printLabelsForCode('${esc(p.code)}',1)">${esc(p.code)}</button>`;
-    return `<tr class="purchase-product-row${nextDayRowClass(p)}" data-purchase-code="${esc(p.code)}"><td>${nextDayButton(p)}</td><td>${statusFor(p)}</td><td>${itemCell}</td><td>${colorCell}</td><td>${codeCell}</td><td>${toNum(p.currentStock)}</td><td>${totalStock(p)}</td>${(p.batches||[]).map((b,i)=>{
+    return `<tr class="purchase-product-row${nextDayRowClass(p)}" data-purchase-code="${esc(p.code)}"><td>${nextDayButton(p)}</td><td>${longStockButton(p)}</td><td>${statusFor(p)}</td><td>${itemCell}</td><td>${colorCell}</td><td>${codeCell}</td><td>${toNum(p.currentStock)}</td><td>${totalStock(p)}</td>${(p.batches||[]).map((b,i)=>{
       const ordered=toNum(b.ordered),arrived=Math.min(toNum(b.arrived),ordered),pct=ordered>0?Math.round(arrived/ordered*100):0,date=formatDateSlash(b.orderDate||'');
       return `<td><div class="purchase-cell"><div class="purchase-progress-wrap"><span class="progress ${ordered>0?'has-order':'no-order'}"><span style="width:${pct}%"></span></span><div class="purchase-meta"><div class="purchase-actions"><button class="btn small primary" onclick="quickAddPurchase('${esc(p.code)}',${i})">進貨</button><button class="btn small green" onclick="quickAddArrival('${esc(p.code)}',${i})">到貨</button></div><div class="purchase-date ${date?'has-date':''}">${date||'&nbsp;'}</div></div></div><span class="ratio-wrap"><span class="code">${arrived}/${ordered}</span><button class="delete-batch-btn" onclick="uiDeletePurchaseBatch('${esc(p.code)}',${i})">刪除</button></span></div></td>`;
     }).join('')}</tr>`;
@@ -3622,9 +3657,11 @@ function patchNextDayDeliveryUi(itemName){
     if(!p||nextDayKey(p.itemName)!==key)return;
     row.classList.remove('nextday-row');
     const nextday=row.querySelector('[data-stock-nextday]');
+    const longstock=row.querySelector('[data-stock-longstock]');
     const status=row.querySelector('[data-stock-status]');
     const color=row.querySelector('[data-stock-color]');
     if(nextday)nextday.innerHTML=nextDayButton(p);
+    if(longstock)longstock.innerHTML=longStockButton(p);
     if(status)status.innerHTML=statusFor(p);
     if(color)color.innerHTML=colorWithWarning(p);
   });
@@ -3634,8 +3671,9 @@ function patchNextDayDeliveryUi(itemName){
     if(!p||nextDayKey(p.itemName)!==key)return;
     row.classList.remove('nextday-row');
     if(row.children[0])row.children[0].innerHTML=nextDayButton(p);
-    if(row.children[1])row.children[1].innerHTML=statusFor(p);
-    if(row.children[3])row.children[3].innerHTML=colorWithWarning(p);
+    if(row.children[1])row.children[1].innerHTML=longStockButton(p);
+    if(row.children[2])row.children[2].innerHTML=statusFor(p);
+    if(row.children[4])row.children[4].innerHTML=colorWithWarning(p);
   });
 
   renderNextDayWarningFloat();
@@ -3662,6 +3700,49 @@ window.toggleNextDayDeliveryByCode=async code=>{
     oldValues.forEach(o=>{const x=findProduct(o.code);if(x)x.nextDayDelivery=o.nextDayDelivery});
     patchNextDayDeliveryUi(itemName);
     await appAlert('隔日配更新失敗，已還原畫面：'+friendlyErrorMessage(err),'系統錯誤',{danger:true});
+  }
+}
+
+function patchLongStockUi(itemName){
+  const key=nextDayKey(itemName);
+  if(!key)return;
+
+  document.querySelectorAll('#stockTable [data-stock-code]').forEach(row=>{
+    const p=findProduct(row.dataset.stockCode);
+    if(!p||nextDayKey(p.itemName)!==key)return;
+    const longstock=row.querySelector('[data-stock-longstock]');
+    if(longstock)longstock.innerHTML=longStockButton(p);
+  });
+
+  document.querySelectorAll('#purchaseTable [data-purchase-code]').forEach(row=>{
+    const p=findProduct(row.dataset.purchaseCode);
+    if(!p||nextDayKey(p.itemName)!==key)return;
+    if(row.children[1])row.children[1].innerHTML=longStockButton(p);
+  });
+
+  if(activeTabId()==='dashboard')renderDashboard();
+}
+window.toggleLongStockByCode=async code=>{
+  const p=findProduct(code);
+  if(!p)return appAlert('找不到商品','長備貨設定失敗',{danger:true});
+  const active=isLongStockItem(p.itemName);
+  const next=!active;
+
+  const itemName=p.itemName;
+  const oldValues=state.products.map(x=>({code:x.code,longStock:!!x.longStock}));
+  state.products.forEach(x=>{if(nextDayKey(x.itemName)===nextDayKey(itemName))x.longStock=next});
+
+  // 直接執行，不跳確認視窗；庫存資料 / 進貨到貨兩邊會同步顯示
+  patchLongStockUi(itemName);
+  showMiniToast(next?'已開啟長備貨':'已關閉長備貨');
+
+  try{
+    const {error}=await db.from('products').update({long_stock:next}).eq('item_name',itemName);
+    dbError(error);
+  }catch(err){
+    oldValues.forEach(o=>{const x=findProduct(o.code);if(x)x.longStock=o.longStock});
+    patchLongStockUi(itemName);
+    await appAlert('長備貨更新失敗，已還原畫面：'+friendlyErrorMessage(err),'系統錯誤',{danger:true});
   }
 }
 window.quickAddPurchase=async (code,batchIndex)=>{
