@@ -2633,8 +2633,8 @@
           <div class="purchase-header">
             <h2>進貨進度表</h2>
             <div class="purchase-jump">
-              <label for="purchaseJumpCode">編號查詢跳至</label>
-              <input id="purchaseJumpCode" placeholder="例如 M00101" autocomplete="off">
+              <label for="purchaseJumpCode">編號 / 關鍵字查詢跳至</label>
+              <input id="purchaseJumpCode" placeholder="M001 或 黑色 或 品項" autocomplete="off">
               <button class="btn primary" id="btnPurchaseJump" type="button">跳至</button>
               <button class="btn primary" id="btnPurchaseShowNextDayOnly" type="button">顯示已開啟隔日配商品</button>
             </div>
@@ -3622,10 +3622,45 @@ function renderPurchase(){
 function findPurchaseRowByCode(rawCode){
   const raw=normalizeCode(rawCode);
   const rows=[...document.querySelectorAll('#purchaseTable [data-purchase-code]')];
+  if(!raw)return null;
+
   return rows.find(el=>normalizeCode(el.dataset.purchaseCode)===raw)
     || rows.find(el=>normalizeCode(el.dataset.purchaseCode).startsWith(raw))
     || rows.find(el=>normalizeCode(el.dataset.purchaseCode).includes(raw))
     || null;
+}
+
+function findPurchaseProductBySearch(rawText){
+  const text=String(rawText||'').trim();
+  const codeKey=normalizeCode(text);
+  const keyword=text.toUpperCase();
+  if(!keyword)return null;
+
+  const rows=[...state.products].sort((a,b)=>String(a.code).localeCompare(String(b.code),'en',{numeric:true}));
+  const codeOf=p=>normalizeCode(p.code);
+  const textOf=p=>[p.itemName,p.color,p.code].map(v=>String(v||'').toUpperCase()).join(' ');
+
+  // 查詢優先順序比照「庫存資料」：完整編號最優先，再來編號開頭、編號包含，最後才用品項 / 顏色 / 編號關鍵字。
+  return rows.find(p=>codeOf(p)===codeKey)
+    || rows.find(p=>codeKey&&codeOf(p).startsWith(codeKey))
+    || rows.find(p=>codeKey&&codeOf(p).includes(codeKey))
+    || rows.find(p=>textOf(p).includes(keyword))
+    || null;
+}
+
+function findPurchaseVisibleRowByKeyword(rawText){
+  const keyword=String(rawText||'').trim().toUpperCase();
+  if(!keyword)return null;
+  const rows=[...document.querySelectorAll('#purchaseTable [data-purchase-code]')];
+
+  return rows.find(row=>{
+    const code=normalizeCode(row.dataset.purchaseCode||'');
+    const rowText=String(row.innerText||row.textContent||'').toUpperCase();
+    return code===normalizeCode(keyword)
+      || code.startsWith(normalizeCode(keyword))
+      || code.includes(normalizeCode(keyword))
+      || rowText.includes(keyword);
+  }) || null;
 }
 
 function scrollPurchaseRowToCenter(row){
@@ -3661,27 +3696,32 @@ function highlightPurchaseRow(row){
 function purchaseJumpToCode(){
   const input=$('purchaseJumpCode');
   if(!input)return;
-  const raw=normalizeCode(input.value);
-  if(!raw)return appAlert('請輸入商品編號','編號查詢');
 
-  let row=findPurchaseRowByCode(raw);
+  const rawText=String(input.value||'').trim();
+  if(!rawText)return appAlert('請輸入商品編號或關鍵字','編號 / 關鍵字查詢');
 
-  // 如果目前開著「只顯示隔日配」，查詢到其他商品時自動切回全部，避免明明有商品卻找不到。
-  if(!row&&state.filters.purchaseNextDayOnly){
-    const product=state.products.find(p=>normalizeCode(p.code)===raw||normalizeCode(p.code).startsWith(raw)||normalizeCode(p.code).includes(raw));
-    if(product){
-      state.filters.purchaseNextDayOnly=false;
-      renderPurchase();
-      row=findPurchaseRowByCode(raw);
-    }
+  const product=findPurchaseProductBySearch(rawText);
+  let row=product ? findPurchaseRowByCode(product.code) : findPurchaseVisibleRowByKeyword(rawText);
+
+  // 如果目前開著「只顯示隔日配」，但查到的商品被篩選擋住，就自動切回全部後再跳至。
+  if(!row&&product&&state.filters.purchaseNextDayOnly){
+    state.filters.purchaseNextDayOnly=false;
+    renderPurchase();
+    row=findPurchaseRowByCode(product.code);
+  }
+
+  // 保底：如果 state.products 還沒更新到，但畫面上有文字，也用目前可見表格整列關鍵字找一次。
+  if(!row){
+    row=findPurchaseVisibleRowByKeyword(rawText);
   }
 
   if(!row){
-    return appAlert('找不到商品編號：'+raw,'查無商品',{danger:true});
+    return appAlert('找不到商品：'+rawText,'查無商品',{danger:true});
   }
 
   scrollPurchaseRowToCenter(row);
   highlightPurchaseRow(row);
+  input.focus();
 }
 
 function renderShipPreview(){const rows=state.previews||[];$('shipPreview').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>時間</th><th>動作</th><th>品項</th><th>顏色</th><th>編號</th><th>處理前</th><th>處理後</th><th>狀態</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.time)}</td><td>${shipActionBadge(r.action)}</td><td>${esc(r.itemName)}</td><td>${esc(r.color)}</td><td><span class="code">${esc(r.code)}</span></td><td>${esc(r.beforeStock)}</td><td>${esc(r.afterStock)}</td><td>${r.status==='完成'?'<span class="status ok">完成</span>':`<span class="status zero">${esc(r.status)}</span>`}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">尚無掃描紀錄。</div>'}
