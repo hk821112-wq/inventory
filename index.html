@@ -2402,7 +2402,7 @@
   <div class="app">
     <header class="topbar">
       <div class="brand">
-        <small>庫存系統｜V29 長備貨</small>
+        <small>庫存系統｜V30 進貨到貨修正版</small>
         <h1>庫存系統</h1>
         <p></p>
       </div>
@@ -3421,20 +3421,25 @@ function updateStockRow(product){
   return true;
 }
 
+function purchaseRowHtml(p){
+  const itemCell=p.shopeeUrl?`<a href="${esc(p.shopeeUrl)}" target="_blank">${esc(p.itemName)}</a>`:esc(p.itemName);
+  const colorCell=colorWithWarning(p);
+  const codeCell=`<button type="button" class="code code-btn" title="點擊補印標籤" onclick="printLabelsForCode('${esc(p.code)}',1)">${esc(p.code)}</button>`;
+
+  return `<tr class="purchase-product-row${nextDayRowClass(p)}" data-purchase-code="${esc(p.code)}"><td>${nextDayButton(p)}</td><td>${longStockButton(p)}</td><td>${statusFor(p)}</td><td>${itemCell}</td><td>${colorCell}</td><td>${codeCell}</td><td>${toNum(p.currentStock)}</td><td>${totalStock(p)}</td>${(p.batches||[]).map((b,i)=>{
+    const ordered=toNum(b.ordered),arrived=Math.min(toNum(b.arrived),ordered),pct=ordered>0?Math.round(arrived/ordered*100):0,date=formatDateSlash(b.orderDate||'');
+    return `<td><div class="purchase-cell"><div class="purchase-progress-wrap"><span class="progress ${ordered>0?'has-order':'no-order'}"><span style="width:${pct}%"></span></span><div class="purchase-meta"><div class="purchase-actions"><button type="button" class="btn small primary" onclick="quickAddPurchase('${esc(p.code)}',${i})">進貨</button><button type="button" class="btn small green" onclick="quickAddArrival('${esc(p.code)}',${i})">到貨</button></div><div class="purchase-date ${date?'has-date':''}">${date||'&nbsp;'}</div></div></div><span class="ratio-wrap"><span class="code">${arrived}/${ordered}</span><button type="button" class="delete-batch-btn" onclick="uiDeletePurchaseBatch('${esc(p.code)}',${i})">刪除</button></span></div></td>`;
+  }).join('')}</tr>`;
+}
+
 function updatePurchaseRow(product){
   const p=product;
   if(!p)return false;
   const target=normalizeCode(p.code);
   const row=[...document.querySelectorAll('#purchaseTable [data-purchase-code]')].find(el=>normalizeCode(el.dataset.purchaseCode)===target);
   if(!row)return false;
-  row.classList.toggle('nextday-row',isNextDayItem(p.itemName));
-  if(row.children[0])row.children[0].innerHTML=nextDayButton(p);
-  if(row.children[1])row.children[1].innerHTML=longStockButton(p);
-  if(row.children[2])row.children[2].innerHTML=statusFor(p);
-  if(row.children[4])row.children[4].innerHTML=colorWithWarning(p);
+  row.outerHTML=purchaseRowHtml(p);
   renderNextDayWarningFloat();
-  if(row.children[6])row.children[6].textContent=toNum(p.currentStock);
-  if(row.children[7])row.children[7].textContent=totalStock(p);
   return true;
 }
 
@@ -3469,6 +3474,63 @@ async function callStockFast(action,payload,cb){
     setLoading(false);
   }
 }
+
+async function callPurchaseFast(action,payload,cb){
+  setLoading(true);
+  try{
+    requireLogin();
+    const code=normalizeCode(payload?.code);
+    const pBefore=findProduct(code);
+    if(!pBefore)throw new Error('找不到商品：'+code);
+
+    let result={};
+    if(action==='addPurchase'){
+      result=await addPurchase(payload||{});
+      const idx=Number(payload.batchIndex);
+      const oldBatch=pBefore.batches[idx]||{ordered:0,arrived:0,orderDate:''};
+      const nextBatches=(pBefore.batches&&pBefore.batches.length?pBefore.batches:emptyBatches()).map(b=>({...b}));
+      nextBatches[idx]={
+        ordered:toNum(oldBatch.ordered)+Math.floor(toNum(payload.qty)),
+        arrived:toNum(oldBatch.arrived),
+        orderDate:payload.orderDate||todayInputDate()
+      };
+      pBefore.batches=nextBatches;
+    }else if(action==='addArrival'){
+      result=await dbAddArrival(payload||{});
+      patchLocalProduct(result.product);
+      const pAfter=findProduct(code);
+      if(pAfter&&result.product?.batches)pAfter.batches=result.product.batches;
+    }else if(action==='deletePurchaseBatch'){
+      result=await dbDeletePurchaseBatch(payload||{});
+      const idx=Number(payload.batchIndex);
+      const nextBatches=(pBefore.batches&&pBefore.batches.length?pBefore.batches:emptyBatches()).map(b=>({...b}));
+      nextBatches[idx]={ordered:0,arrived:0,orderDate:''};
+      pBefore.batches=nextBatches;
+    }else{
+      throw new Error('快速進貨動作不支援：'+action);
+    }
+
+    const p=findProduct(code);
+    renderSummary();
+
+    const tab=activeTabId();
+    if(tab==='purchase'){
+      if(p&&!updatePurchaseRow(p))renderPurchase();
+    }else if(tab==='stock'){
+      if(p&&!updateStockRow(p))renderStock();
+    }else if(tab==='dashboard'){
+      renderDashboard();
+    }
+
+    if(cb)cb(result||{});
+  }catch(err){
+    const msg=friendlyErrorMessage(err);
+    const isDup=msg.includes('編號重複');
+    await appAlert(msg,isDup?'編號重複':'系統錯誤',{danger:!isDup,icon:isDup?'!':undefined});
+  }finally{
+    setLoading(false);
+  }
+}
 function renderPurchase(){
   updateNextDayFilterButtons();
   const rows=purchaseRows();
@@ -3477,33 +3539,37 @@ function renderPurchase(){
     return;
   }
 
-  $('purchaseTable').innerHTML=`<div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>現貨</th><th>進貨</th>${batchNames.map(b=>`<th>${b}</th>`).join('')}</tr></thead><tbody>${rows.map(p=>{
-    const itemCell=p.shopeeUrl?`<a href="${esc(p.shopeeUrl)}" target="_blank">${esc(p.itemName)}</a>`:esc(p.itemName);
-    const colorCell=colorWithWarning(p);
-    const codeCell=`<button type="button" class="code code-btn" title="點擊補印標籤" onclick="printLabelsForCode('${esc(p.code)}',1)">${esc(p.code)}</button>`;
-    return `<tr class="purchase-product-row${nextDayRowClass(p)}" data-purchase-code="${esc(p.code)}"><td>${nextDayButton(p)}</td><td>${longStockButton(p)}</td><td>${statusFor(p)}</td><td>${itemCell}</td><td>${colorCell}</td><td>${codeCell}</td><td>${toNum(p.currentStock)}</td><td>${totalStock(p)}</td>${(p.batches||[]).map((b,i)=>{
-      const ordered=toNum(b.ordered),arrived=Math.min(toNum(b.arrived),ordered),pct=ordered>0?Math.round(arrived/ordered*100):0,date=formatDateSlash(b.orderDate||'');
-      return `<td><div class="purchase-cell"><div class="purchase-progress-wrap"><span class="progress ${ordered>0?'has-order':'no-order'}"><span style="width:${pct}%"></span></span><div class="purchase-meta"><div class="purchase-actions"><button class="btn small primary" onclick="quickAddPurchase('${esc(p.code)}',${i})">進貨</button><button class="btn small green" onclick="quickAddArrival('${esc(p.code)}',${i})">到貨</button></div><div class="purchase-date ${date?'has-date':''}">${date||'&nbsp;'}</div></div></div><span class="ratio-wrap"><span class="code">${arrived}/${ordered}</span><button class="delete-batch-btn" onclick="uiDeletePurchaseBatch('${esc(p.code)}',${i})">刪除</button></span></div></td>`;
-    }).join('')}</tr>`;
-  }).join('')}</tbody></table></div>`;
+  $('purchaseTable').innerHTML=`<div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>現貨</th><th>進貨</th>${batchNames.map(b=>`<th>${b}</th>`).join('')}</tr></thead><tbody>${rows.map(p=>purchaseRowHtml(p)).join('')}</tbody></table></div>`;
 }
 
-function purchaseJumpToCode(){
-  const input=$('purchaseJumpCode');
-  if(!input)return;
-  const raw=normalizeCode(input.value);
-  if(!raw)return appAlert('請輸入商品編號','編號查詢');
+function findPurchaseRowByCode(rawCode){
+  const raw=normalizeCode(rawCode);
+  const rows=[...document.querySelectorAll('#purchaseTable [data-purchase-code]')];
+  return rows.find(el=>normalizeCode(el.dataset.purchaseCode)===raw)
+    || rows.find(el=>normalizeCode(el.dataset.purchaseCode).startsWith(raw))
+    || rows.find(el=>normalizeCode(el.dataset.purchaseCode).includes(raw))
+    || null;
+}
 
-  const rows=[...document.querySelectorAll('[data-purchase-code]')];
-  let row=rows.find(el=>normalizeCode(el.dataset.purchaseCode)===raw);
-  if(!row){
-    row=rows.find(el=>normalizeCode(el.dataset.purchaseCode).includes(raw));
-  }
-  if(!row){
-    return appAlert('找不到商品編號：'+raw,'查無商品',{danger:true});
-  }
+function scrollPurchaseRowToCenter(row){
+  if(!row)return;
+  const wrap=row.closest('.table-wrap');
+  if(wrap){
+    const targetTop=Math.max(row.offsetTop-(wrap.clientHeight/2)+(row.offsetHeight/2),0);
+    wrap.scrollTo({top:targetTop,behavior:'smooth'});
 
-  row.scrollIntoView({behavior:'smooth',block:'center',inline:'nearest'});
+    const codeCell=row.querySelector('[title="點擊補印標籤"]') || row.querySelector('.code');
+    if(codeCell){
+      const cellLeft=codeCell.getBoundingClientRect().left;
+      const wrapLeft=wrap.getBoundingClientRect().left;
+      wrap.scrollTo({left:Math.max(wrap.scrollLeft+cellLeft-wrapLeft-120,0),top:targetTop,behavior:'smooth'});
+    }
+  }else{
+    row.scrollIntoView({behavior:'smooth',block:'center',inline:'nearest'});
+  }
+}
+
+function highlightPurchaseRow(row){
   document.querySelectorAll('.purchase-row-highlight').forEach(el=>el.classList.remove('purchase-row-highlight'));
   if(purchaseHighlightTimer)clearTimeout(purchaseHighlightTimer);
   row.classList.remove('purchase-row-highlight');
@@ -3513,16 +3579,32 @@ function purchaseJumpToCode(){
     row.classList.remove('purchase-row-highlight');
     purchaseHighlightTimer=null;
   },3000);
+}
 
-  const wrap=row.closest('.table-wrap');
-  if(wrap){
-    const codeCell=row.querySelector('[title="點擊補印標籤"]') || row.querySelector('.code');
-    if(codeCell){
-      const cellLeft=codeCell.getBoundingClientRect().left;
-      const wrapLeft=wrap.getBoundingClientRect().left;
-      wrap.scrollLeft += cellLeft-wrapLeft-120;
+function purchaseJumpToCode(){
+  const input=$('purchaseJumpCode');
+  if(!input)return;
+  const raw=normalizeCode(input.value);
+  if(!raw)return appAlert('請輸入商品編號','編號查詢');
+
+  let row=findPurchaseRowByCode(raw);
+
+  // 如果目前開著「只顯示隔日配」，查詢到其他商品時自動切回全部，避免明明有商品卻找不到。
+  if(!row&&state.filters.purchaseNextDayOnly){
+    const product=state.products.find(p=>normalizeCode(p.code)===raw||normalizeCode(p.code).startsWith(raw)||normalizeCode(p.code).includes(raw));
+    if(product){
+      state.filters.purchaseNextDayOnly=false;
+      renderPurchase();
+      row=findPurchaseRowByCode(raw);
     }
   }
+
+  if(!row){
+    return appAlert('找不到商品編號：'+raw,'查無商品',{danger:true});
+  }
+
+  scrollPurchaseRowToCenter(row);
+  highlightPurchaseRow(row);
 }
 
 function renderShipPreview(){const rows=state.previews||[];$('shipPreview').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>時間</th><th>動作</th><th>品項</th><th>顏色</th><th>編號</th><th>處理前</th><th>處理後</th><th>狀態</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.time)}</td><td>${shipActionBadge(r.action)}</td><td>${esc(r.itemName)}</td><td>${esc(r.color)}</td><td><span class="code">${esc(r.code)}</span></td><td>${esc(r.beforeStock)}</td><td>${esc(r.afterStock)}</td><td>${r.status==='完成'?'<span class="status ok">完成</span>':`<span class="status zero">${esc(r.status)}</span>`}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">尚無掃描紀錄。</div>'}
@@ -3643,7 +3725,7 @@ window.uiDeletePurchaseBatch=async (code,batchIndex)=>{
   if(!p)return;
   const b=p.batches[batchIndex],ordered=toNum(b.ordered),arrived=Math.min(toNum(b.arrived),ordered);
   if(ordered<=0&&arrived<=0)return appAlert('此批次目前沒有進貨紀錄可以刪除','無法刪除');
-  callApi('deletePurchaseBatch',{code,batchIndex});
+  callPurchaseFast('deletePurchaseBatch',{code,batchIndex});
 }
 
 
@@ -3754,7 +3836,7 @@ window.quickAddPurchase=async (code,batchIndex)=>{
   if(!Number.isFinite(qty)||qty<=0)return appAlert('進貨數量必須大於 0','數量錯誤',{danger:true});
   const orderDate=await appPrompt('請輸入進貨日期', todayInputDate(), '進貨日期', {inputType:'date', confirmText:'確定'});
   if(orderDate===null)return;
-  callApi('addPurchase',{code,batchIndex,qty:Math.floor(qty),orderDate:orderDate||todayInputDate()});
+  callPurchaseFast('addPurchase',{code,batchIndex,qty:Math.floor(qty),orderDate:orderDate||todayInputDate()});
 }
 window.quickAddArrival=async (code,batchIndex)=>{
   const p=findProduct(code);
@@ -3771,7 +3853,7 @@ window.quickAddArrival=async (code,batchIndex)=>{
   const finalQty=Math.floor(qty);
   const shouldPrint=await appConfirm(`${p.itemName} / ${p.color}\n本次到貨：${finalQty} 件\n\n是否列印條碼？`, '到貨後列印標籤', {confirmText:'列印', cancelText:'不列印'});
 
-  callApi('addArrival',{code,batchIndex,qty:finalQty},r=>{
+  callPurchaseFast('addArrival',{code,batchIndex,qty:finalQty},r=>{
     if(shouldPrint&&r.product&&r.actualQty){
       printLabels(r.product,r.actualQty);
     }
@@ -3824,7 +3906,7 @@ function patchWarningExcludeUi(product){
   });
   document.querySelectorAll('#purchaseTable [data-purchase-code]').forEach(row=>{
     if(normalizeCode(row.dataset.purchaseCode)!==target)return;
-    if(row.children[3])row.children[3].innerHTML=colorWithWarning(product);
+    if(row.children[4])row.children[4].innerHTML=colorWithWarning(product);
   });
   renderNextDayWarningFloat();
   if(activeTabId()==='dashboard')renderDashboard();
@@ -4327,7 +4409,7 @@ function bindEvents(){
   if($('btnActionDateClear'))$('btnActionDateClear').onclick=()=>{$('actionStartDate').value='';state.actionFilters.startDate='';renderActions()};
   if($('actionStartDate'))$('actionStartDate').onkeydown=e=>{if(e.key==='Enter'){state.actionFilters.startDate=$('actionStartDate').value;renderActions()}};
   if($('btnPurchaseJump'))$('btnPurchaseJump').onclick=purchaseJumpToCode;
-  if($('purchaseJumpCode'))$('purchaseJumpCode').onkeydown=e=>{if(e.key==='Enter')purchaseJumpToCode()};
+  if($('purchaseJumpCode'))$('purchaseJumpCode').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();purchaseJumpToCode();}};
   $('btnClearAll').onclick=confirmClearAllWithPassword;
 }
 bindEvents();initTheme();initUiFontSize();if($('orderDate'))$('orderDate').value=todayInputDate();initAuth();
