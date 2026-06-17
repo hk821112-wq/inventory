@@ -2633,7 +2633,7 @@
           <div class="purchase-header">
             <h2>進貨進度表</h2>
             <div class="purchase-jump">
-              <label for="purchaseJumpCode">編號 / 關鍵字查詢跳至</label>
+              <label for="purchaseJumpCode">編號 / 關鍵字查詢</label>
               <input id="purchaseJumpCode" placeholder="M001 或 黑色 或 品項" autocomplete="off">
               <button class="btn primary" id="btnPurchaseJump" type="button">跳至</button>
               <button class="btn primary" id="btnPurchaseShowNextDayOnly" type="button">顯示已開啟隔日配商品</button>
@@ -3696,8 +3696,35 @@ function renderCurrentTab(){
 }
 function renderAll(){renderSummary();renderNextDayWarningFloat();renderCurrentTab()}
 function renderSummary(){const pc=state.products.length,on=state.products.reduce((s,p)=>s+toNum(p.currentStock),0),tot=state.products.reduce((s,p)=>s+totalStock(p),0),cost=state.products.reduce((s,p)=>s+totalCost(p),0),sales=state.products.reduce((s,p)=>s+toNum(p.totalSales),0);$('summary').innerHTML=`<div class="metric"><div class="value">${pc}</div><div class="label">商品品項</div></div><div class="metric"><div class="value">${on}</div><div class="label">現貨庫存</div></div><div class="metric"><div class="value">${tot}</div><div class="label">進貨庫存</div></div><div class="metric"><div class="value">$${money(cost)}</div><div class="label">總成本</div></div><div class="metric"><div class="value">${sales}</div><div class="label">累積銷量</div></div>`}
-function productRows(f=''){const q=String(f||'').trim().toUpperCase();return state.products.filter(p=>!q||[p.itemName,p.color,p.code].some(v=>String(v||'').toUpperCase().includes(q)))}
-function stockRows(){let rows=productRows(state.filters.stock);if(state.filters.stockNextDayOnly)rows=rows.filter(p=>isNextDayItem(p.itemName));return rows}
+function searchProductRows(f='',sourceRows=state.products){
+  const raw=String(f||'').trim();
+  const keyword=raw.toUpperCase();
+  const codeKey=normalizeCode(raw);
+  const rows=[...(sourceRows||[])].sort((a,b)=>String(a.code).localeCompare(String(b.code),'en',{numeric:true}));
+  if(!keyword)return rows;
+
+  const codeOf=p=>normalizeCode(p.code);
+  const textOf=p=>[p.itemName,p.color,p.code].map(v=>String(v||'').toUpperCase()).join(' ');
+  const tokens=keyword.split(/\s+/).filter(Boolean);
+  const tokenMatch=p=>tokens.every(t=>textOf(p).includes(t));
+
+  // 搜尋優先順序：完整編號 > 編號開頭 > 編號包含 > 多關鍵字交集 > 品項 / 顏色 / 編號關鍵字。
+  const exact=codeKey ? rows.filter(p=>codeOf(p)===codeKey) : [];
+  if(exact.length)return exact;
+
+  const starts=codeKey ? rows.filter(p=>codeOf(p).startsWith(codeKey)) : [];
+  if(starts.length)return starts;
+
+  const includes=codeKey ? rows.filter(p=>codeOf(p).includes(codeKey)) : [];
+  if(includes.length)return includes;
+
+  const tokenRows=rows.filter(tokenMatch);
+  if(tokenRows.length)return tokenRows;
+
+  return rows.filter(p=>textOf(p).includes(keyword));
+}
+function productRows(f=''){return searchProductRows(f,state.products)}
+function stockRows(){let rows=searchProductRows(state.filters.stock,state.products);if(state.filters.stockNextDayOnly)rows=rows.filter(p=>isNextDayItem(p.itemName));return rows}
 function purchaseRows(){let rows=[...state.products];if(state.filters.purchaseNextDayOnly)rows=rows.filter(p=>isNextDayItem(p.itemName));return rows}
 function updateNextDayFilterButtons(){const stockBtn=$('btnStockShowNextDayOnly');if(stockBtn){stockBtn.textContent=state.filters.stockNextDayOnly?'顯示全部商品':'顯示已開啟隔日配商品'}const purchaseBtn=$('btnPurchaseShowNextDayOnly');if(purchaseBtn){purchaseBtn.textContent=state.filters.purchaseNextDayOnly?'顯示全部商品':'顯示已開啟隔日配商品'}}
 function toggleStockNextDayOnly(){state.filters.stockNextDayOnly=!state.filters.stockNextDayOnly;renderStock()}
@@ -3880,36 +3907,30 @@ function findPurchaseRowByCode(rawCode){
 }
 
 function findPurchaseProductBySearch(rawText){
-  const text=String(rawText||'').trim();
-  const codeKey=normalizeCode(text);
-  const keyword=text.toUpperCase();
-  if(!keyword)return null;
-
-  const rows=[...state.products].sort((a,b)=>String(a.code).localeCompare(String(b.code),'en',{numeric:true}));
-  const codeOf=p=>normalizeCode(p.code);
-  const textOf=p=>[p.itemName,p.color,p.code].map(v=>String(v||'').toUpperCase()).join(' ');
-
-  // 查詢優先順序比照「庫存資料」：完整編號最優先，再來編號開頭、編號包含，最後才用品項 / 顏色 / 編號關鍵字。
-  return rows.find(p=>codeOf(p)===codeKey)
-    || rows.find(p=>codeKey&&codeOf(p).startsWith(codeKey))
-    || rows.find(p=>codeKey&&codeOf(p).includes(codeKey))
-    || rows.find(p=>textOf(p).includes(keyword))
-    || null;
+  // 進貨 / 到貨「編號 / 關鍵字查詢」套用庫存資料同一套精準搜尋邏輯。
+  // 搜尋優先順序：完整編號 > 編號開頭 > 編號包含 > 多關鍵字交集 > 品項 / 顏色 / 編號關鍵字。
+  const rows=searchProductRows(rawText,state.products);
+  return rows.length ? rows[0] : null;
 }
 
 function findPurchaseVisibleRowByKeyword(rawText){
-  const keyword=String(rawText||'').trim().toUpperCase();
+  const raw=String(rawText||'').trim();
+  const keyword=raw.toUpperCase();
+  const codeKey=normalizeCode(raw);
   if(!keyword)return null;
-  const rows=[...document.querySelectorAll('#purchaseTable [data-purchase-code]')];
 
-  return rows.find(row=>{
-    const code=normalizeCode(row.dataset.purchaseCode||'');
-    const rowText=String(row.innerText||row.textContent||'').toUpperCase();
-    return code===normalizeCode(keyword)
-      || code.startsWith(normalizeCode(keyword))
-      || code.includes(normalizeCode(keyword))
-      || rowText.includes(keyword);
-  }) || null;
+  const rows=[...document.querySelectorAll('#purchaseTable [data-purchase-code]')];
+  const codeOf=row=>normalizeCode(row.dataset.purchaseCode||'');
+  const textOf=row=>String(row.innerText||row.textContent||'').toUpperCase();
+  const tokens=keyword.split(/\s+/).filter(Boolean);
+  const tokenMatch=row=>tokens.every(t=>textOf(row).includes(t));
+
+  return rows.find(row=>codeKey&&codeOf(row)===codeKey)
+    || rows.find(row=>codeKey&&codeOf(row).startsWith(codeKey))
+    || rows.find(row=>codeKey&&codeOf(row).includes(codeKey))
+    || rows.find(tokenMatch)
+    || rows.find(row=>textOf(row).includes(keyword))
+    || null;
 }
 
 function scrollPurchaseRowToCenter(row){
