@@ -3337,11 +3337,11 @@ async function createShopeeStockTaskIfNeeded(product, beforeStock, afterStock, a
   const code = normalizeCode(product?.code || '');
   const shopeeUrl = String(product?.shopeeUrl || '').trim();
 
-  // 只允許「到貨前 0、到貨後 > 0」建立蝦皮同步任務
-  if (!(before === 0 && after > 0 && actual > 0)) {
+  // 新邏輯：不管原本現貨多少，只要「到貨數量 > 0」就建立蝦皮同步任務
+  if (!(actual > 0)) {
     return {
       created: false,
-      reason: 'not_zero_to_stock'
+      reason: 'not_arrival_qty'
     };
   }
 
@@ -3355,7 +3355,7 @@ async function createShopeeStockTaskIfNeeded(product, beforeStock, afterStock, a
         after,
         before,
         after,
-        '到貨後符合補庫存條件，但商品沒有蝦皮網址，未建立同步任務'
+        '到貨已完成，但商品沒有蝦皮網址，未建立蝦皮同步任務'
       );
     } catch (e) {}
 
@@ -3440,7 +3440,7 @@ async function createShopeeStockTaskIfNeeded(product, beforeStock, afterStock, a
       after,
       before,
       after,
-      `到貨後現貨由 0 變成 ${after}，已建立蝦皮庫存同步任務`
+      `到貨後現貨 ${before} → ${after}，已建立蝦皮庫存同步任務`
     );
 
     return {
