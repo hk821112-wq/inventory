@@ -2635,7 +2635,8 @@
             <div class="purchase-jump">
               <label for="purchaseJumpCode">編號 / 關鍵字查詢</label>
               <input id="purchaseJumpCode" placeholder="M001 或 黑色 或 品項" autocomplete="off">
-              <button class="btn primary" id="btnPurchaseJump" type="button">跳至</button>
+              <button class="btn primary" id="btnPurchaseJump" type="button">查詢</button>
+              <button class="btn" id="btnShowAllPurchase" type="button">顯示全部</button>
               <button class="btn primary" id="btnPurchaseShowNextDayOnly" type="button">顯示已開啟隔日配商品</button>
             </div>
           </div>
@@ -2750,7 +2751,7 @@ const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 let currentUser=null;
 let sessionLoginPassword='';
-const state={products:[],sales:[],actions:[],previews:[],settings:{feePlatform:.055,feeService:.02,feeExtra:.02,feeOther:0,shippingBase:60,lowStockThreshold:3},filters:{product:'',stock:'',stockNextDayOnly:false,purchaseNextDayOnly:false},actionFilters:{startDate:''},salesFilters:{actionMode:'all',dateRange:'today',customStart:'',customEnd:''}};
+const state={products:[],sales:[],actions:[],previews:[],settings:{feePlatform:.055,feeService:.02,feeExtra:.02,feeOther:0,shippingBase:60,lowStockThreshold:3},filters:{product:'',stock:'',purchase:'',stockNextDayOnly:false,purchaseNextDayOnly:false},actionFilters:{startDate:''},salesFilters:{actionMode:'all',dateRange:'today',customStart:'',customEnd:''}};
 const shipQueue=[];
 let shipQueueRunning=false;
 let shipQueueSeq=0;
@@ -3725,7 +3726,7 @@ function searchProductRows(f='',sourceRows=state.products){
 }
 function productRows(f=''){return searchProductRows(f,state.products)}
 function stockRows(){let rows=searchProductRows(state.filters.stock,state.products);if(state.filters.stockNextDayOnly)rows=rows.filter(p=>isNextDayItem(p.itemName));return rows}
-function purchaseRows(){let rows=[...state.products];if(state.filters.purchaseNextDayOnly)rows=rows.filter(p=>isNextDayItem(p.itemName));return rows}
+function purchaseRows(){let rows=searchProductRows(state.filters.purchase,state.products);if(state.filters.purchaseNextDayOnly)rows=rows.filter(p=>isNextDayItem(p.itemName));return rows}
 function updateNextDayFilterButtons(){const stockBtn=$('btnStockShowNextDayOnly');if(stockBtn){stockBtn.textContent=state.filters.stockNextDayOnly?'顯示全部商品':'顯示已開啟隔日配商品'}const purchaseBtn=$('btnPurchaseShowNextDayOnly');if(purchaseBtn){purchaseBtn.textContent=state.filters.purchaseNextDayOnly?'顯示全部商品':'顯示已開啟隔日配商品'}}
 function toggleStockNextDayOnly(){state.filters.stockNextDayOnly=!state.filters.stockNextDayOnly;renderStock()}
 function togglePurchaseNextDayOnly(){state.filters.purchaseNextDayOnly=!state.filters.purchaseNextDayOnly;renderPurchase()}
@@ -3888,7 +3889,8 @@ function renderPurchase(){
   updateNextDayFilterButtons();
   const rows=purchaseRows();
   if(!rows.length){
-    $('purchaseTable').innerHTML='<div class="empty">'+(state.filters.purchaseNextDayOnly?'目前沒有已開啟隔日配的商品。':'尚無商品資料。')+'</div>';
+    const hasSearch=String(state.filters.purchase||'').trim();
+    $('purchaseTable').innerHTML='<div class="empty">'+(hasSearch?'查無符合的進貨 / 到貨商品。':(state.filters.purchaseNextDayOnly?'目前沒有已開啟隔日配的商品。':'尚無商品資料。'))+'</div>';
     return;
   }
 
@@ -3968,29 +3970,19 @@ function purchaseJumpToCode(){
   if(!input)return;
 
   const rawText=String(input.value||'').trim();
-  if(!rawText)return appAlert('請輸入商品編號或關鍵字','編號 / 關鍵字查詢');
+  state.filters.purchase=rawText;
+  renderPurchase();
 
-  const product=findPurchaseProductBySearch(rawText);
-  let row=product ? findPurchaseRowByCode(product.code) : findPurchaseVisibleRowByKeyword(rawText);
-
-  // 如果目前開著「只顯示隔日配」，但查到的商品被篩選擋住，就自動切回全部後再跳至。
-  if(!row&&product&&state.filters.purchaseNextDayOnly){
-    state.filters.purchaseNextDayOnly=false;
-    renderPurchase();
-    row=findPurchaseRowByCode(product.code);
+  if(!rawText){
+    input.focus();
+    return;
   }
 
-  // 保底：如果 state.products 還沒更新到，但畫面上有文字，也用目前可見表格整列關鍵字找一次。
-  if(!row){
-    row=findPurchaseVisibleRowByKeyword(rawText);
-  }
-
-  if(!row){
+  const rows=purchaseRows();
+  if(!rows.length){
     return appAlert('找不到商品：'+rawText,'查無商品',{danger:true});
   }
 
-  scrollPurchaseRowToCenter(row);
-  highlightPurchaseRow(row);
   input.focus();
 }
 
@@ -4834,7 +4826,11 @@ function bindEvents(){
   if($('btnActionDateClear'))$('btnActionDateClear').onclick=()=>{$('actionStartDate').value='';state.actionFilters.startDate='';renderActions()};
   if($('actionStartDate'))$('actionStartDate').onkeydown=e=>{if(e.key==='Enter'){state.actionFilters.startDate=$('actionStartDate').value;renderActions()}};
   if($('btnPurchaseJump'))$('btnPurchaseJump').onclick=purchaseJumpToCode;
-  if($('purchaseJumpCode'))$('purchaseJumpCode').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();purchaseJumpToCode();}};
+  if($('btnShowAllPurchase'))$('btnShowAllPurchase').onclick=()=>{$('purchaseJumpCode').value='';state.filters.purchase='';state.filters.purchaseNextDayOnly=false;renderPurchase()};
+  if($('purchaseJumpCode')){
+    $('purchaseJumpCode').oninput=e=>{state.filters.purchase=e.target.value;renderPurchase()};
+    $('purchaseJumpCode').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();purchaseJumpToCode();}};
+  }
   $('btnClearAll').onclick=confirmClearAllWithPassword;
 }
 bindEvents();initTheme();initUiFontSize();if($('orderDate'))$('orderDate').value=todayInputDate();initAuth();
