@@ -2469,9 +2469,208 @@
     }
 
 
+
+    /* ==============================
+       V32 登入大門：未登入只顯示登入頁，登入後才顯示系統
+       ============================== */
+    body.auth-checking .app,
+    body.auth-locked .app{
+      display:none!important;
+    }
+
+    body.auth-unlocked #loginGate{
+      display:none!important;
+    }
+
+    body.auth-checking #loginGate,
+    body.auth-locked #loginGate{
+      display:flex!important;
+    }
+
+    .login-gate{
+      min-height:100vh;
+      width:100%;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:28px;
+      background:
+        radial-gradient(circle at top left, rgba(37,99,235,.20), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(22,163,74,.16), transparent 30%),
+        linear-gradient(180deg,#eaf1ff 0,var(--bg) 100%);
+    }
+
+    .login-card{
+      width:min(460px,100%);
+      background:rgba(255,255,255,.94);
+      border:1px solid rgba(255,255,255,.92);
+      border-radius:28px;
+      box-shadow:0 28px 80px rgba(15,23,42,.18);
+      padding:30px;
+      overflow:hidden;
+      position:relative;
+    }
+
+    .login-card::before{
+      content:'';
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:linear-gradient(135deg,rgba(37,99,235,.10),transparent 34%,rgba(22,163,74,.08));
+    }
+
+    .login-card > *{
+      position:relative;
+      z-index:1;
+    }
+
+    .login-badge{
+      display:inline-flex;
+      align-items:center;
+      min-height:32px;
+      padding:6px 12px;
+      border-radius:999px;
+      background:var(--primary-soft);
+      color:var(--primary);
+      font-weight:1000;
+      font-size:13px;
+      margin-bottom:12px;
+    }
+
+    .login-card h1{
+      margin:0 0 8px;
+      font-size:42px;
+      letter-spacing:-.05em;
+      line-height:1.08;
+    }
+
+    .login-subtitle{
+      margin:0 0 22px;
+      color:var(--muted);
+      line-height:1.7;
+      font-weight:800;
+    }
+
+    .login-form{
+      display:grid;
+      gap:12px;
+    }
+
+    .login-form label{
+      margin:0 0 -4px;
+      font-size:14px;
+      font-weight:1000;
+      color:#374151;
+    }
+
+    .login-form input{
+      min-height:52px;
+      border-radius:16px;
+      font-size:16px;
+      font-weight:800;
+    }
+
+    .login-form .btn{
+      min-height:54px;
+      border-radius:16px;
+      font-size:17px;
+      margin-top:4px;
+    }
+
+    .login-status{
+      min-height:24px;
+      color:var(--muted);
+      font-size:13px;
+      font-weight:900;
+      text-align:center;
+      line-height:1.5;
+    }
+
+    .login-status.fail{
+      color:#b91c1c;
+    }
+
+    .login-status.ok{
+      color:#15803d;
+    }
+
+    .login-footnote{
+      margin-top:18px;
+      padding:12px 14px;
+      border-radius:16px;
+      background:#f9fafb;
+      border:1px solid var(--line);
+      color:#4b5563;
+      font-size:13px;
+      font-weight:800;
+      line-height:1.7;
+    }
+
+    body.dark-mode .login-gate{
+      background:
+        radial-gradient(circle at top left, rgba(96,165,250,.18), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(34,197,94,.12), transparent 30%),
+        linear-gradient(180deg,#0f1b33 0,#0b1220 100%);
+    }
+
+    body.dark-mode .login-card{
+      background:rgba(17,24,39,.96);
+      border-color:#243244;
+      box-shadow:0 28px 90px rgba(0,0,0,.42);
+    }
+
+    body.dark-mode .login-form label,
+    body.dark-mode .login-card h1{
+      color:#f8fafc;
+    }
+
+    body.dark-mode .login-subtitle,
+    body.dark-mode .login-status{
+      color:#cbd5e1;
+    }
+
+    body.dark-mode .login-status.fail{
+      color:#fecaca;
+    }
+
+    body.dark-mode .login-status.ok{
+      color:#bbf7d0;
+    }
+
+    body.dark-mode .login-footnote{
+      background:#0f172a;
+      border-color:#334155;
+      color:#cbd5e1;
+    }
+
+
   </style>
 </head>
-<body>
+<body class="auth-checking">
+
+  <div class="login-gate" id="loginGate">
+    <section class="login-card" aria-label="庫存系統登入頁">
+      <div class="login-badge">庫存系統｜登入入口</div>
+      <h1>庫存系統</h1>
+      <p class="login-subtitle">請先登入帳號密碼，登入成功後才會進入庫存系統。</p>
+
+      <div class="login-form">
+        <label for="gateEmail">帳號 Email</label>
+        <input id="gateEmail" type="email" placeholder="輸入 Email" autocomplete="username">
+
+        <label for="gatePassword">密碼</label>
+        <input id="gatePassword" type="password" placeholder="輸入密碼" autocomplete="current-password">
+
+        <button class="btn primary" id="btnGateLogin" type="button">登入系統</button>
+        <div class="login-status" id="gateStatus">檢查登入狀態中...</div>
+      </div>
+
+      <div class="login-footnote">
+        未登入狀態下不顯示任何庫存資料。請使用已授權的 Supabase 帳號登入。
+      </div>
+    </section>
+  </div>
+
   <div class="app">
     <header class="topbar">
       <div class="brand">
@@ -3068,9 +3267,91 @@ function duplicateProductCodeMessage(products,oldCode=''){
   return '';
 }
 async function getSessionUser(){const {data,error}=await db.auth.getSession();dbError(error);currentUser=data.session?.user||null;return currentUser}
-function updateAuthUI(){const logged=!!currentUser;$('btnLogin').style.display=logged?'none':'inline-flex';$('btnLogout').style.display=logged?'inline-flex':'none';$('authPassword').style.display=logged?'none':'inline-block';$('authEmail').style.display=logged?'none':'inline-block';$('authStatus').textContent=logged?('已登入：'+(currentUser.email||'')):'未登入';$('authStatus').classList.toggle('ok',logged);$('authStatus').classList.toggle('fail',!logged)}
-async function login(){const email=$('authEmail').value.trim();const password=$('authPassword').value.trim();if(!email||!password)return appAlert('請輸入 Email 和密碼','登入提醒');setLoading(true);try{const {data,error}=await db.auth.signInWithPassword({email,password});dbError(error);currentUser=data.user;sessionLoginPassword=password;updateAuthUI();await loadData();setupRealtime();$('shipCode').focus()}catch(err){sessionLoginPassword='';await appAlert('登入失敗：'+(err.message||err),'登入失敗',{danger:true})}finally{setLoading(false)}}
-async function logout(){setLoading(true);try{teardownRealtime();await db.auth.signOut();currentUser=null;sessionLoginPassword='';state.products=[];state.sales=[];state.actions=[];state.previews=[];updateAuthUI();renderAll()}finally{setLoading(false)}}
+function updateAuthUI(){
+  const logged=!!currentUser;
+
+  document.body.classList.remove('auth-checking');
+  document.body.classList.toggle('auth-unlocked',logged);
+  document.body.classList.toggle('auth-locked',!logged);
+
+  if($('btnLogin'))$('btnLogin').style.display=logged?'none':'inline-flex';
+  if($('btnLogout'))$('btnLogout').style.display=logged?'inline-flex':'none';
+  if($('authPassword'))$('authPassword').style.display=logged?'none':'inline-block';
+  if($('authEmail'))$('authEmail').style.display=logged?'none':'inline-block';
+  if($('authStatus')){
+    $('authStatus').textContent=logged?('已登入：'+(currentUser.email||'')):'未登入';
+    $('authStatus').classList.toggle('ok',logged);
+    $('authStatus').classList.toggle('fail',!logged);
+  }
+
+  if($('gateStatus')){
+    $('gateStatus').textContent=logged?('已登入：'+(currentUser.email||'')):'請輸入帳號密碼登入';
+    $('gateStatus').classList.toggle('ok',logged);
+    $('gateStatus').classList.toggle('fail',!logged);
+  }
+
+  if(logged&&$('gatePassword'))$('gatePassword').value='';
+}
+async function login(){
+  const email=(($('gateEmail')?.value||'').trim()||($('authEmail')?.value||'').trim());
+  const password=(($('gatePassword')?.value||'').trim()||($('authPassword')?.value||'').trim());
+
+  if(!email||!password){
+    if($('gateStatus')){
+      $('gateStatus').textContent='請輸入 Email 和密碼';
+      $('gateStatus').classList.add('fail');
+    }
+    return appAlert('請輸入 Email 和密碼','登入提醒');
+  }
+
+  setLoading(true);
+  try{
+    if($('gateStatus')){
+      $('gateStatus').textContent='登入中...';
+      $('gateStatus').classList.remove('fail');
+    }
+
+    const {data,error}=await db.auth.signInWithPassword({email,password});
+    dbError(error);
+    currentUser=data.user;
+    sessionLoginPassword=password;
+
+    if($('authEmail'))$('authEmail').value=email;
+    if($('authPassword'))$('authPassword').value='';
+
+    updateAuthUI();
+    await loadData();
+    setupRealtime();
+    if($('shipCode'))$('shipCode').focus();
+  }catch(err){
+    sessionLoginPassword='';
+    if($('gateStatus')){
+      $('gateStatus').textContent='登入失敗，請確認帳號密碼';
+      $('gateStatus').classList.add('fail');
+    }
+    await appAlert('登入失敗：'+(err.message||err),'登入失敗',{danger:true});
+  }finally{
+    setLoading(false);
+  }
+}
+async function logout(){
+  setLoading(true);
+  try{
+    teardownRealtime();
+    await db.auth.signOut();
+    currentUser=null;
+    sessionLoginPassword='';
+    state.products=[];
+    state.sales=[];
+    state.actions=[];
+    state.previews=[];
+    updateAuthUI();
+    renderAll();
+    setTimeout(()=>{if($('gateEmail'))$('gateEmail').focus();},80);
+  }finally{
+    setLoading(false);
+  }
+}
 async function verifyLoginPassword(password){
   if(!password||!currentUser)return false;
   if(sessionLoginPassword&&password===sessionLoginPassword)return true;
@@ -3732,7 +4013,7 @@ function toggleStockNextDayOnly(){state.filters.stockNextDayOnly=!state.filters.
 function togglePurchaseNextDayOnly(){state.filters.purchaseNextDayOnly=!state.filters.purchaseNextDayOnly;renderPurchase()}
 function renderDashboard(){
   const rows=nextDayStockWarnings();
-  $('lowStockList').innerHTML=rows.length?`<div class="notice danger"><strong>隔日配缺貨警告：</strong>有 ${rows.length} 個顏色已開啟隔日配但現貨為 0，請補貨或按「警告排除」。</div><div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>現貨</th><th>進貨庫存</th><th>未到貨</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr class="nextday-row"><td>${nextDayButton(p)}</td><td>${longStockButton(p)}</td><td>${statusFor(p)}</td><td>${p.shopeeUrl?`<a href="${esc(p.shopeeUrl)}" target="_blank">${esc(p.itemName)}</a>`:esc(p.itemName)}</td><td>${colorWithWarning(p)}</td><td><span class="code">${esc(p.code)}</span></td><td>${toNum(p.currentStock)}</td><td>${totalStock(p)}</td><td>${pendingQty(p)}</td><td><button class="btn small green" onclick="quickInbound('${esc(p.code)}')">+1庫存</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">目前沒有隔日配缺貨警告。</div>'
+  $('lowStockList').innerHTML=rows.length?`<div class="notice danger"><strong>隔日配缺貨警告：</strong>有 ${rows.length} 個顏色已開啟隔日配但現貨為 0，請補貨或按「警告排除」。</div><div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>現貨</th><th>進貨庫存</th><th>未到貨</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr class="nextday-row"><td>${nextDayButton(p)}</td><td>${longStockButton(p)}</td><td>${statusFor(p)}</td><td>${esc(p.itemName)}</td><td>${colorWithWarning(p)}</td><td><span class="code">${esc(p.code)}</span></td><td>${toNum(p.currentStock)}</td><td>${totalStock(p)}</td><td>${pendingQty(p)}</td><td><button class="btn small green" onclick="quickInbound('${esc(p.code)}')">+1庫存</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">目前沒有隔日配缺貨警告。</div>'
 }
 function renderProducts(){const rows=productRows(state.filters.product);$('productTable').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>品項</th><th>顏色</th><th>編號</th><th>蝦皮</th><th>進貨</th><th>成本</th><th>售價</th><th>利潤</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr><td>${esc(p.itemName)}</td><td>${esc(p.color)}</td><td><span class="code">${esc(p.code)}</span></td><td>${p.shopeeUrl?`<a href="${esc(p.shopeeUrl)}" target="_blank">開啟</a>`:'-'}</td><td>${p.purchaseUrl?`<a href="${esc(p.purchaseUrl)}" target="_blank">開啟</a>`:'-'}</td><td>$${money(p.cost)}</td><td>$${money(p.price)}</td><td>$${money(profit(p))}</td><td><div class="action-buttons"><button class="btn small green" onclick="editProduct('${esc(p.code)}')">編輯</button><button class="btn small primary" onclick="copyProduct('${esc(p.code)}')">複製</button><button class="btn small red" onclick="deleteProduct('${esc(p.code)}')">刪除</button></div></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">尚無商品。</div>'}
 function renderStock(){
@@ -4781,6 +5062,9 @@ function bindEvents(){
   if($('btnThemeToggle'))$('btnThemeToggle').onclick=toggleTheme;
   if($('btnFontSmaller'))$('btnFontSmaller').onclick=()=>changeUiFontSize(-1);
   if($('btnFontBigger'))$('btnFontBigger').onclick=()=>changeUiFontSize(1);
+  if($('btnGateLogin'))$('btnGateLogin').onclick=login;
+  if($('gatePassword'))$('gatePassword').onkeydown=e=>{if(e.key==='Enter')login()};
+  if($('gateEmail'))$('gateEmail').onkeydown=e=>{if(e.key==='Enter'){$('gatePassword').focus();$('gatePassword').select();}};
   $('btnLogin').onclick=login;
   $('btnLogout').onclick=logout;
   $('authPassword').onkeydown=e=>{if(e.key==='Enter')login()};
