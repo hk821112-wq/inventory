@@ -2644,6 +2644,129 @@
     }
 
 
+
+    /* ==============================
+       2026/06/18 V33 頂部操作列固定高度 + Supabase 使用量顯示
+       1. 視窗寬度變窄時，頂部不再把標題擠成直列
+       2. 操作按鈕維持單行，必要時橫向滑動，不增加 topbar 高度
+       3. 分頁列「設定」後方顯示 Supabase Database Size 使用量
+       ============================== */
+    .topbar{
+      grid-template-columns:auto minmax(0,1fr)!important;
+      align-items:center!important;
+      overflow:hidden!important;
+    }
+
+    .topbar .brand{
+      min-width:max-content!important;
+      flex:0 0 auto!important;
+    }
+
+    .topbar .brand small,
+    .topbar .brand h1,
+    .topbar .brand p{
+      white-space:nowrap!important;
+    }
+
+    .topbar .top-actions{
+      min-width:0!important;
+      max-width:100%!important;
+      justify-content:flex-end!important;
+      flex-wrap:nowrap!important;
+      overflow-x:auto!important;
+      overflow-y:hidden!important;
+      padding-bottom:4px!important;
+      scrollbar-width:thin;
+    }
+
+    .topbar .top-actions > *{
+      flex:0 0 auto!important;
+    }
+
+    .topbar .top-actions::-webkit-scrollbar{
+      height:6px;
+    }
+
+    .topbar .top-actions::-webkit-scrollbar-thumb{
+      background:#cbd5e1;
+      border-radius:999px;
+    }
+
+    .db-usage-pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-height:38px;
+      padding:8px 13px;
+      border-radius:13px;
+      background:#eff6ff;
+      color:#1d4ed8;
+      border:1px solid #bfdbfe;
+      font-weight:1000;
+      white-space:nowrap;
+      flex:0 0 auto;
+    }
+
+    .db-usage-pill.loading,
+    .db-usage-pill.offline{
+      background:#f3f4f6;
+      color:#6b7280;
+      border-color:#e5e7eb;
+    }
+
+    .db-usage-pill.warning{
+      background:#ffedd5;
+      color:#c2410c;
+      border-color:#fdba74;
+    }
+
+    .db-usage-pill.danger,
+    .db-usage-pill.error{
+      background:#fee2e2;
+      color:#b91c1c;
+      border-color:#fecaca;
+    }
+
+    body.dark-mode .topbar .top-actions::-webkit-scrollbar-thumb{
+      background:#475569;
+    }
+
+    body.dark-mode .db-usage-pill{
+      background:#172554;
+      color:#bfdbfe;
+      border-color:#1d4ed8;
+    }
+
+    body.dark-mode .db-usage-pill.loading,
+    body.dark-mode .db-usage-pill.offline{
+      background:#1f2937;
+      color:#cbd5e1;
+      border-color:#334155;
+    }
+
+    body.dark-mode .db-usage-pill.warning{
+      background:#431407;
+      color:#fed7aa;
+      border-color:#ea580c;
+    }
+
+    body.dark-mode .db-usage-pill.danger,
+    body.dark-mode .db-usage-pill.error{
+      background:#450a0a;
+      color:#fecaca;
+      border-color:#991b1b;
+    }
+
+    @media(max-width:980px){
+      .topbar{
+        grid-template-columns:auto minmax(0,1fr)!important;
+      }
+      .topbar .top-actions{
+        justify-content:flex-start!important;
+      }
+    }
+
+
   </style>
 </head>
 <body class="auth-checking">
@@ -2695,7 +2818,6 @@
         <label class="btn ghost" for="appendJson">追加匯入 JSON</label>
         <input id="appendJson" type="file" accept="application/json" style="display:none" />
         <button class="btn ghost" id="btnExportCsv">匯出庫存 CSV</button>
-        <button class="btn red" id="btnClearAll">清空資料</button>
       </div>
     </header>
 
@@ -2708,6 +2830,7 @@
       <button class="tab-btn" data-tab="actions"><span class="tab-icon">🕘</span>所有動作紀錄</button>
       <button class="tab-btn" data-tab="product"><span class="tab-icon">🏷️</span>商品資訊</button>
       <button class="tab-btn" data-tab="settings"><span class="tab-icon">⚙️</span>設定</button>
+      <span class="db-usage-pill offline" id="dbUsagePill" title="Supabase Database Size 使用量">Supabase：-- / 500MB</span>
     </nav>
 
     <section class="summary" id="summary"></section>
@@ -2948,6 +3071,8 @@
 const SUPABASE_URL="https://eqtgvszttihfduioijof.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdGd2c3p0dGloZmR1aW9pam9mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExOTI0NDksImV4cCI6MjA5Njc2ODQ0OX0.THWTNYot4U-UZhMAsS-qjh-p9M8oVrWIh6mPsdOgfOg";
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const DB_USAGE_LIMIT_MB=500;
+let dbUsageTimer=null;
 let currentUser=null;
 let sessionLoginPassword='';
 const state={products:[],sales:[],actions:[],previews:[],settings:{feePlatform:.055,feeService:.02,feeExtra:.02,feeOther:0,shippingBase:60,lowStockThreshold:3},filters:{product:'',stock:'',purchase:'',stockNextDayOnly:false,purchaseNextDayOnly:false},actionFilters:{startDate:''},salesFilters:{actionMode:'all',dateRange:'today',customStart:'',customEnd:''}};
@@ -3244,6 +3369,77 @@ async function pollShipRealtimeFallback(){
   }
 }
 function dbError(error){if(error)throw new Error(error.message||String(error))}
+function formatDbUsageMb(value){
+  const n=Number(value);
+  if(!Number.isFinite(n))return '--';
+  if(n>=100)return String(Math.round(n));
+  if(n>=10)return n.toFixed(1).replace(/\.0$/,'');
+  return n.toFixed(2).replace(/0+$/,'').replace(/\.$/,'');
+}
+function renderDbUsage(usedMb=null,status='offline'){
+  const el=$('dbUsagePill');
+  if(!el)return;
+  el.classList.remove('loading','offline','warning','danger','error');
+
+  if(status==='loading'){
+    el.textContent='Supabase：讀取中...';
+    el.title='正在讀取 Supabase Database Size 使用量';
+    el.classList.add('loading');
+    return;
+  }
+
+  if(status==='error'){
+    el.textContent='Supabase：未串接';
+    el.title='請先在 Supabase SQL Editor 建立 get_database_size_mb RPC 函式';
+    el.classList.add('error');
+    return;
+  }
+
+  if(status==='offline'||!currentUser){
+    el.textContent=`Supabase：-- / ${DB_USAGE_LIMIT_MB}MB`;
+    el.title='登入後顯示 Supabase Database Size 使用量';
+    el.classList.add('offline');
+    return;
+  }
+
+  const used=Number(usedMb);
+  if(!Number.isFinite(used)){
+    renderDbUsage(null,'error');
+    return;
+  }
+
+  const percent=Math.min(Math.max(used/DB_USAGE_LIMIT_MB*100,0),999);
+  el.textContent=`Supabase：${formatDbUsageMb(used)}MB / ${DB_USAGE_LIMIT_MB}MB`;
+  el.title=`Supabase Database Size：${formatDbUsageMb(used)}MB / ${DB_USAGE_LIMIT_MB}MB（約 ${percent.toFixed(1)}%）`;
+
+  if(used>=450)el.classList.add('danger');
+  else if(used>=300)el.classList.add('warning');
+}
+async function loadDatabaseUsage(){
+  const el=$('dbUsagePill');
+  if(!el)return;
+  if(!currentUser){
+    renderDbUsage(null,'offline');
+    return;
+  }
+
+  renderDbUsage(null,'loading');
+  try{
+    const {data,error}=await db.rpc('get_database_size_mb');
+    dbError(error);
+    const raw=Array.isArray(data)?(data[0]?.get_database_size_mb??data[0]?.database_size_mb??data[0]):data;
+    const used=Number(raw);
+    if(!Number.isFinite(used))throw new Error('Supabase 回傳的用量格式不正確');
+    renderDbUsage(used,'ok');
+  }catch(err){
+    console.warn('讀取 Supabase 使用量失敗：',err?.message||err);
+    renderDbUsage(null,'error');
+  }
+}
+function scheduleDatabaseUsageRefresh(delay=800){
+  clearTimeout(dbUsageTimer);
+  dbUsageTimer=setTimeout(loadDatabaseUsage,delay);
+}
 function friendlyErrorMessage(err){
   const msg=String(err?.message||err||'');
   if(msg.includes('products_code_key')||msg.includes('duplicate key value')||msg.includes('unique constraint')){
@@ -3291,6 +3487,7 @@ function updateAuthUI(){
   }
 
   if(logged&&$('gatePassword'))$('gatePassword').value='';
+  if(!logged)renderDbUsage(null,'offline');
 }
 async function login(){
   const email=(($('gateEmail')?.value||'').trim()||($('authEmail')?.value||'').trim());
@@ -3321,6 +3518,7 @@ async function login(){
 
     updateAuthUI();
     await loadData();
+    await loadDatabaseUsage();
     setupRealtime();
     if($('shipCode'))$('shipCode').focus();
   }catch(err){
@@ -3962,7 +4160,7 @@ async function clearAll(){
 }
 async function sortProducts(){state.products.sort((a,b)=>String(a.code).localeCompare(String(b.code),'en',{numeric:true}));return{message:'已依編號排序'}}
 async function apiSupabase(action,payload){payload=payload||{};requireLogin();let result={};if(action==='getAllData')return{ok:true,state:await fetchAllState(),result:{}};if(action==='createProducts')result=await createProducts(payload);else if(action==='updateProduct')result=await updateProduct(payload);else if(action==='deleteProduct')result=await dbDeleteProduct(payload);else if(action==='toggleNextDayDelivery')result=await toggleNextDayDelivery(payload);else if(action==='toggleLongStock')result=await toggleLongStock(payload);else if(action==='addPurchase')result=await addPurchase(payload);else if(action==='addArrival')result=await dbAddArrival(payload);else if(action==='deletePurchaseBatch')result=await dbDeletePurchaseBatch(payload);else if(action==='inboundStock')result=await changeStock(payload,'inbound');else if(action==='decreaseStock')result=await changeStock(payload,'decrease');else if(action==='adjustStock')result=await changeStock(payload,'adjust');else if(action==='updateSettings')result=await updateSettings(payload);else if(action==='sortProducts')result=await sortProducts(payload);else if(action==='replaceAllData')result=await replaceAllData(payload);else if(action==='appendImportData')result=await appendImportData(payload);else if(action==='clearAll')result=await clearAll(payload);else throw new Error('未知 API 動作：'+action);return{ok:true,state:await fetchAllState(),result}}
-async function callApi(action,payload,cb){setLoading(true);try{const res=await apiSupabase(action,payload||{});if(!res||!res.ok){await appAlert(res?.message||'操作失敗','操作失敗',{danger:true});return null}if(res.state)Object.assign(state,res.state);renderAll();if(cb)cb(res.result||{});return res}catch(err){const msg=friendlyErrorMessage(err);const isDup=msg.includes('編號重複');await appAlert(msg,isDup?'編號重複':'系統錯誤',{danger:!isDup,icon:isDup?'!':undefined});return null}finally{setLoading(false)}}
+async function callApi(action,payload,cb){setLoading(true);try{const res=await apiSupabase(action,payload||{});if(!res||!res.ok){await appAlert(res?.message||'操作失敗','操作失敗',{danger:true});return null}if(res.state)Object.assign(state,res.state);renderAll();if(action!=='getAllData')scheduleDatabaseUsageRefresh(1200);if(cb)cb(res.result||{});return res}catch(err){const msg=friendlyErrorMessage(err);const isDup=msg.includes('編號重複');await appAlert(msg,isDup?'編號重複':'系統錯誤',{danger:!isDup,icon:isDup?'!':undefined});return null}finally{setLoading(false)}}
 function loadData(){return callApi('getAllData',{},()=>{})}
 function activeTabId(){const el=document.querySelector('.tab.active');return el?el.id:'dashboard'}
 function renderCurrentTab(){
@@ -5051,6 +5249,7 @@ async function initAuth(){
     updateAuthUI();
     if(currentUser){
       await loadData();
+      await loadDatabaseUsage();
       setupRealtime();
     }else renderAll();
   }catch(err){
@@ -5071,7 +5270,7 @@ function bindEvents(){
 
   document.querySelectorAll('.tab-btn').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
 
-  $('btnRefresh').onclick=loadData;
+  $('btnRefresh').onclick=async()=>{await loadData();await loadDatabaseUsage();};
   $('productForm').onsubmit=addOrUpdateProduct;
   $('btnCancelEditProduct').onclick=resetProductForm;
   $('productSearch').oninput=e=>{state.filters.product=e.target.value;renderProducts()};
@@ -5115,7 +5314,7 @@ function bindEvents(){
     $('purchaseJumpCode').oninput=e=>{state.filters.purchase=e.target.value;renderPurchase()};
     $('purchaseJumpCode').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();purchaseJumpToCode();}};
   }
-  $('btnClearAll').onclick=confirmClearAllWithPassword;
+  if($('btnClearAll'))$('btnClearAll').onclick=confirmClearAllWithPassword;
 }
 bindEvents();initTheme();initUiFontSize();if($('orderDate'))$('orderDate').value=todayInputDate();initAuth();
 </script>
