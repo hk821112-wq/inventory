@@ -2767,6 +2767,43 @@
     }
 
 
+    /* ==============================
+       2026/06/18 V34 商品資訊：成本 / 售價即時利潤預覽
+       輸入成本或售價時，直接用設定頁費率公式試算利潤。
+       ============================== */
+    .product-profit-field input{
+      background:#f0fdf4!important;
+      color:#15803d!important;
+      border-color:#86efac!important;
+      font-weight:1000!important;
+      font-size:18px!important;
+      letter-spacing:.02em!important;
+      cursor:default!important;
+    }
+
+    .product-profit-field input.profit-loss{
+      background:#fef2f2!important;
+      color:#b91c1c!important;
+      border-color:#fecaca!important;
+    }
+
+    .product-profit-field input:focus{
+      box-shadow:none!important;
+    }
+
+    body.dark-mode .product-profit-field input{
+      background:#052e1b!important;
+      color:#bbf7d0!important;
+      border-color:#166534!important;
+    }
+
+    body.dark-mode .product-profit-field input.profit-loss{
+      background:#450a0a!important;
+      color:#fecaca!important;
+      border-color:#991b1b!important;
+    }
+
+
   </style>
 </head>
 <body class="auth-checking">
@@ -2879,6 +2916,7 @@
             <div class="field full"><label>編號（唯一 ID / 起始編號）</label><input id="pCode" required placeholder="M00101"><div class="muted" style="font-size:13px;margin-top:6px">6 個顏色會自動建立 M00101～M00106</div></div>
             <div class="field"><label>成本</label><input id="pCost" type="number" min="0" step="1"></div>
             <div class="field"><label>售價</label><input id="pPrice" type="number" min="0" step="1"></div>
+            <div class="field full product-profit-field"><label>利潤</label><input id="pProfitPreview" readonly tabindex="-1" placeholder="輸入成本與售價後自動計算"><div class="muted" style="font-size:13px;margin-top:6px">依照設定頁費率公式即時計算</div></div>
             <div class="field full"><label>蝦皮網址</label><input id="pShopee"></div>
             <div class="field full"><label>進貨網址</label><input id="pPurchase"></div>
             <div class="field full"><button class="btn primary" type="submit">儲存商品</button><button class="btn ghost" type="button" id="btnCancelEditProduct">取消編輯</button></div>
@@ -3099,6 +3137,8 @@ function nextCodeForCopy(baseCode){const code=normalizeCode(baseCode),m=code.mat
 function pendingQty(p){return (p.batches||[]).reduce((s,b)=>s+Math.max(toNum(b.ordered)-toNum(b.arrived),0),0)}
 function totalStock(p){return toNum(p.currentStock)+pendingQty(p)}
 function profitFromValues(priceValue,costValue){const s=state.settings,price=toNum(priceValue),cost=toNum(costValue);return (price-cost)-(price*toNum(s.feePlatform))-(price*toNum(s.feeService))-(price*toNum(s.feeExtra))-((cost+toNum(s.shippingBase))*toNum(s.feeExtra))-(price*toNum(s.feeOther))}
+function formatProfitPreviewValue(value){const v=toNum(value);return v<0?`-$${money(Math.abs(v))}`:`$${money(v)}`}
+function updateProductProfitPreview(){const el=$('pProfitPreview');if(!el||!$('pCost')||!$('pPrice'))return;const hasCost=String($('pCost').value||'').trim()!=='';const hasPrice=String($('pPrice').value||'').trim()!=='';if(!hasCost&&!hasPrice){el.value='';el.placeholder='輸入成本與售價後自動計算';el.classList.remove('profit-ok','profit-loss');el.title='';return}const v=profitFromValues($('pPrice').value,$('pCost').value);el.value=formatProfitPreviewValue(v);el.classList.toggle('profit-loss',v<0);el.classList.toggle('profit-ok',v>=0);el.title='依照設定頁費率公式即時計算'}
 function signedProfit(action,priceValue,costValue){const base=profitFromValues(priceValue,costValue);return (action==='退貨'||action==='核銷')?-Math.abs(base):base}
 function profitCurrency(action,priceValue,costValue){const v=signedProfit(action,priceValue,costValue);return v<0?`-$${money(Math.abs(v))}`:`$${money(v)}`}
 function profit(p){return profitFromValues(p.price,p.cost)}
@@ -4572,10 +4612,10 @@ function renderActions(){
 function renderSettings(){const s=state.settings;$('feePlatform').value=s.feePlatform;$('feeService').value=s.feeService;$('feeExtra').value=s.feeExtra;$('feeOther').value=s.feeOther;$('shippingBase').value=s.shippingBase;$('lowStockThreshold').value=s.lowStockThreshold}
 function buildProduct(color,code){return{itemName:$('pName').value.trim(),color:color.trim(),code:normalizeCode(code),shopeeUrl:$('pShopee').value.trim(),purchaseUrl:$('pPurchase').value.trim(),cost:toNum($('pCost').value),price:toNum($('pPrice').value)}}
 async function addOrUpdateProduct(e){e.preventDefault();const old=normalizeCode($('editProductCode').value),base=normalizeCode($('pCode').value),colors=parseColorList($('pColor').value);if(!base)return appAlert('請輸入商品編號','資料不完整');if(!$('pName').value.trim())return appAlert('請輸入品項','資料不完整');if(!colors.length)return appAlert('請輸入顏色','資料不完整');if(old){if(colors.length>1)return appAlert('編輯商品時一次只能修改一個顏色','資料不完整');const product=buildProduct(colors[0],base);callApi('updateProduct',{oldCode:old,product},r=>{resetProductForm();appAlert(r.message||'同品項商品已更新','完成')});return}const products=colors.map((c,i)=>buildProduct(c,nextSequentialCode(base,i)));const dup=duplicateProductCodeMessage(products);if(dup)return appAlert(dup,'編號重複',{icon:'!'});callApi('createProducts',{products},r=>{resetProductForm();appAlert(r.message||'新增完成','完成')})}
-window.editProduct=code=>{const p=findProduct(code);if(!p)return;$('productFormTitle').textContent='編輯商品資訊';$('editProductCode').value=p.code;$('pName').value=p.itemName;$('pColor').value=p.color;$('pCode').value=p.code;$('pCost').value=p.cost;$('pPrice').value=p.price;$('pShopee').value=p.shopeeUrl||'';$('pPurchase').value=p.purchaseUrl||'';switchTab('product')}
-window.copyProduct=code=>{const p=findProduct(code);if(!p)return;$('productFormTitle').textContent='複製商品資訊';$('editProductCode').value='';$('pName').value=p.itemName;$('pColor').value='';$('pCode').value=nextCodeForCopy(p.code);$('pCost').value=p.cost;$('pPrice').value=p.price;$('pShopee').value=p.shopeeUrl||'';$('pPurchase').value=p.purchaseUrl||'';$('pColor').focus()}
+window.editProduct=code=>{const p=findProduct(code);if(!p)return;$('productFormTitle').textContent='編輯商品資訊';$('editProductCode').value=p.code;$('pName').value=p.itemName;$('pColor').value=p.color;$('pCode').value=p.code;$('pCost').value=p.cost;$('pPrice').value=p.price;$('pShopee').value=p.shopeeUrl||'';$('pPurchase').value=p.purchaseUrl||'';updateProductProfitPreview();switchTab('product')}
+window.copyProduct=code=>{const p=findProduct(code);if(!p)return;$('productFormTitle').textContent='複製商品資訊';$('editProductCode').value='';$('pName').value=p.itemName;$('pColor').value='';$('pCode').value=nextCodeForCopy(p.code);$('pCost').value=p.cost;$('pPrice').value=p.price;$('pShopee').value=p.shopeeUrl||'';$('pPurchase').value=p.purchaseUrl||'';updateProductProfitPreview();$('pColor').focus()}
 window.deleteProduct=async code=>{const p=findProduct(code);if(!p)return;const ok=await appConfirm(`${p.itemName} / ${p.color} / ${p.code}\n\n刪除後此商品會從商品資訊移除。`,'確定刪除商品？',{danger:true,confirmText:'確定刪除'});if(ok)callApi('deleteProduct',{code})}
-function resetProductForm(){$('productFormTitle').textContent='新增商品資訊';$('productForm').reset();$('editProductCode').value=''}
+function resetProductForm(){$('productFormTitle').textContent='新增商品資訊';$('productForm').reset();$('editProductCode').value='';updateProductProfitPreview()}
 function addOrder(){callApi('addPurchase',{code:$('orderCode').value,batchIndex:$('orderBatch').value,qty:$('orderQty').value,orderDate:$('orderDate').value||todayInputDate()},()=>{$('orderQty').value='';$('orderDate').value=todayInputDate()})}
 function uiAddArrival(){const code=$('arrivalCode').value,print=$('arrivalPrint').value==='yes';callApi('addArrival',{code,batchIndex:$('arrivalBatch').value,qty:$('arrivalQty').value},r=>{$('arrivalQty').value='';if(print&&r.product&&r.actualQty)printLabels(r.product,r.actualQty);if(r.message)appAlert(r.message,'完成')})}
 window.uiDeletePurchaseBatch=async (code,batchIndex)=>{
@@ -5115,7 +5155,7 @@ function clearFinishedQueue(){
   }
   renderShipQueue();
 }
-function saveSettings(){callApi('updateSettings',{settings:{feePlatform:toNum($('feePlatform').value),feeService:toNum($('feeService').value),feeExtra:toNum($('feeExtra').value),feeOther:toNum($('feeOther').value),shippingBase:toNum($('shippingBase').value),lowStockThreshold:toNum($('lowStockThreshold').value)}})}
+function saveSettings(){callApi('updateSettings',{settings:{feePlatform:toNum($('feePlatform').value),feeService:toNum($('feeService').value),feeExtra:toNum($('feeExtra').value),feeOther:toNum($('feeOther').value),shippingBase:toNum($('shippingBase').value),lowStockThreshold:toNum($('lowStockThreshold').value)}},()=>updateProductProfitPreview())}
 function doQuickSearch(){const q=$('quickSearch').value.trim(),rows=productRows(q);$('quickResult').innerHTML=!q?'<div class="empty">請輸入查詢內容。</div>':rows.length?rows.slice(0,8).map(p=>`<div class="notice"><strong>${esc(p.itemName)} / ${esc(p.color)}</strong><br>編號：<span class="code">${esc(p.code)}</span><br>現貨：${toNum(p.currentStock)}｜進貨庫存：${totalStock(p)}｜未到貨：${pendingQty(p)}</div>`).join(''):'<div class="empty">查無商品。</div>'}
 function switchTab(tab){document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('active',e.id===tab));renderCurrentTab();if(tab==='ship'||tab==='records')pollShipRealtimeFallback()}
 function dateFileName(){const d=new Date(),p=n=>String(n).padStart(2,'0');return`${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`}
@@ -5273,6 +5313,8 @@ function bindEvents(){
   $('btnRefresh').onclick=async()=>{await loadData();await loadDatabaseUsage();};
   $('productForm').onsubmit=addOrUpdateProduct;
   $('btnCancelEditProduct').onclick=resetProductForm;
+  if($('pCost'))$('pCost').oninput=updateProductProfitPreview;
+  if($('pPrice'))$('pPrice').oninput=updateProductProfitPreview;
   $('productSearch').oninput=e=>{state.filters.product=e.target.value;renderProducts()};
   $('stockSearch').oninput=e=>{state.filters.stock=e.target.value;renderStock()};
   $('btnStockSearch').onclick=()=>{state.filters.stock=$('stockSearch').value;renderStock()};
