@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>卡仕羊庫存系統</title>
+  <title>卡仕羊庫存系統｜Apple Pro Dark UI</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&display=swap" rel="stylesheet">
@@ -2804,9 +2804,559 @@
     }
 
 
-  </style>
+  
+
+/* ===== Apple Pro Dark UI Integrated Patch Start ===== */
+/* =========================================================
+   Apple Pro Dark UI V1 - 庫存管理系統深色模式
+   使用方式：貼到原本 <style> 最後面。
+   啟用條件：body 有 dark-mode class。
+   目的：把現有 topbar + tabs 改成 Apple / iOS Pro 感的左側選單後台。
+   ========================================================= */
+
+@supports (-webkit-backdrop-filter: blur(20px)) or (backdrop-filter: blur(20px)) {
+  body.dark-mode .topbar,
+  body.dark-mode .tabs,
+  body.dark-mode .card,
+  body.dark-mode .table-wrap,
+  body.dark-mode .stock-sticky-header,
+  body.dark-mode .purchase-header,
+  body.dark-mode .records-panel,
+  body.dark-mode .app-modal-card,
+  body.dark-mode .login-card {
+    -webkit-backdrop-filter: blur(28px) saturate(135%);
+    backdrop-filter: blur(28px) saturate(135%);
+  }
+}
+
+body.dark-mode {
+  --bg:#050507;
+  --panel:rgba(22,23,28,.70);
+  --panel-strong:rgba(31,32,39,.82);
+  --text:#f5f5f7;
+  --muted:#a1a1aa;
+  --line:rgba(255,255,255,.105);
+  --primary:#7cb7ff;
+  --primary-soft:rgba(72,130,255,.16);
+  --green:#35d07f;
+  --green-soft:rgba(53,208,127,.14);
+  --orange:#ffb15c;
+  --orange-soft:rgba(255,177,92,.14);
+  --red:#ff6b7a;
+  --red-soft:rgba(255,107,122,.14);
+  --purple:#a78bfa;
+  --shadow:0 28px 90px rgba(0,0,0,.42);
+  --radius:24px;
+  min-height:100vh;
+  color:var(--text);
+  background:
+    radial-gradient(circle at 18% -10%, rgba(82,127,255,.22), transparent 34%),
+    radial-gradient(circle at 86% 8%, rgba(143,85,255,.18), transparent 31%),
+    radial-gradient(circle at 72% 92%, rgba(47,118,255,.10), transparent 36%),
+    linear-gradient(180deg,#07070b 0%,#050507 52%,#090a10 100%) !important;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Segoe UI","Noto Sans TC","Microsoft JhengHei",Arial,sans-serif;
+  letter-spacing:-.012em;
+}
+
+body.dark-mode::before {
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  background:
+    linear-gradient(rgba(255,255,255,.026) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+  background-size:56px 56px;
+  mask-image:radial-gradient(circle at top, black, transparent 72%);
+}
+
+body.dark-mode .app {
+  width:100% !important;
+  max-width:none !important;
+  margin:0 !important;
+  padding:22px 28px 80px 286px !important;
+}
+
+body.dark-mode a { color:#9dccff; }
+
+/* 左側 Apple Pro 側邊選單 */
+body.dark-mode .tabs {
+  position:fixed !important;
+  left:22px !important;
+  top:22px !important;
+  bottom:22px !important;
+  z-index:90 !important;
+  width:238px !important;
+  margin:0 !important;
+  padding:18px 14px !important;
+  display:flex !important;
+  flex-direction:column !important;
+  gap:6px !important;
+  overflow:hidden auto !important;
+  border-radius:30px !important;
+  border:1px solid rgba(255,255,255,.11) !important;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.035)),
+    rgba(14,15,20,.78) !important;
+  box-shadow:0 28px 80px rgba(0,0,0,.46), inset 0 1px 0 rgba(255,255,255,.10) !important;
+}
+
+body.dark-mode .tabs::before {
+  content:"庫存管理";
+  display:flex;
+  align-items:center;
+  height:46px;
+  margin:0 4px 12px;
+  padding:0 12px;
+  color:#f5f5f7;
+  font-size:22px;
+  font-weight:900;
+  letter-spacing:-.05em;
+}
+
+body.dark-mode .tabs::after {
+  content:"Apple Pro Dark UI · Live Sync";
+  display:block;
+  margin:auto 8px 4px;
+  padding-top:14px;
+  border-top:1px solid rgba(255,255,255,.08);
+  color:rgba(245,245,247,.42);
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.02em;
+}
+
+body.dark-mode .tab-btn {
+  width:100% !important;
+  min-height:44px !important;
+  justify-content:flex-start !important;
+  gap:10px !important;
+  padding:11px 13px !important;
+  border-radius:16px !important;
+  border:1px solid transparent !important;
+  background:transparent !important;
+  color:rgba(245,245,247,.68) !important;
+  font-size:14px !important;
+  font-weight:800 !important;
+  letter-spacing:-.02em;
+  transition:background .18s ease, color .18s ease, transform .18s ease, border-color .18s ease;
+}
+
+body.dark-mode .tab-btn:hover {
+  color:#fff !important;
+  background:rgba(255,255,255,.07) !important;
+  border-color:rgba(255,255,255,.08) !important;
+}
+
+body.dark-mode .tab-btn.active {
+  color:#fff !important;
+  background:
+    radial-gradient(circle at 18% 0%,rgba(126,183,255,.48),transparent 34%),
+    linear-gradient(135deg,rgba(65,118,255,.32),rgba(167,139,250,.18)) !important;
+  border-color:rgba(156,200,255,.34) !important;
+  box-shadow:0 14px 34px rgba(55,104,255,.23), inset 0 1px 0 rgba(255,255,255,.18) !important;
+}
+
+body.dark-mode .tab-icon {
+  width:24px !important;
+  flex:0 0 24px !important;
+  font-size:16px !important;
+  opacity:.92;
+}
+
+body.dark-mode .db-usage-pill {
+  order:99;
+  width:calc(100% - 8px);
+  min-height:44px;
+  margin:12px 4px 6px;
+  justify-content:flex-start;
+  border-radius:17px;
+  padding:10px 12px;
+  background:rgba(62,112,255,.14);
+  color:#c7dcff;
+  border:1px solid rgba(124,183,255,.18);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+/* 上方毛玻璃導覽列 */
+body.dark-mode .topbar {
+  position:sticky !important;
+  top:18px !important;
+  z-index:70 !important;
+  min-height:82px !important;
+  margin:0 0 22px !important;
+  padding:16px 18px 16px 22px !important;
+  display:grid !important;
+  grid-template-columns:minmax(260px,1fr) minmax(0,auto) !important;
+  align-items:center !important;
+  gap:18px !important;
+  border-radius:28px !important;
+  border:1px solid rgba(255,255,255,.11) !important;
+  background:linear-gradient(180deg,rgba(255,255,255,.105),rgba(255,255,255,.055)), rgba(14,15,20,.70) !important;
+  box-shadow:0 24px 70px rgba(0,0,0,.36), inset 0 1px 0 rgba(255,255,255,.12) !important;
+}
+
+body.dark-mode .brand small {
+  padding:5px 10px;
+  border-radius:999px;
+  background:rgba(124,183,255,.13);
+  color:#a8ccff;
+  border:1px solid rgba(124,183,255,.18);
+  font-size:12px !important;
+  font-weight:800;
+}
+
+body.dark-mode .brand h1 {
+  margin:8px 0 1px !important;
+  color:#f5f5f7;
+  font-size:30px !important;
+  line-height:1;
+  font-weight:900;
+  letter-spacing:-.06em;
+}
+
+body.dark-mode .brand p {
+  min-height:18px;
+  color:rgba(245,245,247,.52);
+  font-size:13px !important;
+  font-weight:700;
+}
+body.dark-mode .brand p:empty::before { content:"網拍庫存、進貨、出貨與利潤同步管理"; }
+
+body.dark-mode .top-actions {
+  max-width:100% !important;
+  display:flex !important;
+  justify-content:flex-end !important;
+  flex-wrap:nowrap !important;
+  gap:8px !important;
+  overflow-x:auto !important;
+  overflow-y:hidden !important;
+  padding:2px 0 6px !important;
+}
+
+body.dark-mode .top-actions > * { flex:0 0 auto !important; }
+body.dark-mode .top-actions::-webkit-scrollbar { height:4px; }
+body.dark-mode .top-actions::-webkit-scrollbar-thumb { background:rgba(255,255,255,.22); border-radius:999px; }
+
+/* 卡片 / Dashboard */
+body.dark-mode .summary {
+  display:grid !important;
+  grid-template-columns:repeat(5,minmax(0,1fr)) !important;
+  gap:14px !important;
+  margin:0 0 20px !important;
+}
+
+body.dark-mode .metric,
+body.dark-mode .card {
+  position:relative;
+  border:1px solid rgba(255,255,255,.10) !important;
+  background:linear-gradient(180deg,rgba(255,255,255,.085),rgba(255,255,255,.038)), rgba(18,19,25,.70) !important;
+  border-radius:26px !important;
+  box-shadow:0 22px 70px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.095) !important;
+}
+
+body.dark-mode .metric {
+  min-height:122px;
+  padding:18px 18px 16px !important;
+  overflow:hidden;
+}
+
+body.dark-mode .metric::before,
+body.dark-mode .card::before {
+  content:"";
+  position:absolute;
+  inset:-1px;
+  border-radius:inherit;
+  pointer-events:none;
+  background:radial-gradient(circle at 78% 8%,rgba(124,183,255,.20),transparent 34%);
+  opacity:.9;
+}
+
+body.dark-mode .metric .value {
+  position:relative;
+  color:#f5f5f7 !important;
+  font-size:34px !important;
+  font-weight:950 !important;
+  letter-spacing:-.055em;
+}
+body.dark-mode .metric .label {
+  position:relative;
+  margin-top:8px !important;
+  color:rgba(245,245,247,.56) !important;
+  font-size:13px !important;
+  font-weight:800 !important;
+}
+
+body.dark-mode .card {
+  padding:22px !important;
+  overflow:hidden;
+}
+body.dark-mode .card > * { position:relative; }
+
+body.dark-mode h2 {
+  margin:0 0 16px !important;
+  color:#f5f5f7 !important;
+  font-size:24px !important;
+  font-weight:900 !important;
+  letter-spacing:-.045em;
+}
+body.dark-mode h3 { color:#f5f5f7 !important; }
+
+/* 表格改成 SaaS 資料面板 */
+body.dark-mode .table-wrap {
+  border-radius:22px !important;
+  border:1px solid rgba(255,255,255,.09) !important;
+  background:rgba(7,8,12,.46) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06) !important;
+}
+
+body.dark-mode table { border-collapse:separate !important; border-spacing:0 !important; }
+body.dark-mode th {
+  height:46px;
+  padding:12px 13px !important;
+  border-bottom:1px solid rgba(255,255,255,.08) !important;
+  background:rgba(18,19,25,.82) !important;
+  color:rgba(245,245,247,.62) !important;
+  font-size:12px !important;
+  font-weight:850 !important;
+  letter-spacing:.02em;
+}
+body.dark-mode td {
+  padding:13px !important;
+  border-bottom:1px solid rgba(255,255,255,.055) !important;
+  color:rgba(245,245,247,.88) !important;
+  font-size:14px !important;
+}
+body.dark-mode tr:hover td { background:rgba(255,255,255,.04) !important; }
+
+/* 搜尋與輸入 */
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode .app-modal-input {
+  min-height:44px;
+  border-radius:15px !important;
+  border:1px solid rgba(255,255,255,.11) !important;
+  background:rgba(7,8,12,.58) !important;
+  color:#f5f5f7 !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.045) !important;
+}
+body.dark-mode input::placeholder { color:rgba(245,245,247,.34) !important; }
+body.dark-mode input:focus,
+body.dark-mode select:focus,
+body.dark-mode .app-modal-input:focus {
+  border-color:rgba(124,183,255,.65) !important;
+  box-shadow:0 0 0 4px rgba(84,143,255,.16), inset 0 1px 0 rgba(255,255,255,.07) !important;
+}
+body.dark-mode label {
+  color:rgba(245,245,247,.68) !important;
+  font-size:13px !important;
+  font-weight:800 !important;
+}
+
+/* Apple 風格按鈕 */
+body.dark-mode .btn,
+body.dark-mode .records-filter-btn,
+body.dark-mode .ship-action-btn,
+body.dark-mode .tab-btn {
+  -webkit-tap-highlight-color:transparent;
+}
+body.dark-mode .btn,
+body.dark-mode .records-filter-btn {
+  min-height:42px;
+  border-radius:15px !important;
+  border:1px solid rgba(255,255,255,.105) !important;
+  background:rgba(255,255,255,.065) !important;
+  color:rgba(245,245,247,.88) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07) !important;
+  font-weight:850 !important;
+}
+body.dark-mode .btn:hover,
+body.dark-mode .records-filter-btn:hover { background:rgba(255,255,255,.10) !important; }
+body.dark-mode .btn.primary,
+body.dark-mode .records-filter-btn.active[data-record-date],
+body.dark-mode .records-filter-btn.active[data-record-action="all"] {
+  color:#fff !important;
+  border-color:rgba(124,183,255,.42) !important;
+  background:linear-gradient(135deg,#2878ff,#6aa8ff) !important;
+  box-shadow:0 14px 32px rgba(40,120,255,.28), inset 0 1px 0 rgba(255,255,255,.24) !important;
+}
+body.dark-mode .btn.green,
+body.dark-mode .records-filter-btn.active[data-record-action="ship"] { background:linear-gradient(135deg,#18a957,#35d07f) !important; color:#fff !important; border-color:rgba(53,208,127,.38) !important; }
+body.dark-mode .btn.orange { background:linear-gradient(135deg,#d97706,#ffb15c) !important; color:#fff !important; border-color:rgba(255,177,92,.34) !important; }
+body.dark-mode .btn.red,
+body.dark-mode .records-filter-btn.active[data-record-action="return"] { background:linear-gradient(135deg,#d9344b,#ff6b7a) !important; color:#fff !important; border-color:rgba(255,107,122,.38) !important; }
+body.dark-mode .btn.purple { background:linear-gradient(135deg,#7657f5,#a78bfa) !important; color:#fff !important; border-color:rgba(167,139,250,.38) !important; }
+body.dark-mode .btn.small { min-height:32px !important; padding:6px 10px !important; border-radius:12px !important; font-size:12px !important; }
+
+/* 狀態 badge */
+body.dark-mode .status,
+body.dark-mode .queue-status,
+body.dark-mode .ship-action-badge,
+body.dark-mode .nextday-btn,
+body.dark-mode .longstock-btn,
+body.dark-mode .warning-exclude-btn {
+  min-height:28px;
+  border-radius:999px !important;
+  border:1px solid rgba(255,255,255,.10) !important;
+  padding:5px 10px !important;
+  font-size:12px !important;
+  font-weight:900 !important;
+}
+body.dark-mode .status.ok { background:rgba(53,208,127,.13) !important; color:#78f2ae !important; }
+body.dark-mode .status.low { background:rgba(255,177,92,.14) !important; color:#ffd199 !important; }
+body.dark-mode .status.zero { background:rgba(255,107,122,.14) !important; color:#ff9ca7 !important; }
+body.dark-mode .status.info { background:rgba(124,183,255,.14) !important; color:#b9d7ff !important; }
+body.dark-mode .status.soldout { background:rgba(255,255,255,.08) !important; color:rgba(245,245,247,.48) !important; }
+body.dark-mode .nextday-btn.active,
+body.dark-mode .longstock-btn.active { background:rgba(124,183,255,.18) !important; color:#d6e7ff !important; border-color:rgba(124,183,255,.30) !important; }
+
+/* 售罄列：低透明、不可操作 */
+body.dark-mode .soldout-row td {
+  background:rgba(255,255,255,.035) !important;
+  color:rgba(245,245,247,.30) !important;
+  opacity:1 !important;
+}
+body.dark-mode .soldout-row td *:not(.soldout-enable) {
+  filter:grayscale(1) !important;
+  opacity:.52 !important;
+}
+body.dark-mode .soldout-row .status.soldout.soldout-enable {
+  background:rgba(255,255,255,.12) !important;
+  color:#f5f5f7 !important;
+  border-color:rgba(255,255,255,.18) !important;
+}
+
+/* 庫存資料 / 進貨查詢列 */
+body.dark-mode #stock .stock-sticky-header.stock-single-line-header,
+body.dark-mode .purchase-header {
+  margin:-22px -22px 20px !important;
+  padding:16px 20px !important;
+  border-radius:26px 26px 18px 18px !important;
+  border-bottom:1px solid rgba(255,255,255,.09) !important;
+  background:linear-gradient(180deg,rgba(255,255,255,.095),rgba(255,255,255,.045)),rgba(18,19,25,.76) !important;
+  box-shadow:none !important;
+}
+body.dark-mode #stock .stock-search-inline input#stockSearch,
+body.dark-mode .purchase-jump input {
+  width:clamp(240px,18vw,360px) !important;
+}
+
+/* 出貨頁大型掃描 */
+body.dark-mode .big-scan-input {
+  min-height:76px !important;
+  border-radius:22px !important;
+  font-size:32px !important;
+  font-weight:950 !important;
+  letter-spacing:.045em !important;
+  background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.035)),rgba(7,8,12,.64) !important;
+}
+body.dark-mode .ship-action-buttons {
+  display:grid !important;
+  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  gap:10px !important;
+}
+body.dark-mode .ship-action-btn {
+  min-height:50px !important;
+  border-radius:17px !important;
+  color:rgba(245,245,247,.72) !important;
+  border:1px solid rgba(255,255,255,.105) !important;
+  background:rgba(255,255,255,.055) !important;
+}
+body.dark-mode .ship-action-btn.active[data-action="出貨"] { color:#fff !important; background:linear-gradient(135deg,#18a957,#35d07f) !important; }
+body.dark-mode .ship-action-btn.active[data-action="退貨"] { color:#fff !important; background:linear-gradient(135deg,#d9344b,#ff6b7a) !important; }
+body.dark-mode .ship-action-btn.active[data-action="核銷"] { color:#fff !important; background:linear-gradient(135deg,#7657f5,#a78bfa) !important; }
+
+/* 商品資訊利潤即時計算 */
+body.dark-mode .product-profit-field input {
+  background:linear-gradient(135deg,rgba(53,208,127,.16),rgba(124,183,255,.08)) !important;
+  color:#8cffbd !important;
+  border-color:rgba(53,208,127,.32) !important;
+}
+body.dark-mode .product-profit-field input.profit-loss {
+  background:rgba(255,107,122,.14) !important;
+  color:#ff9ca7 !important;
+  border-color:rgba(255,107,122,.35) !important;
+}
+
+/* 紀錄 / 注意 / 空狀態 */
+body.dark-mode .notice,
+body.dark-mode .records-panel,
+body.dark-mode .empty,
+body.dark-mode .login-footnote {
+  border-radius:20px !important;
+  border:1px solid rgba(255,255,255,.09) !important;
+  background:rgba(255,255,255,.045) !important;
+  color:rgba(245,245,247,.70) !important;
+}
+body.dark-mode .notice.success { background:rgba(53,208,127,.10) !important; border-color:rgba(53,208,127,.20) !important; color:#b7ffd4 !important; }
+body.dark-mode .notice.warning { background:rgba(255,177,92,.11) !important; border-color:rgba(255,177,92,.22) !important; color:#ffddb6 !important; }
+body.dark-mode .notice.danger { background:rgba(255,107,122,.11) !important; border-color:rgba(255,107,122,.22) !important; color:#ffc4cb !important; }
+
+body.dark-mode .code,
+body.dark-mode .code-btn {
+  border-radius:10px !important;
+  border:1px solid rgba(255,255,255,.09) !important;
+  background:rgba(255,255,255,.055) !important;
+  color:#e8f1ff !important;
+}
+body.dark-mode .stock-barcode { color:#f5f5f7 !important; }
+
+body.dark-mode .progress {
+  background:rgba(255,255,255,.10) !important;
+}
+body.dark-mode .progress span {
+  background:linear-gradient(90deg,#35d07f,#7cb7ff) !important;
+}
+
+/* Modal / 登入入口 */
+body.dark-mode .app-modal-backdrop { background:rgba(0,0,0,.62) !important; }
+body.dark-mode .app-modal-card,
+body.dark-mode .login-card {
+  border-radius:30px !important;
+  background:linear-gradient(180deg,rgba(255,255,255,.105),rgba(255,255,255,.045)),rgba(18,19,25,.82) !important;
+  border:1px solid rgba(255,255,255,.12) !important;
+  box-shadow:0 34px 110px rgba(0,0,0,.56), inset 0 1px 0 rgba(255,255,255,.12) !important;
+}
+body.dark-mode .login-gate {
+  background:
+    radial-gradient(circle at 18% 5%, rgba(82,127,255,.22), transparent 34%),
+    radial-gradient(circle at 86% 20%, rgba(143,85,255,.18), transparent 31%),
+    linear-gradient(180deg,#07070b 0%,#050507 100%) !important;
+}
+
+/* 桌面比例維持 1440px 觀感；較小寬度改回上方選單，避免手機炸版 */
+@media (max-width:1180px) {
+  body.dark-mode .app { padding:16px 16px 64px !important; }
+  body.dark-mode .tabs {
+    position:sticky !important;
+    left:auto !important;
+    top:0 !important;
+    bottom:auto !important;
+    width:auto !important;
+    height:auto !important;
+    margin:14px 0 18px !important;
+    flex-direction:row !important;
+    overflow-x:auto !important;
+    border-radius:22px !important;
+  }
+  body.dark-mode .tabs::before,
+  body.dark-mode .tabs::after { display:none !important; }
+  body.dark-mode .tab-btn { width:auto !important; white-space:nowrap !important; }
+  body.dark-mode .summary { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+  body.dark-mode .topbar { top:8px !important; grid-template-columns:1fr !important; }
+}
+
+@media (max-width:760px) {
+  body.dark-mode .summary { grid-template-columns:1fr !important; }
+  body.dark-mode .ship-action-buttons { grid-template-columns:1fr !important; }
+}
+
+/* ===== Apple Pro Dark UI Integrated Patch End ===== */
+
+</style>
 </head>
-<body class="auth-checking">
+<body class="auth-checking dark-mode">
 
   <div class="login-gate" id="loginGate">
     <section class="login-card" aria-label="庫存系統登入頁">
@@ -3105,6 +3655,12 @@
   </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // Apple Pro Dark UI：第一次開啟預設深色；若你之後按「淺色模式」，會照你的選擇保存。
+  if (!localStorage.getItem('inventoryTheme')) {
+    localStorage.setItem('inventoryTheme', 'dark');
+  }
+</script>
 <script>
 const SUPABASE_URL="https://eqtgvszttihfduioijof.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxdGd2c3p0dGloZmR1aW9pam9mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExOTI0NDksImV4cCI6MjA5Njc2ODQ0OX0.THWTNYot4U-UZhMAsS-qjh-p9M8oVrWIh6mPsdOgfOg";
@@ -5243,7 +5799,7 @@ function printLabels(p,qty){
     doPrint();
   }
 }
-function getSavedTheme(){return localStorage.getItem('inventoryTheme')||'light'}
+function getSavedTheme(){return localStorage.getItem('inventoryTheme')||'dark'}
 function applyTheme(theme){
   const isDark=theme==='dark';
   document.body.classList.toggle('dark-mode',isDark);
