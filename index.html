@@ -5316,9 +5316,29 @@ function bindEvents(){
   if($('pCost'))$('pCost').oninput=updateProductProfitPreview;
   if($('pPrice'))$('pPrice').oninput=updateProductProfitPreview;
   $('productSearch').oninput=e=>{state.filters.product=e.target.value;renderProducts()};
-  $('stockSearch').oninput=e=>{state.filters.stock=e.target.value;renderStock()};
-  $('btnStockSearch').onclick=()=>{state.filters.stock=$('stockSearch').value;renderStock()};
-  $('btnShowAllStock').onclick=()=>{$('stockSearch').value='';state.filters.stock='';state.filters.stockNextDayOnly=false;renderStock()};
+  $('stockSearch').oninput=null;
+  $('stockSearch').onfocus=e=>e.target.select();
+  $('stockSearch').onclick=e=>e.target.select();
+
+  $('stockSearch').onkeydown=e=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      state.filters.stock=$('stockSearch').value.trim();
+      renderStock();
+    }
+  };
+
+  $('btnStockSearch').onclick=()=>{
+    state.filters.stock=$('stockSearch').value.trim();
+    renderStock();
+  };
+
+  $('btnShowAllStock').onclick=()=>{
+    $('stockSearch').value='';
+    state.filters.stock='';
+    state.filters.stockNextDayOnly=false;
+    renderStock();
+  };
   if($('btnStockShowNextDayOnly'))$('btnStockShowNextDayOnly').onclick=toggleStockNextDayOnly;
   if($('btnPurchaseShowNextDayOnly'))$('btnPurchaseShowNextDayOnly').onclick=togglePurchaseNextDayOnly;
   $('btnSortProduct').onclick=()=>callApi('sortProducts',{});
@@ -5353,8 +5373,16 @@ function bindEvents(){
   if($('btnPurchaseJump'))$('btnPurchaseJump').onclick=purchaseJumpToCode;
   if($('btnShowAllPurchase'))$('btnShowAllPurchase').onclick=()=>{$('purchaseJumpCode').value='';state.filters.purchase='';state.filters.purchaseNextDayOnly=false;renderPurchase()};
   if($('purchaseJumpCode')){
-    $('purchaseJumpCode').oninput=e=>{state.filters.purchase=e.target.value;renderPurchase()};
-    $('purchaseJumpCode').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();purchaseJumpToCode();}};
+    $('purchaseJumpCode').oninput=null;
+    $('purchaseJumpCode').onfocus=e=>e.target.select();
+    $('purchaseJumpCode').onclick=e=>e.target.select();
+
+    $('purchaseJumpCode').onkeydown=e=>{
+      if(e.key==='Enter'){
+        e.preventDefault();
+        purchaseJumpToCode();
+      }
+    };
   }
   if($('btnClearAll'))$('btnClearAll').onclick=confirmClearAllWithPassword;
 }
