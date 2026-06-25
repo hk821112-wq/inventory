@@ -3991,6 +3991,143 @@ async function createShopeeStockTaskIfNeeded(product, beforeStock, afterStock, a
   }
 }
 
+async function createShopeeStockTaskForManualStockChange(product, beforeStock, afterStock, sourceText) {
+  const before = toNum(beforeStock);
+  const after = toNum(afterStock);
+  const changeQty = Math.abs(after - before);
+  const code = normalizeCode(product?.code || '');
+  const shopeeUrl = String(product?.shopeeUrl || '').trim();
+  const source = sourceText || '庫存資料手動更新';
+
+  if (!code) {
+    return {
+      created: false,
+      reason: 'missing_code'
+    };
+  }
+
+  if (!shopeeUrl) {
+    try {
+      await logAction(
+        '蝦皮同步略過',
+        product,
+        before,
+        after,
+        before,
+        after,
+        `${source}已完成，但商品沒有蝦皮網址，未建立蝦皮同步任務`
+      );
+    } catch (e) {}
+
+    return {
+      created: false,
+      reason: 'missing_shopee_url'
+    };
+  }
+
+  try {
+    const { data: existingTask, error: findError } = await db
+      .from('shopee_stock_tasks')
+      .select('id, arrival_qty, target_stock')
+      .eq('code', code)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    dbError(findError);
+
+    if (existingTask) {
+      const { error: updateError } = await db
+        .from('shopee_stock_tasks')
+        .update({
+          product_id: product.id || null,
+          item_name: product.itemName || '',
+          color: product.color || '',
+          shopee_url: shopeeUrl,
+          arrival_qty: toNum(existingTask.arrival_qty) + changeQty,
+          target_stock: after,
+          source: 'manual_stock',
+          error_message: null
+        })
+        .eq('id', existingTask.id);
+
+      dbError(updateError);
+
+      await logAction(
+        '更新蝦皮同步任務',
+        product,
+        existingTask.target_stock,
+        after,
+        before,
+        after,
+        `${source}：已存在待同步任務，更新目標蝦皮庫存為 ${after}`
+      );
+
+      return {
+        created: true,
+        updated: true,
+        taskId: existingTask.id
+      };
+    }
+
+    const { data, error } = await db
+      .from('shopee_stock_tasks')
+      .insert({
+        product_id: product.id || null,
+        code,
+        item_name: product.itemName || '',
+        color: product.color || '',
+        shopee_url: shopeeUrl,
+        before_stock: before,
+        arrival_qty: changeQty,
+        target_stock: after,
+        source: 'manual_stock',
+        status: 'pending'
+      })
+      .select('id')
+      .single();
+
+    dbError(error);
+
+    await logAction(
+      '建立蝦皮同步任務',
+      product,
+      before,
+      after,
+      before,
+      after,
+      `${source}：現貨 ${before} → ${after}，已建立蝦皮庫存同步任務`
+    );
+
+    return {
+      created: true,
+      updated: false,
+      taskId: data?.id || ''
+    };
+  } catch (err) {
+    const msg = friendlyErrorMessage(err);
+
+    try {
+      await logAction(
+        '蝦皮同步任務失敗',
+        product,
+        before,
+        after,
+        before,
+        after,
+        `${source}建立蝦皮同步任務失敗：${msg}`
+      );
+    } catch (e) {}
+
+    return {
+      created: false,
+      reason: 'task_error',
+      error: msg
+    };
+  }
+}
+
 async function dbAddArrival(payload) {
   const code = normalizeCode(payload.code);
   const p = findProduct(code);
@@ -4094,7 +4231,91 @@ async function dbAddArrival(payload) {
 }
 
 async function dbDeletePurchaseBatch(payload){const code=normalizeCode(payload.code);const p=findProduct(code);if(!p)throw new Error('找不到商品：'+code);blockSoldOutProduct(p,'刪除進貨批次');const idx=Number(payload.batchIndex);const b=p.batches[idx]||{};if(toNum(b.ordered)<=0&&toNum(b.arrived)<=0)throw new Error('此批次目前沒有進貨紀錄可以刪除');const {error}=await db.from('purchase_batches').delete().eq('product_id',p.id).eq('batch_no',idx+1);dbError(error);await logAction(`第${idx+1}批進貨刪除`,p,`${b.arrived}/${b.ordered}`,'0/0',p.currentStock,p.currentStock,'清空此批進貨進度');return{message:'批次已刪除'}}
-async function changeStock(payload,mode){const code=normalizeCode(payload.code);const p=findProduct(code);if(!p)throw new Error('找不到商品：'+code);blockSoldOutProduct(p,'修改庫存');let qty=Math.floor(toNum(payload.qty));if(mode==='adjust')qty=Math.floor(toNum(payload.qty));else if(qty<=0)qty=1;const before=toNum(p.currentStock);let after=before;let action='';let note='';if(mode==='inbound'){after=before+qty;action='手動入庫';note=(payload.source||'入庫')+' +'+qty}else if(mode==='decrease'){after=Math.max(before-qty,0);action='手動扣庫存';note='現貨 -'+qty}else if(mode==='adjust'){after=qty;action='手動校正現貨';note=payload.reason||'盤點校正'}const updateRow={current_stock:after};if(after>0)updateRow.is_sold_out=false;const {data,error}=await db.from('products').update(updateRow).eq('id',p.id).select().single();dbError(error);await logAction(action,p,before,after,before,after,note);return{message:'庫存已更新',product:{...p,currentStock:after,isSoldOut:!!data.is_sold_out}}}
+async function changeStock(payload, mode) {
+  const code = normalizeCode(payload.code);
+  const p = findProduct(code);
+
+  if (!p) throw new Error('找不到商品：' + code);
+
+  blockSoldOutProduct(p, '修改庫存');
+
+  let qty = Math.floor(toNum(payload.qty));
+
+  if (mode === 'adjust') {
+    qty = Math.floor(toNum(payload.qty));
+  } else if (qty <= 0) {
+    qty = 1;
+  }
+
+  const before = toNum(p.currentStock);
+  let after = before;
+  let action = '';
+  let note = '';
+  let syncSource = '';
+
+  if (mode === 'inbound') {
+    after = before + qty;
+    action = '手動入庫';
+    note = (payload.source || '入庫') + ' +' + qty;
+    syncSource = payload.source || '庫存資料+1庫存';
+  } else if (mode === 'decrease') {
+    after = Math.max(before - qty, 0);
+    action = '手動扣庫存';
+    note = '現貨 -' + qty;
+    syncSource = '庫存資料-1庫存';
+  } else if (mode === 'adjust') {
+    after = qty;
+    action = '手動校正現貨';
+    note = payload.reason || '盤點校正';
+    syncSource = payload.reason || '庫存資料手動校正現貨';
+  }
+
+  const updateRow = {
+    current_stock: after
+  };
+
+  if (after > 0) updateRow.is_sold_out = false;
+
+  const { data, error } = await db
+    .from('products')
+    .update(updateRow)
+    .eq('id', p.id)
+    .select()
+    .single();
+
+  dbError(error);
+
+  await logAction(action, p, before, after, before, after, note);
+
+  const product = {
+    ...p,
+    currentStock: after,
+    isSoldOut: !!data.is_sold_out
+  };
+
+  const shopeeTask = await createShopeeStockTaskForManualStockChange(
+    product,
+    before,
+    after,
+    syncSource
+  );
+
+  let message = '庫存已更新';
+
+  if (shopeeTask?.created) {
+    message += '，已建立蝦皮同步任務';
+  } else if (shopeeTask?.reason === 'missing_shopee_url') {
+    message += '，但缺少蝦皮網址，未建立蝦皮同步任務';
+  } else if (shopeeTask?.reason === 'task_error') {
+    message += '，但蝦皮同步任務建立失敗';
+  }
+
+  return {
+    message,
+    product,
+    shopeeTask
+  };
+}
 async function updateSettings(payload){const s=payload.settings||{};const rows=Object.entries(s).map(([key,value])=>({key,value:toNum(value)}));const {error}=await db.from('settings').upsert(rows,{onConflict:'key'});dbError(error);return{message:'設定已儲存'}}
 async function replaceAllData(payload){if(!Array.isArray(payload.products))throw new Error('JSON 格式不正確');await clearAll();const rows=payload.products.map(p=>({code:normalizeCode(p.code),item_name:p.itemName||'',color:p.color||'',shopee_url:p.shopeeUrl||'',purchase_url:p.purchaseUrl||'',cost:toNum(p.cost),price:toNum(p.price),current_stock:toNum(p.currentStock),total_sales:toNum(p.totalSales),next_day_delivery:!!p.nextDayDelivery,next_day_warning_excluded:!!p.nextDayWarningExcluded,long_stock:!!p.longStock}));if(rows.length){const {data,error}=await db.from('products').insert(rows).select();dbError(error);const idByCode=Object.fromEntries((data||[]).map(r=>[normalizeCode(r.code),r.id]));const batchRows=[];(payload.products||[]).forEach(p=>{const pid=idByCode[normalizeCode(p.code)];(p.batches||[]).forEach((b,i)=>{if(toNum(b.ordered)||toNum(b.arrived)||b.orderDate)batchRows.push({product_id:pid,batch_no:i+1,ordered_qty:toNum(b.ordered),arrived_qty:toNum(b.arrived),order_date:b.orderDate||null})})});if(batchRows.length)dbError((await db.from('purchase_batches').insert(batchRows)).error)}if(payload.settings)await updateSettings({settings:payload.settings});return{message:'匯入完成'}}
 async function appendImportData(payload) {
