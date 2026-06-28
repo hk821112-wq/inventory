@@ -2790,6 +2790,88 @@
     .product-profit-field input:focus{
       box-shadow:none!important;
     }
+
+    /* ==============================
+       2026/06/29 到貨更新分頁
+       進貨 / 到貨完成後，集中顯示需要手動同步網站庫存的商品。
+       ============================== */
+    .arrival-update-toolbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      margin:0 0 14px;
+    }
+    .arrival-update-filters{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .arrival-update-summary{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:12px;
+      margin:0 0 14px;
+    }
+    .arrival-update-card{
+      border:1px solid var(--line);
+      border-radius:16px;
+      background:#fff;
+      padding:14px;
+    }
+    .arrival-update-card .label{
+      color:#4b5563;
+      font-size:13px;
+      font-weight:1000;
+    }
+    .arrival-update-card .value{
+      margin-top:6px;
+      color:var(--primary);
+      font-size:26px;
+      line-height:1;
+      font-weight:1000;
+    }
+    .arrival-source-pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-height:26px;
+      padding:3px 9px;
+      border-radius:999px;
+      background:#eff6ff;
+      color:#1d4ed8;
+      border:1px solid #bfdbfe;
+      font-size:12px;
+      font-weight:1000;
+      white-space:nowrap;
+    }
+    .arrival-status-pending{background:#ffedd5;color:#c2410c;border-color:#fdba74}
+    .arrival-status-done{background:#dcfce7;color:#15803d;border-color:#86efac}
+    .arrival-status-ignored{background:#e5e7eb;color:#4b5563;border-color:#d1d5db}
+    .arrival-update-actions{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .arrival-update-url-missing{
+      color:#f87171;
+      font-weight:1000;
+    }
+    body.dark-mode .arrival-update-card{
+      background:#111827;
+      border-color:#334155;
+    }
+    body.dark-mode .arrival-update-card .label{color:#cbd5e1}
+    body.dark-mode .arrival-source-pill{background:#172554;color:#bfdbfe;border-color:#1d4ed8}
+    body.dark-mode .arrival-status-pending{background:#431407;color:#fed7aa;border-color:#ea580c}
+    body.dark-mode .arrival-status-done{background:#064e3b;color:#bbf7d0;border-color:#16a34a}
+    body.dark-mode .arrival-status-ignored{background:#374151;color:#d1d5db;border-color:#4b5563}
+    @media(max-width:980px){.arrival-update-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:560px){.arrival-update-summary{grid-template-columns:1fr}.arrival-update-toolbar{align-items:stretch}.arrival-update-toolbar .btn{flex:1}}
+
     .copy-toast{position:fixed;right:18px;bottom:86px;z-index:1200;display:none;align-items:center;justify-content:center;min-height:42px;padding:10px 14px;border-radius:999px;background:#111827;color:#fff;font-weight:1000;box-shadow:0 16px 32px rgba(15,23,42,.22);border:1px solid rgba(255,255,255,.12)}
     .copy-toast.show{display:flex}
     body.dark-mode .copy-toast{background:#2563eb;color:#fff;border-color:#60a5fa}
@@ -2877,6 +2959,7 @@
       <button class="tab-btn" data-tab="ship"><span class="tab-icon">📦</span>商品出貨</button>
       <button class="tab-btn" data-tab="stock"><span class="tab-icon">📋</span>庫存資料</button>
       <button class="tab-btn" data-tab="purchase"><span class="tab-icon">🚚</span>進貨 / 到貨</button>
+      <button class="tab-btn" data-tab="arrivalUpdate"><span class="tab-icon">🔄</span>到貨更新</button>
       <button class="tab-btn" data-tab="records"><span class="tab-icon">🧾</span>出貨紀錄</button>
       <button class="tab-btn" data-tab="actions"><span class="tab-icon">🕘</span>所有動作紀錄</button>
       <button class="tab-btn" data-tab="product"><span class="tab-icon">🏷️</span>商品資訊</button>
@@ -3019,6 +3102,28 @@
       </div>
     </section>
 
+    <section class="tab" id="arrivalUpdate">
+      <div class="grid">
+        <article class="card span-12">
+          <div class="arrival-update-toolbar">
+            <div>
+              <h2 style="margin:0 0 6px">到貨更新</h2>
+              <div class="muted" style="font-weight:800">進貨 / 到貨按下「到貨」後，會把需要同步網站庫存的商品集中到這裡。</div>
+            </div>
+            <div class="arrival-update-filters">
+              <button class="btn primary" id="btnArrivalPending" type="button">待更新</button>
+              <button class="btn ghost" id="btnArrivalDone" type="button">已完成</button>
+              <button class="btn ghost" id="btnArrivalIgnored" type="button">已忽略</button>
+              <button class="btn ghost" id="btnArrivalAll" type="button">全部</button>
+              <button class="btn ghost" id="btnExportArrivalCsv" type="button">匯出 CSV</button>
+            </div>
+          </div>
+          <div class="arrival-update-summary" id="arrivalUpdateSummary"></div>
+          <div id="arrivalUpdateTable"></div>
+        </article>
+      </div>
+    </section>
+
     <section class="tab" id="ship">
       <div class="grid">
         <article class="card span-5">
@@ -3139,7 +3244,7 @@ const DB_USAGE_LIMIT_MB=500;
 let dbUsageTimer=null;
 let currentUser=null;
 let sessionLoginPassword='';
-const state={products:[],sales:[],actions:[],previews:[],settings:{feePlatform:.055,feeService:.02,feeExtra:.02,feeOther:0,shippingBase:60,lowStockThreshold:3,shipFailVolume:80},filters:{product:'',stock:'',purchase:'',stockNextDayOnly:false,purchaseNextDayOnly:false},actionFilters:{startDate:''},salesFilters:{actionMode:'all',dateRange:'today',customStart:'',customEnd:''}};
+const state={products:[],sales:[],actions:[],previews:[],arrivalUpdates:[],arrivalUpdateFilter:'pending',settings:{feePlatform:.055,feeService:.02,feeExtra:.02,feeOther:0,shippingBase:60,lowStockThreshold:3,shipFailVolume:80},filters:{product:'',stock:'',purchase:'',stockNextDayOnly:false,purchaseNextDayOnly:false},actionFilters:{startDate:''},salesFilters:{actionMode:'all',dateRange:'today',customStart:'',customEnd:''}};
 const shipQueue=[];
 let shipQueueRunning=false;
 let shipQueueSeq=0;
@@ -3346,6 +3451,25 @@ function mapSaleLogRow(r,productById=null,productByCode=null){
     status:r.status||'完成'
   };
 }
+function mapArrivalUpdateTask(r,productById=null,productByCode=null){
+  const maps=(!productById||!productByCode)?productLookupMaps():{byId:productById,byCode:productByCode};
+  const p=maps.byId?.[r.product_id]||maps.byCode?.[normalizeCode(r.code)]||null;
+  return {
+    id:r.id||'',
+    time:fmtTime(r.created_at),
+    status:String(r.status||'pending'),
+    source:String(r.source||'arrival'),
+    itemName:r.item_name||p?.itemName||'',
+    color:r.color||p?.color||'',
+    code:normalizeCode(r.code||p?.code||''),
+    shopeeUrl:r.shopee_url||p?.shopeeUrl||'',
+    beforeStock:toNum(r.before_stock),
+    arrivalQty:toNum(r.arrival_qty),
+    targetStock:toNum(r.target_stock),
+    batchNo:r.batch_no||'',
+    errorMessage:r.error_message||''
+  };
+}
 function saleRecordKey(r){
   return [r.action||'',normalizeCode(r.code),String(r.beforeStock??''),String(r.afterStock??'')].join('|');
 }
@@ -3434,6 +3558,7 @@ function setupRealtime(){
   realtimeChannel=db.channel('inventory-live-sync')
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'products'},payload=>handleRealtimeProduct(payload.new))
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'sales_logs'},payload=>handleRealtimeSaleLog(payload.new))
+    .on('postgres_changes',{event:'*',schema:'public',table:'shopee_stock_tasks'},payload=>scheduleRealtimeFullRefresh())
     .subscribe(status=>{
       if(status==='SUBSCRIBED')console.log('Supabase Realtime 已連線');
       if(status==='CHANNEL_ERROR')console.warn('Supabase Realtime 連線異常，請確認 products / sales_logs 已開啟 Realtime');
@@ -3680,6 +3805,7 @@ async function logout(){
     state.sales=[];
     state.actions=[];
     state.previews=[];
+    state.arrivalUpdates=[];
     updateAuthUI();
     renderAll();
     setTimeout(()=>{if($('gateEmail'))$('gateEmail').focus();},80);
@@ -3750,7 +3876,7 @@ async function fetchPaged(makeQuery, pageSize = 1000) {
 async function fetchAllState() {
   requireLogin();
 
-  const [pr, br, sr, ar, se] = await Promise.all([
+  const [pr, br, sr, ar, se, tu] = await Promise.all([
     fetchPaged((from, to) =>
       db
         .from('products')
@@ -3781,10 +3907,16 @@ async function fetchAllState() {
 
     db
       .from('settings')
+      .select('*'),
+
+    db
+      .from('shopee_stock_tasks')
       .select('*')
+      .order('created_at', { ascending: false })
+      .limit(500)
   ]);
 
-  [pr, br, sr, ar, se].forEach(x => dbError(x.error));
+  [pr, br, sr, ar, se, tu].forEach(x => dbError(x.error));
 
   const batchMap = {};
   (br.data || []).forEach(b => {
@@ -3831,12 +3963,14 @@ async function fetchAllState() {
   });
 
   const previews = (sr.data || []).slice(0, 100).map(r => mapSaleLogRow(r, productById, productByCode));
+  const arrivalUpdates = (tu.data || []).map(r => mapArrivalUpdateTask(r, productById, productByCode));
 
   return {
     products,
     sales,
     actions,
     previews,
+    arrivalUpdates,
     settings
   };
 }
@@ -3979,25 +4113,8 @@ async function createShopeeStockTaskIfNeeded(product, beforeStock, afterStock, a
     };
   }
 
-  // 沒有蝦皮網址，不建立任務，只寫入動作紀錄
-  if (!shopeeUrl) {
-    try {
-      await logAction(
-        '蝦皮同步略過',
-        product,
-        before,
-        after,
-        before,
-        after,
-        '到貨已完成，但商品沒有蝦皮網址，未建立蝦皮同步任務'
-      );
-    } catch (e) {}
-
-    return {
-      created: false,
-      reason: 'missing_shopee_url'
-    };
-  }
+  // 沒有蝦皮網址也建立到貨更新資料，讓後續補網址或手動處理時看得到。
+  // 表格會顯示「缺少網址」，不會讓到貨商品資訊消失。
 
   try {
     // 若同一商品已經有待同步任務，就更新成最新現貨，不重複建立
@@ -4331,7 +4448,7 @@ async function dbAddArrival(payload) {
   let message = '到貨完成';
 
   if (shopeeTask?.created) {
-    message += '，已建立蝦皮同步任務';
+    message += '，已加入到貨更新分頁';
   } else if (shopeeTask?.reason === 'missing_shopee_url') {
     message += '，但缺少蝦皮網址，未建立蝦皮同步任務';
   } else if (shopeeTask?.reason === 'task_error') {
@@ -4532,6 +4649,16 @@ async function appendImportData(payload) {
   };
 }
 
+async function updateArrivalTaskStatus(payload){
+  const id=String(payload.id||'').trim();
+  const status=String(payload.status||'').trim();
+  const allowed=['pending','done','ignored'];
+  if(!id)throw new Error('找不到到貨更新資料');
+  if(!allowed.includes(status))throw new Error('到貨更新狀態錯誤');
+  const {error}=await db.from('shopee_stock_tasks').update({status}).eq('id',id);
+  dbError(error);
+  return{message:status==='done'?'已標記完成':(status==='ignored'?'已忽略此筆更新':'已改回待更新')};
+}
 async function clearAll(){
   for(const t of ['shopee_stock_tasks','sales_logs','stock_logs','purchase_batches','products']){
     const {error}=await db.from(t).delete().neq('id','00000000-0000-0000-0000-000000000000');
@@ -4540,7 +4667,7 @@ async function clearAll(){
   return{message:'已清空資料'};
 }
 async function sortProducts(){state.products.sort((a,b)=>String(a.code).localeCompare(String(b.code),'en',{numeric:true}));return{message:'已依編號排序'}}
-async function apiSupabase(action,payload){payload=payload||{};requireLogin();let result={};if(action==='getAllData')return{ok:true,state:await fetchAllState(),result:{}};if(action==='createProducts')result=await createProducts(payload);else if(action==='updateProduct')result=await updateProduct(payload);else if(action==='deleteProduct')result=await dbDeleteProduct(payload);else if(action==='toggleNextDayDelivery')result=await toggleNextDayDelivery(payload);else if(action==='toggleLongStock')result=await toggleLongStock(payload);else if(action==='addPurchase')result=await addPurchase(payload);else if(action==='addArrival')result=await dbAddArrival(payload);else if(action==='deletePurchaseBatch')result=await dbDeletePurchaseBatch(payload);else if(action==='inboundStock')result=await changeStock(payload,'inbound');else if(action==='decreaseStock')result=await changeStock(payload,'decrease');else if(action==='adjustStock')result=await changeStock(payload,'adjust');else if(action==='updateSettings')result=await updateSettings(payload);else if(action==='sortProducts')result=await sortProducts(payload);else if(action==='replaceAllData')result=await replaceAllData(payload);else if(action==='appendImportData')result=await appendImportData(payload);else if(action==='clearAll')result=await clearAll(payload);else throw new Error('未知 API 動作：'+action);return{ok:true,state:await fetchAllState(),result}}
+async function apiSupabase(action,payload){payload=payload||{};requireLogin();let result={};if(action==='getAllData')return{ok:true,state:await fetchAllState(),result:{}};if(action==='createProducts')result=await createProducts(payload);else if(action==='updateProduct')result=await updateProduct(payload);else if(action==='deleteProduct')result=await dbDeleteProduct(payload);else if(action==='toggleNextDayDelivery')result=await toggleNextDayDelivery(payload);else if(action==='toggleLongStock')result=await toggleLongStock(payload);else if(action==='addPurchase')result=await addPurchase(payload);else if(action==='addArrival')result=await dbAddArrival(payload);else if(action==='deletePurchaseBatch')result=await dbDeletePurchaseBatch(payload);else if(action==='inboundStock')result=await changeStock(payload,'inbound');else if(action==='decreaseStock')result=await changeStock(payload,'decrease');else if(action==='adjustStock')result=await changeStock(payload,'adjust');else if(action==='updateSettings')result=await updateSettings(payload);else if(action==='updateArrivalTaskStatus')result=await updateArrivalTaskStatus(payload);else if(action==='sortProducts')result=await sortProducts(payload);else if(action==='replaceAllData')result=await replaceAllData(payload);else if(action==='appendImportData')result=await appendImportData(payload);else if(action==='clearAll')result=await clearAll(payload);else throw new Error('未知 API 動作：'+action);return{ok:true,state:await fetchAllState(),result}}
 async function callApi(action,payload,cb){setLoading(true);try{const res=await apiSupabase(action,payload||{});if(!res||!res.ok){await appAlert(res?.message||'操作失敗','操作失敗',{danger:true});return null}if(res.state)Object.assign(state,res.state);renderAll();if(action!=='getAllData')scheduleDatabaseUsageRefresh(1200);if(cb)cb(res.result||{});return res}catch(err){const msg=friendlyErrorMessage(err);const isDup=msg.includes('編號重複');await appAlert(msg,isDup?'編號重複':'系統錯誤',{danger:!isDup,icon:isDup?'!':undefined});return null}finally{setLoading(false)}}
 function loadData(){return callApi('getAllData',{},()=>{})}
 function activeTabId(){const el=document.querySelector('.tab.active');return el?el.id:'dashboard'}
@@ -4550,6 +4677,7 @@ function renderCurrentTab(){
   else if(tab==='product')renderProducts();
   else if(tab==='stock')renderStock();
   else if(tab==='purchase')renderPurchase();
+  else if(tab==='arrivalUpdate')renderArrivalUpdates();
   else if(tab==='ship'){renderShipPreview();renderShipQueue()}
   else if(tab==='records')renderSales();
   else if(tab==='actions')renderActions();
@@ -4744,6 +4872,90 @@ async function callPurchaseFast(action,payload,cb){
   }finally{
     setLoading(false);
   }
+}
+function arrivalStatusText(status){
+  if(status==='done')return '已完成';
+  if(status==='ignored')return '已忽略';
+  if(status==='processing')return '處理中';
+  if(status==='fail')return '失敗';
+  return '待更新';
+}
+function arrivalSourceText(source){
+  if(source==='arrival')return '到貨';
+  if(source==='manual_stock')return '手動庫存';
+  return source||'更新';
+}
+function arrivalStatusClass(status){
+  if(status==='done')return 'arrival-status-done';
+  if(status==='ignored')return 'arrival-status-ignored';
+  return 'arrival-status-pending';
+}
+function filteredArrivalUpdates(){
+  const mode=state.arrivalUpdateFilter||'pending';
+  const rows=[...(state.arrivalUpdates||[])];
+  if(mode==='all')return rows;
+  return rows.filter(r=>String(r.status||'pending')===mode);
+}
+function renderArrivalUpdateFilterButtons(){
+  const mode=state.arrivalUpdateFilter||'pending';
+  const pairs=[['btnArrivalPending','pending'],['btnArrivalDone','done'],['btnArrivalIgnored','ignored'],['btnArrivalAll','all']];
+  pairs.forEach(([id,value])=>{
+    const btn=$(id);
+    if(!btn)return;
+    const active=mode===value;
+    btn.classList.toggle('primary',active);
+    btn.classList.toggle('ghost',!active);
+  });
+}
+function renderArrivalUpdateSummary(){
+  const all=state.arrivalUpdates||[];
+  const pending=all.filter(r=>String(r.status||'pending')==='pending').length;
+  const done=all.filter(r=>String(r.status||'pending')==='done').length;
+  const ignored=all.filter(r=>String(r.status||'pending')==='ignored').length;
+  const qty=all.filter(r=>String(r.status||'pending')==='pending').reduce((s,r)=>s+toNum(r.arrivalQty),0);
+  const el=$('arrivalUpdateSummary');
+  if(!el)return;
+  el.innerHTML=`<div class="arrival-update-card"><div class="label">待更新</div><div class="value">${pending}</div></div><div class="arrival-update-card"><div class="label">待同步到貨數</div><div class="value">${qty}</div></div><div class="arrival-update-card"><div class="label">已完成</div><div class="value">${done}</div></div><div class="arrival-update-card"><div class="label">已忽略</div><div class="value">${ignored}</div></div>`;
+}
+function renderArrivalUpdates(){
+  renderArrivalUpdateFilterButtons();
+  renderArrivalUpdateSummary();
+  const rows=filteredArrivalUpdates();
+  const el=$('arrivalUpdateTable');
+  if(!el)return;
+  if(!rows.length){
+    const mode=state.arrivalUpdateFilter||'pending';
+    el.innerHTML=`<div class="empty">${mode==='pending'?'目前沒有待更新的到貨商品。':'目前沒有符合條件的到貨更新資料。'}</div>`;
+    return;
+  }
+  el.innerHTML=`<div class="table-wrap"><table><thead><tr><th>狀態</th><th>來源</th><th>時間</th><th>品項</th><th>顏色</th><th>編號</th><th>到貨數</th><th>更新前</th><th>網站目標庫存</th><th>批次</th><th>蝦皮</th><th>操作</th></tr></thead><tbody>${rows.map(r=>{
+    const p=findProduct(r.code);
+    const itemText=String(r.itemName||p?.itemName||'').trim();
+    const colorText=String(r.color||p?.color||'').trim();
+    const shopeeUrl=String(r.shopeeUrl||p?.shopeeUrl||'').trim();
+    const purchaseUrl=String(p?.purchaseUrl||'').trim();
+    const status=String(r.status||'pending');
+    const itemCell=shopeeUrl?`<a href="${esc(shopeeUrl)}" target="_blank">${esc(itemText)}</a>`:esc(itemText);
+    const colorCell=purchaseUrl?`<a href="${esc(purchaseUrl)}" target="_blank">${esc(colorText)}</a>`:esc(colorText);
+    const urlCell=shopeeUrl?`<a class="btn small primary" href="${esc(shopeeUrl)}" target="_blank">開啟</a>`:`<span class="arrival-update-url-missing">缺少網址</span>`;
+    const doneBtn=status==='done'?`<button class="btn small ghost" type="button" onclick="setArrivalUpdateStatus('${esc(r.id)}','pending')">改回待更新</button>`:`<button class="btn small green" type="button" onclick="setArrivalUpdateStatus('${esc(r.id)}','done')">完成</button>`;
+    const ignoreBtn=status==='ignored'?`<button class="btn small ghost" type="button" onclick="setArrivalUpdateStatus('${esc(r.id)}','pending')">取消忽略</button>`:`<button class="btn small red" type="button" onclick="setArrivalUpdateStatus('${esc(r.id)}','ignored')">忽略</button>`;
+    return `<tr><td><span class="status ${arrivalStatusClass(status)}">${arrivalStatusText(status)}</span></td><td><span class="arrival-source-pill">${esc(arrivalSourceText(r.source))}</span></td><td>${esc(r.time)}</td><td>${itemCell}</td><td>${colorCell}</td><td>${copyCodeCell(r.code)}</td><td>${toNum(r.arrivalQty)}</td><td>${toNum(r.beforeStock)}</td><td><strong>${toNum(r.targetStock)}</strong></td><td>${r.batchNo?`第 ${esc(r.batchNo)} 批`:'-'}</td><td>${urlCell}</td><td><div class="arrival-update-actions">${doneBtn}${ignoreBtn}</div></td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+function setArrivalUpdateFilter(mode){
+  state.arrivalUpdateFilter=mode||'pending';
+  renderArrivalUpdates();
+}
+function setArrivalUpdateStatus(id,status){
+  callApi('updateArrivalTaskStatus',{id,status},r=>{
+    if(r.message)showCopyToast(r.message);
+  });
+}
+function exportArrivalUpdatesCsv(){
+  const h=['狀態','來源','時間','品項','顏色','編號','到貨數','更新前','網站目標庫存','批次','蝦皮網址','訊息'];
+  const rows=(state.arrivalUpdates||[]).map(r=>[arrivalStatusText(r.status),arrivalSourceText(r.source),r.time,r.itemName,r.color,r.code,r.arrivalQty,r.beforeStock,r.targetStock,r.batchNo,r.shopeeUrl,r.errorMessage]);
+  downloadText('\uFEFF'+[h,...rows].map(r=>r.map(csvEscape).join(',')).join('\n'),`到貨更新_${dateFileName()}.csv`,'text/csv;charset=utf-8');
 }
 function renderPurchase(){
   updateNextDayFilterButtons();
@@ -5807,6 +6019,11 @@ function bindEvents(){
       }
     };
   }
+  if($('btnArrivalPending'))$('btnArrivalPending').onclick=()=>setArrivalUpdateFilter('pending');
+  if($('btnArrivalDone'))$('btnArrivalDone').onclick=()=>setArrivalUpdateFilter('done');
+  if($('btnArrivalIgnored'))$('btnArrivalIgnored').onclick=()=>setArrivalUpdateFilter('ignored');
+  if($('btnArrivalAll'))$('btnArrivalAll').onclick=()=>setArrivalUpdateFilter('all');
+  if($('btnExportArrivalCsv'))$('btnExportArrivalCsv').onclick=exportArrivalUpdatesCsv;
   if($('btnClearAll'))$('btnClearAll').onclick=confirmClearAllWithPassword;
 }
 bindEvents();initTheme();initUiFontSize();if($('orderDate'))$('orderDate').value=todayInputDate();initAuth();
