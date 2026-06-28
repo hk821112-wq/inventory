@@ -2790,6 +2790,20 @@
     .product-profit-field input:focus{
       box-shadow:none!important;
     }
+    .copy-toast{position:fixed;right:18px;bottom:86px;z-index:1200;display:none;align-items:center;justify-content:center;min-height:42px;padding:10px 14px;border-radius:999px;background:#111827;color:#fff;font-weight:1000;box-shadow:0 16px 32px rgba(15,23,42,.22);border:1px solid rgba(255,255,255,.12)}
+    .copy-toast.show{display:flex}
+    body.dark-mode .copy-toast{background:#2563eb;color:#fff;border-color:#60a5fa}
+
+    .ship-missing-alert-overlay{position:fixed;inset:0;z-index:1800;display:none;align-items:center;justify-content:center;padding:24px;pointer-events:none;background:rgba(127,29,29,.20);backdrop-filter:blur(3px)}
+    .ship-missing-alert-overlay.show{display:flex;animation:shipMissingOverlay .14s ease-out}
+    .ship-missing-alert-card{width:min(720px,calc(100vw - 48px));border-radius:30px;background:linear-gradient(135deg,#7f1d1d 0%,#dc2626 58%,#991b1b 100%);color:#fff;border:3px solid rgba(254,202,202,.95);box-shadow:0 32px 90px rgba(220,38,38,.58),0 0 0 10px rgba(254,202,202,.14);padding:40px 44px;text-align:center;animation:shipMissingPop .18s cubic-bezier(.2,1.25,.22,1)}
+    .ship-missing-alert-icon{width:78px;height:78px;margin:0 auto 16px;border-radius:24px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;font-size:52px;font-weight:1000;box-shadow:inset 0 0 0 2px rgba(255,255,255,.20)}
+    .ship-missing-alert-title{font-size:42px;line-height:1.08;font-weight:1000;letter-spacing:-.04em;margin:0 0 12px;text-shadow:0 3px 14px rgba(0,0,0,.26)}
+    .ship-missing-alert-code{display:inline-flex;align-items:center;justify-content:center;min-height:48px;margin:4px 0 12px;padding:8px 20px;border-radius:999px;background:rgba(15,23,42,.42);border:1px solid rgba(255,255,255,.22);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:26px;font-weight:1000;letter-spacing:.04em}
+    .ship-missing-alert-text{margin:0;font-size:20px;line-height:1.45;font-weight:900;color:#fee2e2}
+    body.dark-mode .ship-missing-alert-overlay{background:rgba(69,10,10,.42)}
+    @keyframes shipMissingOverlay{from{opacity:0}to{opacity:1}}
+    @keyframes shipMissingPop{from{opacity:.45;transform:translateY(10px) scale(.94)}to{opacity:1;transform:none}}
 
     body.dark-mode .product-profit-field input{
       background:#052e1b!important;
@@ -3051,6 +3065,8 @@
             <div class="records-group records-date-group">
               <span class="records-label">日期篩選</span>
               <button type="button" class="records-filter-btn active" data-record-date="today">本日</button>
+              <button type="button" class="records-filter-btn" data-record-date="yesterday">昨天</button>
+              <button type="button" class="records-filter-btn" data-record-date="beforeYesterday">前天</button>
               <button type="button" class="records-filter-btn" data-record-date="7">過去七天</button>
               <button type="button" class="records-filter-btn" data-record-date="30">過去三十天</button>
               <button type="button" class="records-filter-btn" data-record-date="all">全部</button>
@@ -3077,6 +3093,7 @@
             <div class="field"><label>其他費率</label><input id="feeOther" type="number" step="0.001" min="0"></div>
             <div class="field"><label>固定加成</label><input id="shippingBase" type="number" step="1" min="0"></div>
             <div class="field"><label>低庫存提醒</label><input id="lowStockThreshold" type="number" step="1" min="0"></div>
+            <div class="field"><label>商品出貨警示音量</label><input id="shipFailVolume" type="number" step="1" min="0" max="100" placeholder="0～100"></div>
             <div class="field full"><button class="btn primary" id="btnSaveSettings">儲存設定</button></div>
           </div>
         </article>
@@ -3087,6 +3104,15 @@
   <div class="print-area" id="printArea"></div>
   <button class="nextday-warning-float" id="nextdayWarningFloat" type="button" title="隔日配缺貨警告" onclick="switchTab('dashboard')">!</button>
   <div class="loading" id="loading">處理中...</div>
+  <div class="copy-toast" id="copyToast">已複製</div>
+  <div class="ship-missing-alert-overlay" id="shipMissingAlert" aria-hidden="true">
+    <div class="ship-missing-alert-card" role="alert">
+      <div class="ship-missing-alert-icon">!</div>
+      <div class="ship-missing-alert-title">找不到商品編號</div>
+      <div class="ship-missing-alert-code" id="shipMissingAlertCode">M00000</div>
+      <p class="ship-missing-alert-text">此編號不存在，請檢查條碼或商品資料。</p>
+    </div>
+  </div>
 
   <div class="app-modal-backdrop" id="appModal" aria-hidden="true">
     <div class="app-modal-card" id="appModalCard" role="dialog" aria-modal="true" aria-labelledby="appModalTitle">
@@ -3113,7 +3139,7 @@ const DB_USAGE_LIMIT_MB=500;
 let dbUsageTimer=null;
 let currentUser=null;
 let sessionLoginPassword='';
-const state={products:[],sales:[],actions:[],previews:[],settings:{feePlatform:.055,feeService:.02,feeExtra:.02,feeOther:0,shippingBase:60,lowStockThreshold:3},filters:{product:'',stock:'',purchase:'',stockNextDayOnly:false,purchaseNextDayOnly:false},actionFilters:{startDate:''},salesFilters:{actionMode:'all',dateRange:'today',customStart:'',customEnd:''}};
+const state={products:[],sales:[],actions:[],previews:[],settings:{feePlatform:.055,feeService:.02,feeExtra:.02,feeOther:0,shippingBase:60,lowStockThreshold:3,shipFailVolume:80},filters:{product:'',stock:'',purchase:'',stockNextDayOnly:false,purchaseNextDayOnly:false},actionFilters:{startDate:''},salesFilters:{actionMode:'all',dateRange:'today',customStart:'',customEnd:''}};
 const shipQueue=[];
 let shipQueueRunning=false;
 let shipQueueSeq=0;
@@ -3152,7 +3178,7 @@ function nextDayKey(itemName){return String(itemName||'').trim()}
 function isNextDayItem(itemName){const key=nextDayKey(itemName);return !!key&&state.products.some(p=>nextDayKey(p.itemName)===key&&!!p.nextDayDelivery)}
 function nextDayButton(p){const active=isNextDayItem(p.itemName);return `<button type="button" class="nextday-btn ${active?'active':''}" title="同品項一起標記隔日配" onclick="toggleNextDayDeliveryByCode('${esc(p.code)}')">${active?'隔日配 ON':'隔日配'}</button>`}
 function nextDayRowClass(p){return isNextDayItem(p.itemName)?' nextday-row':''}
-function isLongStockItem(itemName){const key=nextDayKey(itemName);return !!key&&state.products.some(p=>nextDayKey(p.itemName)===key&&!!p.longStock)}
+function isLongStockItem(itemName){const key=nextDayKey(itemName);if(!key)return false;if(state.products.some(p=>nextDayKey(p.itemName)===key&&!!p.nextDayDelivery))return false;return state.products.some(p=>nextDayKey(p.itemName)===key&&!!p.longStock)}
 function longStockButton(p){const active=isLongStockItem(p.itemName);return `<button type="button" class="longstock-btn ${active?'active':''}" title="同品項一起標記長備貨" onclick="toggleLongStockByCode('${esc(p.code)}')">${active?'長備貨 ON':'長備貨'}</button>`}
 function isNextDayStockWarning(p){return !p.isSoldOut&&isNextDayItem(p.itemName)&&toNum(p.currentStock)<=0&&!p.nextDayWarningExcluded}
 function nextDayStockWarnings(){return state.products.filter(isNextDayStockWarning).sort((a,b)=>String(a.itemName).localeCompare(String(b.itemName),'zh-Hant',{numeric:true})||String(a.code).localeCompare(String(b.code),'en',{numeric:true}))}
@@ -3164,6 +3190,77 @@ function warningExcludeButton(p){
 function colorWithWarning(p){
   const color=p.purchaseUrl?`<a href="${esc(p.purchaseUrl)}" target="_blank">${esc(p.color)}</a>`:esc(p.color);
   return `${color}${warningExcludeButton(p)}`;
+}
+function productByRecordCode(row){
+  const code=normalizeCode(row?.code||'');
+  return code?findProduct(code):null;
+}
+function shipItemCell(row){
+  const p=productByRecordCode(row);
+  const text=String(row?.itemName||p?.itemName||'').trim();
+  const url=String(p?.shopeeUrl||'').trim();
+  if(!text)return '';
+  return url?`<a href="${esc(url)}" target="_blank">${esc(text)}</a>`:esc(text);
+}
+function shipColorCell(row){
+  const p=productByRecordCode(row);
+  const text=String(row?.color||p?.color||'').trim();
+  const url=String(p?.purchaseUrl||'').trim();
+  if(!text)return '';
+  return url?`<a href="${esc(url)}" target="_blank">${esc(text)}</a>`:esc(text);
+}
+function copyCodeCell(code){
+  const c=normalizeCode(code);
+  if(!c)return '';
+  return `<button type="button" class="code code-btn" title="點擊複製編號" onclick="copyCodeToClipboard('${esc(c)}')">${esc(c)}</button>`;
+}
+function showCopyToast(text){
+  const el=$('copyToast');
+  if(!el)return;
+  el.textContent=text||'已複製';
+  el.classList.add('show');
+  clearTimeout(showCopyToast.timer);
+  showCopyToast.timer=setTimeout(()=>el.classList.remove('show'),900);
+}
+function copyTextFallback(text){
+  const ta=document.createElement('textarea');
+  ta.value=text;
+  ta.setAttribute('readonly','readonly');
+  ta.style.position='fixed';
+  ta.style.left='-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try{document.execCommand('copy')}catch(e){}
+  ta.remove();
+}
+async function copyCodeToClipboard(code){
+  const c=normalizeCode(code);
+  if(!c)return;
+  try{
+    if(navigator.clipboard&&window.isSecureContext){
+      await navigator.clipboard.writeText(c);
+    }else{
+      copyTextFallback(c);
+    }
+    showCopyToast('已複製 '+c);
+  }catch(err){
+    copyTextFallback(c);
+    showCopyToast('已複製 '+c);
+  }
+}
+function showShipMissingCodeWarning(code){
+  const el=$('shipMissingAlert');
+  if(!el)return;
+  const codeEl=$('shipMissingAlertCode');
+  if(codeEl)codeEl.textContent=normalizeCode(code)||'未輸入編號';
+  el.classList.add('show');
+  el.setAttribute('aria-hidden','false');
+  clearTimeout(showShipMissingCodeWarning.timer);
+  showShipMissingCodeWarning.timer=setTimeout(()=>{
+    el.classList.remove('show');
+    el.setAttribute('aria-hidden','true');
+    keepShipCodeReady();
+  },1500);
 }
 function renderNextDayWarningFloat(){
   const el=$('nextdayWarningFloat');
@@ -3705,7 +3802,8 @@ async function fetchAllState() {
     feeExtra: .02,
     feeOther: 0,
     shippingBase: 60,
-    lowStockThreshold: 3
+    lowStockThreshold: 3,
+    shipFailVolume: 80
   };
 
   (se.data || []).forEach(r => {
@@ -3743,7 +3841,7 @@ async function fetchAllState() {
   };
 }
 async function logAction(action,product,oldValue='',newValue='',beforeStock=null,afterStock=null,note=''){const row={product_id:product?.id||null,action,item_name:product?.itemName||product?.item_name||'',color:product?.color||'',code:normalizeCode(product?.code||''),old_value:String(oldValue??''),new_value:String(newValue??''),before_stock:beforeStock,after_stock:afterStock,note};const {error}=await db.from('stock_logs').insert(row);dbError(error)}
-async function createProducts(payload){const rows=(payload.products||[]).map(p=>({code:normalizeCode(p.code),item_name:p.itemName||'',color:p.color||'',shopee_url:p.shopeeUrl||'',purchase_url:p.purchaseUrl||'',cost:toNum(p.cost),price:toNum(p.price),current_stock:0,total_sales:0,next_day_delivery:isNextDayItem(p.itemName),next_day_warning_excluded:false,long_stock:isLongStockItem(p.itemName)}));if(!rows.length)throw new Error('沒有要新增的商品');const {data,error}=await db.from('products').insert(rows).select();dbError(error);for(const r of data||[])await logAction('新增商品資訊',{id:r.id,itemName:r.item_name,color:r.color,code:r.code},'',r.code,0,0,'系統新增商品');return{message:'已新增 '+rows.length+' 筆商品'}}
+async function createProducts(payload){const rows=(payload.products||[]).map(p=>{const nextDay=isNextDayItem(p.itemName);return {code:normalizeCode(p.code),item_name:p.itemName||'',color:p.color||'',shopee_url:p.shopeeUrl||'',purchase_url:p.purchaseUrl||'',cost:toNum(p.cost),price:toNum(p.price),current_stock:0,total_sales:0,next_day_delivery:nextDay,next_day_warning_excluded:false,long_stock:nextDay?false:isLongStockItem(p.itemName)}});if(!rows.length)throw new Error('沒有要新增的商品');const {data,error}=await db.from('products').insert(rows).select();dbError(error);for(const r of data||[])await logAction('新增商品資訊',{id:r.id,itemName:r.item_name,color:r.color,code:r.code},'',r.code,0,0,'系統新增商品');return{message:'已新增 '+rows.length+' 筆商品'}}
 async function updateProduct(payload){
   const oldCode=normalizeCode(payload.oldCode);
   const p=payload.product||{};
@@ -3828,12 +3926,23 @@ async function toggleNextDayDelivery(payload){
   const enabled=!!payload.enabled;
   const matched=state.products.filter(p=>nextDayKey(p.itemName)===itemName);
   if(!matched.length)throw new Error('找不到同品項商品：'+itemName);
-  const {error}=await db.from('products').update({next_day_delivery:enabled}).eq('item_name',itemName);
+
+  // 隔日配 / 長備貨互斥：開啟隔日配時，自動關閉長備貨。
+  // 同時清掉警告排除，避免之後再次缺貨時還卡在「已排除」。
+  const updateRow={
+    next_day_delivery:enabled,
+    next_day_warning_excluded:false
+  };
+  if(enabled){
+    updateRow.long_stock=false;
+  }
+
+  const {error}=await db.from('products').update(updateRow).eq('item_name',itemName);
   dbError(error);
   for(const p of matched){
-    await logAction(enabled?'開啟隔日配':'關閉隔日配',p,enabled?'OFF':'ON',enabled?'ON':'OFF',p.currentStock,p.currentStock,'同品項隔日配聯動');
+    await logAction(enabled?'開啟隔日配':'關閉隔日配',p,enabled?'OFF':'ON',enabled?'ON':'OFF',p.currentStock,p.currentStock,enabled?'同品項隔日配聯動，並自動關閉長備貨':'同品項隔日配聯動');
   }
-  return{message:enabled?'已開啟同品項隔日配提醒':'已關閉同品項隔日配提醒'};
+  return{message:enabled?'已開啟同品項隔日配提醒，並關閉長備貨':'已關閉同品項隔日配提醒'};
 }
 async function toggleLongStock(payload){
   const itemName=nextDayKey(payload.itemName);
@@ -3841,12 +3950,17 @@ async function toggleLongStock(payload){
   const enabled=!!payload.enabled;
   const matched=state.products.filter(p=>nextDayKey(p.itemName)===itemName);
   if(!matched.length)throw new Error('找不到同品項商品：'+itemName);
-  const {error}=await db.from('products').update({long_stock:enabled}).eq('item_name',itemName);
+  const updateRow={long_stock:enabled};
+  if(enabled){
+    updateRow.next_day_delivery=false;
+    updateRow.next_day_warning_excluded=false;
+  }
+  const {error}=await db.from('products').update(updateRow).eq('item_name',itemName);
   dbError(error);
   for(const p of matched){
-    await logAction(enabled?'開啟長備貨':'關閉長備貨',p,enabled?'OFF':'ON',enabled?'ON':'OFF',p.currentStock,p.currentStock,'同品項長備貨聯動');
+    await logAction(enabled?'開啟長備貨':'關閉長備貨',p,enabled?'OFF':'ON',enabled?'ON':'OFF',p.currentStock,p.currentStock,enabled?'同品項長備貨聯動，並自動關閉隔日配':'同品項長備貨聯動');
   }
-  return{message:enabled?'已開啟同品項長備貨':'已關閉同品項長備貨'};
+  return{message:enabled?'已開啟同品項長備貨，並關閉隔日配':'已關閉同品項長備貨'};
 }
 async function addPurchase(payload){const code=normalizeCode(payload.code);const p=findProduct(code);if(!p)throw new Error('找不到商品：'+code);blockSoldOutProduct(p,'登記進貨');const idx=Number(payload.batchIndex);const qty=Math.floor(toNum(payload.qty));if(idx<0||idx>4)throw new Error('批次錯誤');if(qty<=0)throw new Error('進貨數量必須大於 0');const b=p.batches[idx]||{ordered:0,arrived:0,orderDate:''};const nextOrdered=toNum(b.ordered)+qty;const row={product_id:p.id,batch_no:idx+1,ordered_qty:nextOrdered,arrived_qty:toNum(b.arrived),order_date:payload.orderDate||todayInputDate()};const {error}=await db.from('purchase_batches').upsert(row,{onConflict:'product_id,batch_no'});dbError(error);await logAction(`第${idx+1}批進貨`,p,`${b.arrived}/${b.ordered}`,`${b.arrived}/${nextOrdered}`,p.currentStock,p.currentStock,`進貨日期 ${row.order_date}，進貨數量 +${qty}`);return{message:'進貨登記完成'}}
 
@@ -4178,7 +4292,8 @@ async function dbAddArrival(payload) {
     .from('products')
     .update({
       current_stock: afterStock,
-      is_sold_out: false
+      is_sold_out: false,
+      next_day_warning_excluded: false
     })
     .eq('id', p.id)).error;
 
@@ -4198,6 +4313,7 @@ async function dbAddArrival(payload) {
     ...p,
     currentStock: afterStock,
     isSoldOut: false,
+    nextDayWarningExcluded: false,
     batches: p.batches.map((x, i) => i === idx ? {
       ...x,
       arrived: nextArrived
@@ -4274,7 +4390,10 @@ async function changeStock(payload, mode) {
     current_stock: after
   };
 
-  if (after > 0) updateRow.is_sold_out = false;
+  if (after > 0) {
+    updateRow.is_sold_out = false;
+    updateRow.next_day_warning_excluded = false;
+  }
 
   const { data, error } = await db
     .from('products')
@@ -4290,7 +4409,8 @@ async function changeStock(payload, mode) {
   const product = {
     ...p,
     currentStock: after,
-    isSoldOut: !!data.is_sold_out
+    isSoldOut: !!data.is_sold_out,
+    nextDayWarningExcluded: !!data.next_day_warning_excluded
   };
 
   const shopeeTask = await createShopeeStockTaskForManualStockChange(
@@ -4317,7 +4437,7 @@ async function changeStock(payload, mode) {
   };
 }
 async function updateSettings(payload){const s=payload.settings||{};const rows=Object.entries(s).map(([key,value])=>({key,value:toNum(value)}));const {error}=await db.from('settings').upsert(rows,{onConflict:'key'});dbError(error);return{message:'設定已儲存'}}
-async function replaceAllData(payload){if(!Array.isArray(payload.products))throw new Error('JSON 格式不正確');await clearAll();const rows=payload.products.map(p=>({code:normalizeCode(p.code),item_name:p.itemName||'',color:p.color||'',shopee_url:p.shopeeUrl||'',purchase_url:p.purchaseUrl||'',cost:toNum(p.cost),price:toNum(p.price),current_stock:toNum(p.currentStock),total_sales:toNum(p.totalSales),next_day_delivery:!!p.nextDayDelivery,next_day_warning_excluded:!!p.nextDayWarningExcluded,long_stock:!!p.longStock}));if(rows.length){const {data,error}=await db.from('products').insert(rows).select();dbError(error);const idByCode=Object.fromEntries((data||[]).map(r=>[normalizeCode(r.code),r.id]));const batchRows=[];(payload.products||[]).forEach(p=>{const pid=idByCode[normalizeCode(p.code)];(p.batches||[]).forEach((b,i)=>{if(toNum(b.ordered)||toNum(b.arrived)||b.orderDate)batchRows.push({product_id:pid,batch_no:i+1,ordered_qty:toNum(b.ordered),arrived_qty:toNum(b.arrived),order_date:b.orderDate||null})})});if(batchRows.length)dbError((await db.from('purchase_batches').insert(batchRows)).error)}if(payload.settings)await updateSettings({settings:payload.settings});return{message:'匯入完成'}}
+async function replaceAllData(payload){if(!Array.isArray(payload.products))throw new Error('JSON 格式不正確');await clearAll();const rows=payload.products.map(p=>({code:normalizeCode(p.code),item_name:p.itemName||'',color:p.color||'',shopee_url:p.shopeeUrl||'',purchase_url:p.purchaseUrl||'',cost:toNum(p.cost),price:toNum(p.price),current_stock:toNum(p.currentStock),total_sales:toNum(p.totalSales),next_day_delivery:!!p.nextDayDelivery,next_day_warning_excluded:!!p.nextDayWarningExcluded,long_stock:!!p.nextDayDelivery?false:!!p.longStock}));if(rows.length){const {data,error}=await db.from('products').insert(rows).select();dbError(error);const idByCode=Object.fromEntries((data||[]).map(r=>[normalizeCode(r.code),r.id]));const batchRows=[];(payload.products||[]).forEach(p=>{const pid=idByCode[normalizeCode(p.code)];(p.batches||[]).forEach((b,i)=>{if(toNum(b.ordered)||toNum(b.arrived)||b.orderDate)batchRows.push({product_id:pid,batch_no:i+1,ordered_qty:toNum(b.ordered),arrived_qty:toNum(b.arrived),order_date:b.orderDate||null})})});if(batchRows.length)dbError((await db.from('purchase_batches').insert(batchRows)).error)}if(payload.settings)await updateSettings({settings:payload.settings});return{message:'匯入完成'}}
 async function appendImportData(payload) {
   if (!Array.isArray(payload.products)) throw new Error('JSON 格式不正確');
 
@@ -4333,7 +4453,7 @@ async function appendImportData(payload) {
     total_sales: toNum(p.totalSales),
     next_day_delivery: !!p.nextDayDelivery,
     next_day_warning_excluded: !!p.nextDayWarningExcluded,
-    long_stock: !!p.longStock,
+    long_stock: !!p.nextDayDelivery ? false : !!p.longStock,
     batches: Array.isArray(p.batches) ? p.batches : []
   })).filter(p => p.code);
 
@@ -4472,7 +4592,7 @@ function toggleStockNextDayOnly(){state.filters.stockNextDayOnly=!state.filters.
 function togglePurchaseNextDayOnly(){state.filters.purchaseNextDayOnly=!state.filters.purchaseNextDayOnly;renderPurchase()}
 function renderDashboard(){
   const rows=nextDayStockWarnings();
-  $('lowStockList').innerHTML=rows.length?`<div class="notice danger"><strong>隔日配缺貨警告：</strong>有 ${rows.length} 個顏色已開啟隔日配但現貨為 0，請補貨或按「警告排除」。</div><div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>現貨</th><th>進貨庫存</th><th>未到貨</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr class="nextday-row"><td>${nextDayButton(p)}</td><td>${longStockButton(p)}</td><td>${statusFor(p)}</td><td>${esc(p.itemName)}</td><td>${colorWithWarning(p)}</td><td><span class="code">${esc(p.code)}</span></td><td>${toNum(p.currentStock)}</td><td>${totalStock(p)}</td><td>${pendingQty(p)}</td><td><button class="btn small green" onclick="quickInbound('${esc(p.code)}')">+1庫存</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">目前沒有隔日配缺貨警告。</div>'
+  $('lowStockList').innerHTML=rows.length?`<div class="notice danger"><strong>隔日配缺貨警告：</strong>有 ${rows.length} 個顏色已開啟隔日配但現貨為 0，請補貨或按「警告排除」。</div><div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>現貨</th><th>進貨庫存</th><th>未到貨</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr class="nextday-row"><td>${nextDayButton(p)}</td><td>${longStockButton(p)}</td><td>${statusFor(p)}</td><td>${p.shopeeUrl?`<a href="${esc(p.shopeeUrl)}" target="_blank">${esc(p.itemName)}</a>`:esc(p.itemName)}</td><td>${colorWithWarning(p)}</td><td><span class="code">${esc(p.code)}</span></td><td>${toNum(p.currentStock)}</td><td>${totalStock(p)}</td><td>${pendingQty(p)}</td><td><button class="btn small green" onclick="quickInbound('${esc(p.code)}')">+1庫存</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">目前沒有隔日配缺貨警告。</div>'
 }
 function renderProducts(){const rows=productRows(state.filters.product);$('productTable').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>品項</th><th>顏色</th><th>編號</th><th>蝦皮</th><th>進貨</th><th>成本</th><th>售價</th><th>利潤</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr><td>${esc(p.itemName)}</td><td>${esc(p.color)}</td><td><span class="code">${esc(p.code)}</span></td><td>${p.shopeeUrl?`<a href="${esc(p.shopeeUrl)}" target="_blank">開啟</a>`:'-'}</td><td>${p.purchaseUrl?`<a href="${esc(p.purchaseUrl)}" target="_blank">開啟</a>`:'-'}</td><td>$${money(p.cost)}</td><td>$${money(p.price)}</td><td>$${money(profit(p))}</td><td><div class="action-buttons"><button class="btn small green" onclick="editProduct('${esc(p.code)}')">編輯</button><button class="btn small primary" onclick="copyProduct('${esc(p.code)}')">複製</button><button class="btn small red" onclick="deleteProduct('${esc(p.code)}')">刪除</button></div></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">尚無商品。</div>'}
 function renderStock(){
@@ -4726,7 +4846,10 @@ function purchaseJumpToCode(){
   input.focus();
 }
 
-function renderShipPreview(){const rows=state.previews||[];$('shipPreview').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>時間</th><th>動作</th><th>品項</th><th>顏色</th><th>編號</th><th>處理前</th><th>處理後</th><th>狀態</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.time)}</td><td>${shipActionBadge(r.action)}</td><td>${esc(r.itemName)}</td><td>${esc(r.color)}</td><td><span class="code">${esc(r.code)}</span></td><td>${esc(r.beforeStock)}</td><td>${esc(r.afterStock)}</td><td>${r.status==='完成'?'<span class="status ok">完成</span>':`<span class="status zero">${esc(r.status)}</span>`}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">尚無掃描紀錄。</div>'}
+function renderShipPreview(){
+  const rows=state.previews||[];
+  $('shipPreview').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>時間</th><th>動作</th><th>品項</th><th>顏色</th><th>編號</th><th>處理前</th><th>處理後</th><th>狀態</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.time)}</td><td>${shipActionBadge(r.action)}</td><td>${shipItemCell(r)}</td><td>${shipColorCell(r)}</td><td>${copyCodeCell(r.code)}</td><td>${esc(r.beforeStock)}</td><td>${esc(r.afterStock)}</td><td>${r.status==='完成'?'<span class="status ok">完成</span>':`<span class="status zero">${esc(r.status)}</span>`}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">尚無掃描紀錄。</div>';
+}
 function parseSalesDate(value){
   const text=String(value||'').trim();
   const m=text.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
@@ -4749,6 +4872,18 @@ function salesDateBounds(){
   start.setHours(0,0,0,0);
   let end=new Date(start);
   end.setDate(end.getDate()+1);
+  if(range==='yesterday'){
+    start.setDate(start.getDate()-1);
+    end=new Date(start);
+    end.setDate(end.getDate()+1);
+    return {start,end};
+  }
+  if(range==='beforeYesterday'){
+    start.setDate(start.getDate()-2);
+    end=new Date(start);
+    end.setDate(end.getDate()+1);
+    return {start,end};
+  }
   if(range==='7')start.setDate(start.getDate()-6);
   if(range==='30')start.setDate(start.getDate()-29);
   if(range==='custom'){
@@ -4791,6 +4926,12 @@ function renderSalesFilterUI(){
   if(textEl){
     if(state.salesFilters.dateRange==='custom'&&state.salesFilters.customStart){
       textEl.textContent=state.salesFilters.customStart+(state.salesFilters.customEnd?` ～ ${state.salesFilters.customEnd}`:'');
+    }else if(state.salesFilters.dateRange==='yesterday'){
+      textEl.textContent='目前顯示：昨天';
+    }else if(state.salesFilters.dateRange==='beforeYesterday'){
+      textEl.textContent='目前顯示：前天';
+    }else if(state.salesFilters.dateRange==='today'){
+      textEl.textContent='目前顯示：本日';
     }else{
       textEl.textContent='';
     }
@@ -4806,7 +4947,7 @@ function renderSalesSummary(rows){
     <div class="records-summary-card"><div class="label">總單件利潤</div><div class="value ${totalProfit<0?'negative':''}">${moneyText(totalProfit)}</div></div>
     <div class="records-summary-card"><div class="label">總累積銷量</div><div class="value ${totalQty<0?'negative':''}">${totalQty}</div></div>`;
 }
-function renderSales(){const rows=getFilteredSalesRows();renderSalesFilterUI();renderSalesSummary(rows);$('salesTable').innerHTML=rows.length?`<div class="table-wrap log-box"><table><thead><tr><th>時間</th><th>動作</th><th>品項</th><th>顏色</th><th>編號</th><th>成本</th><th>售價</th><th>單件利潤</th><th>處理前</th><th>處理後</th><th>進貨庫存</th><th>狀態</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.time)}</td><td>${shipActionBadge(r.action)}</td><td>${esc(r.itemName)}</td><td>${esc(r.color)}</td><td><span class="code">${esc(r.code)}</span></td><td>${salesSignedCost(r.action,r.cost)<0?`-$${money(Math.abs(salesSignedCost(r.action,r.cost)))}`:`$${money(r.cost)}`}</td><td>$${money(r.price)}</td><td>${profitCurrency(r.action,r.price,r.cost)}</td><td>${esc(r.beforeStock)}</td><td>${esc(r.afterStock)}</td><td>${esc(r.totalStock)}</td><td><span class="status ok">${esc(r.status)}</span></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">查無符合條件的出貨紀錄。</div>'}
+function renderSales(){const rows=getFilteredSalesRows();renderSalesFilterUI();renderSalesSummary(rows);$('salesTable').innerHTML=rows.length?`<div class="table-wrap log-box"><table><thead><tr><th>時間</th><th>動作</th><th>品項</th><th>顏色</th><th>編號</th><th>成本</th><th>售價</th><th>單件利潤</th><th>處理前</th><th>處理後</th><th>進貨庫存</th><th>狀態</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.time)}</td><td>${shipActionBadge(r.action)}</td><td>${shipItemCell(r)}</td><td>${shipColorCell(r)}</td><td>${copyCodeCell(r.code)}</td><td>${salesSignedCost(r.action,r.cost)<0?`-$${money(Math.abs(salesSignedCost(r.action,r.cost)))}`:`$${money(r.cost)}`}</td><td>$${money(r.price)}</td><td>${profitCurrency(r.action,r.price,r.cost)}</td><td>${esc(r.beforeStock)}</td><td>${esc(r.afterStock)}</td><td>${esc(r.totalStock)}</td><td><span class="status ok">${esc(r.status)}</span></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">查無符合條件的出貨紀錄。</div>'}
 function setSalesActionFilter(mode){state.salesFilters.actionMode=mode;renderSales()}
 async function setSalesDateFilter(range){
   if(range==='custom'){
@@ -4830,7 +4971,7 @@ function renderActions(){
   }
   $('actionTable').innerHTML=rows.length?`<div class="table-wrap log-box"><table><thead><tr><th>時間</th><th>來源</th><th>動作</th><th>品項</th><th>顏色</th><th>編號</th><th>舊值</th><th>新值</th><th>現貨</th><th>進貨</th><th>備註</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.time)}</td><td>${esc(r.source)}</td><td>${esc(r.action)}</td><td>${esc(r.itemName)}</td><td>${esc(r.color)}</td><td><span class="code">${esc(r.code)}</span></td><td>${esc(r.oldValue)}</td><td>${esc(r.newValue)}</td><td>${esc(r.currentStock)}</td><td>${esc(r.totalStock)}</td><td>${esc(r.note)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">尚無符合日期條件的動作紀錄。</div>'
 }
-function renderSettings(){const s=state.settings;$('feePlatform').value=s.feePlatform;$('feeService').value=s.feeService;$('feeExtra').value=s.feeExtra;$('feeOther').value=s.feeOther;$('shippingBase').value=s.shippingBase;$('lowStockThreshold').value=s.lowStockThreshold}
+function renderSettings(){const s=state.settings;$('feePlatform').value=s.feePlatform;$('feeService').value=s.feeService;$('feeExtra').value=s.feeExtra;$('feeOther').value=s.feeOther;$('shippingBase').value=s.shippingBase;$('lowStockThreshold').value=s.lowStockThreshold;if($('shipFailVolume'))$('shipFailVolume').value=Math.max(0,Math.min(toNum(s.shipFailVolume===undefined?80:s.shipFailVolume),100))}
 function buildProduct(color,code){return{itemName:$('pName').value.trim(),color:color.trim(),code:normalizeCode(code),shopeeUrl:$('pShopee').value.trim(),purchaseUrl:$('pPurchase').value.trim(),cost:toNum($('pCost').value),price:toNum($('pPrice').value)}}
 async function addOrUpdateProduct(e){e.preventDefault();const old=normalizeCode($('editProductCode').value),base=normalizeCode($('pCode').value),colors=parseColorList($('pColor').value);if(!base)return appAlert('請輸入商品編號','資料不完整');if(!$('pName').value.trim())return appAlert('請輸入品項','資料不完整');if(!colors.length)return appAlert('請輸入顏色','資料不完整');if(old){if(colors.length>1)return appAlert('編輯商品時一次只能修改一個顏色','資料不完整');const product=buildProduct(colors[0],base);callApi('updateProduct',{oldCode:old,product},r=>{resetProductForm();appAlert(r.message||'同品項商品已更新','完成')});return}const products=colors.map((c,i)=>buildProduct(c,nextSequentialCode(base,i)));const dup=duplicateProductCodeMessage(products);if(dup)return appAlert(dup,'編號重複',{icon:'!'});callApi('createProducts',{products},r=>{resetProductForm();appAlert(r.message||'新增完成','完成')})}
 window.editProduct=code=>{const p=findProduct(code);if(!p)return;$('productFormTitle').textContent='編輯商品資訊';$('editProductCode').value=p.code;$('pName').value=p.itemName;$('pColor').value=p.color;$('pCode').value=p.code;$('pCost').value=p.cost;$('pPrice').value=p.price;$('pShopee').value=p.shopeeUrl||'';$('pPurchase').value=p.purchaseUrl||'';updateProductProfitPreview();switchTab('product')}
@@ -4891,41 +5032,52 @@ window.toggleNextDayDeliveryByCode=async code=>{
   const next=!active;
 
   const itemName=p.itemName;
-  const oldValues=state.products.map(x=>({code:x.code,nextDayDelivery:!!x.nextDayDelivery}));
-  state.products.forEach(x=>{if(nextDayKey(x.itemName)===nextDayKey(itemName))x.nextDayDelivery=next});
+  const key=nextDayKey(itemName);
+  const oldValues=state.products.map(x=>({
+    code:x.code,
+    nextDayDelivery:!!x.nextDayDelivery,
+    longStock:!!x.longStock,
+    nextDayWarningExcluded:!!x.nextDayWarningExcluded
+  }));
 
-  // 直接執行，不跳確認視窗；只局部更新目前畫面，避免庫存資料 / 進貨到貨頁面跳到最上面
+  state.products.forEach(x=>{
+    if(nextDayKey(x.itemName)!==key)return;
+    x.nextDayDelivery=next;
+    x.nextDayWarningExcluded=false;
+    if(next)x.longStock=false;
+  });
+
+  // 直接執行，不跳確認視窗；局部更新，避免庫存資料 / 進貨到貨頁面跳到最上面。
+  // 規則：後點隔日配 = 隔日配開啟、長備貨關閉；再點一次隔日配 = 隔日配關閉。
   patchNextDayDeliveryUi(itemName);
-  showMiniToast(next?'已開啟隔日配':'已關閉隔日配');
+  showMiniToast(next?'已開啟隔日配，並關閉長備貨':'已關閉隔日配');
 
   try{
-    const {error}=await db.from('products').update({next_day_delivery:next}).eq('item_name',itemName);
+    const updateRow={
+      next_day_delivery:next,
+      next_day_warning_excluded:false
+    };
+    if(next)updateRow.long_stock=false;
+
+    const {error}=await db.from('products').update(updateRow).eq('item_name',itemName);
     dbError(error);
   }catch(err){
-    oldValues.forEach(o=>{const x=findProduct(o.code);if(x)x.nextDayDelivery=o.nextDayDelivery});
+    oldValues.forEach(o=>{
+      const x=findProduct(o.code);
+      if(x){
+        x.nextDayDelivery=o.nextDayDelivery;
+        x.longStock=o.longStock;
+        x.nextDayWarningExcluded=o.nextDayWarningExcluded;
+      }
+    });
     patchNextDayDeliveryUi(itemName);
     await appAlert('隔日配更新失敗，已還原畫面：'+friendlyErrorMessage(err),'系統錯誤',{danger:true});
   }
 }
 
 function patchLongStockUi(itemName){
-  const key=nextDayKey(itemName);
-  if(!key)return;
-
-  document.querySelectorAll('#stockTable [data-stock-code]').forEach(row=>{
-    const p=findProduct(row.dataset.stockCode);
-    if(!p||nextDayKey(p.itemName)!==key)return;
-    const longstock=row.querySelector('[data-stock-longstock]');
-    if(longstock)longstock.innerHTML=longStockButton(p);
-  });
-
-  document.querySelectorAll('#purchaseTable [data-purchase-code]').forEach(row=>{
-    const p=findProduct(row.dataset.purchaseCode);
-    if(!p||nextDayKey(p.itemName)!==key)return;
-    if(row.children[1])row.children[1].innerHTML=longStockButton(p);
-  });
-
-  if(activeTabId()==='dashboard')renderDashboard();
+  // 長備貨與隔日配互斥，更新長備貨時也必須同步重繪隔日配欄位與警告排除欄位。
+  patchNextDayDeliveryUi(itemName);
 }
 window.toggleLongStockByCode=async code=>{
   const p=findProduct(code);
@@ -4935,19 +5087,46 @@ window.toggleLongStockByCode=async code=>{
   const next=!active;
 
   const itemName=p.itemName;
-  const oldValues=state.products.map(x=>({code:x.code,longStock:!!x.longStock}));
-  state.products.forEach(x=>{if(nextDayKey(x.itemName)===nextDayKey(itemName))x.longStock=next});
+  const key=nextDayKey(itemName);
+  const oldValues=state.products.map(x=>({
+    code:x.code,
+    nextDayDelivery:!!x.nextDayDelivery,
+    longStock:!!x.longStock,
+    nextDayWarningExcluded:!!x.nextDayWarningExcluded
+  }));
 
-  // 直接執行，不跳確認視窗；庫存資料 / 進貨到貨兩邊會同步顯示
-  patchLongStockUi(itemName);
-  showMiniToast(next?'已開啟長備貨':'已關閉長備貨');
+  state.products.forEach(x=>{
+    if(nextDayKey(x.itemName)!==key)return;
+    x.longStock=next;
+    if(next){
+      x.nextDayDelivery=false;
+      x.nextDayWarningExcluded=false;
+    }
+  });
+
+  // 規則：後點長備貨 = 長備貨開啟、隔日配關閉；再點一次長備貨 = 長備貨關閉。
+  patchNextDayDeliveryUi(itemName);
+  showMiniToast(next?'已開啟長備貨，並關閉隔日配':'已關閉長備貨');
 
   try{
-    const {error}=await db.from('products').update({long_stock:next}).eq('item_name',itemName);
+    const updateRow={long_stock:next};
+    if(next){
+      updateRow.next_day_delivery=false;
+      updateRow.next_day_warning_excluded=false;
+    }
+
+    const {error}=await db.from('products').update(updateRow).eq('item_name',itemName);
     dbError(error);
   }catch(err){
-    oldValues.forEach(o=>{const x=findProduct(o.code);if(x)x.longStock=o.longStock});
-    patchLongStockUi(itemName);
+    oldValues.forEach(o=>{
+      const x=findProduct(o.code);
+      if(x){
+        x.nextDayDelivery=o.nextDayDelivery;
+        x.longStock=o.longStock;
+        x.nextDayWarningExcluded=o.nextDayWarningExcluded;
+      }
+    });
+    patchNextDayDeliveryUi(itemName);
     await appAlert('長備貨更新失敗，已還原畫面：'+friendlyErrorMessage(err),'系統錯誤',{danger:true});
   }
 }
@@ -5187,9 +5366,9 @@ function renderShipQueue(){
         <td><span class="queue-status ${cls}">${esc(q.status)}</span></td>
         <td>${esc(q.time)}</td>
         <td>${shipActionBadge(q.action)}</td>
-        <td><span class="code">${esc(q.code)}</span></td>
-        <td>${esc(q.itemName||'')}</td>
-        <td>${esc(q.color||'')}</td>
+        <td>${copyCodeCell(q.code)}</td>
+        <td>${shipItemCell(q)}</td>
+        <td>${shipColorCell(q)}</td>
         <td>${esc(q.beforeStock??'')}</td>
         <td>${esc(q.afterStock??'')}</td>
         <td>${esc(q.message||'')}</td>
@@ -5214,6 +5393,17 @@ function addShipQueue(){
     message:'等待背景處理'
   };
   const local=findProduct(code);
+  if(!local){
+    row.status='失敗';
+    row.message='找不到商品編號';
+    playShipFailSound();
+    showShipMissingCodeWarning(code);
+    pushFailedShipPreview(row);
+    renderShipQueue();
+    renderShipPreview();
+    keepShipCodeReady();
+    return;
+  }
   if(local){
     row.itemName=local.itemName;
     row.color=local.color;
@@ -5238,18 +5428,21 @@ function addShipQueue(){
 function handleShip(){addShipQueue()}
 function playShipFailSound(){
   try{
+    const volume=Math.max(0,Math.min(toNum(state.settings.shipFailVolume===undefined?80:state.settings.shipFailVolume),100))/100;
+    if(volume<=0)return;
     const AudioCtx=window.AudioContext||window.webkitAudioContext;
     if(!AudioCtx)return;
     const ctx=playShipFailSound.ctx||(playShipFailSound.ctx=new AudioCtx());
     if(ctx.state==='suspended')ctx.resume();
     const now=ctx.currentTime;
+    const peak=Math.max(0.001,0.18*volume);
     const makeBeep=(offset,freq,duration)=>{
       const osc=ctx.createOscillator();
       const gain=ctx.createGain();
       osc.type='square';
       osc.frequency.setValueAtTime(freq,now+offset);
       gain.gain.setValueAtTime(0.001,now+offset);
-      gain.gain.exponentialRampToValueAtTime(0.18,now+offset+0.01);
+      gain.gain.exponentialRampToValueAtTime(peak,now+offset+0.01);
       gain.gain.exponentialRampToValueAtTime(0.001,now+offset+duration);
       osc.connect(gain);
       gain.connect(ctx.destination);
@@ -5326,6 +5519,15 @@ async function processShipQueue(){
         const idx=state.products.findIndex(p=>normalizeCode(p.code)===normalizeCode(data.code));
         if(idx>=0){
           state.products[idx].currentStock=toNum(data.afterStock);
+          if(isNextDayItem(state.products[idx].itemName)){
+            state.products[idx].nextDayWarningExcluded=false;
+            try{
+              const {error:resetWarningError}=await db.from('products').update({next_day_warning_excluded:false}).eq('id',state.products[idx].id);
+              if(resetWarningError)console.warn('重置隔日配警告排除失敗：',resetWarningError.message||resetWarningError);
+            }catch(resetWarningErr){
+              console.warn('重置隔日配警告排除失敗：',resetWarningErr?.message||resetWarningErr);
+            }
+          }
           if(data.totalSales!==undefined&&data.totalSales!==null){
             state.products[idx].totalSales=toNum(data.totalSales);
           }else{
@@ -5376,7 +5578,7 @@ function clearFinishedQueue(){
   }
   renderShipQueue();
 }
-function saveSettings(){callApi('updateSettings',{settings:{feePlatform:toNum($('feePlatform').value),feeService:toNum($('feeService').value),feeExtra:toNum($('feeExtra').value),feeOther:toNum($('feeOther').value),shippingBase:toNum($('shippingBase').value),lowStockThreshold:toNum($('lowStockThreshold').value)}},()=>updateProductProfitPreview())}
+function saveSettings(){callApi('updateSettings',{settings:{feePlatform:toNum($('feePlatform').value),feeService:toNum($('feeService').value),feeExtra:toNum($('feeExtra').value),feeOther:toNum($('feeOther').value),shippingBase:toNum($('shippingBase').value),lowStockThreshold:toNum($('lowStockThreshold').value),shipFailVolume:Math.max(0,Math.min(toNum($('shipFailVolume')?.value||80),100))}},()=>updateProductProfitPreview())}
 function doQuickSearch(){const q=$('quickSearch').value.trim(),rows=productRows(q);$('quickResult').innerHTML=!q?'<div class="empty">請輸入查詢內容。</div>':rows.length?rows.slice(0,8).map(p=>`<div class="notice"><strong>${esc(p.itemName)} / ${esc(p.color)}</strong><br>編號：<span class="code">${esc(p.code)}</span><br>現貨：${toNum(p.currentStock)}｜進貨庫存：${totalStock(p)}｜未到貨：${pendingQty(p)}</div>`).join(''):'<div class="empty">查無商品。</div>'}
 function switchTab(tab){document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('active',e.id===tab));renderCurrentTab();if(tab==='ship'||tab==='records')pollShipRealtimeFallback()}
 function dateFileName(){const d=new Date(),p=n=>String(n).padStart(2,'0');return`${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`}
