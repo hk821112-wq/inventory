@@ -4655,9 +4655,33 @@ async function updateArrivalTaskStatus(payload){
   const allowed=['pending','done','ignored'];
   if(!id)throw new Error('找不到到貨更新資料');
   if(!allowed.includes(status))throw new Error('到貨更新狀態錯誤');
-  const {error}=await db.from('shopee_stock_tasks').update({status}).eq('id',id);
+
+  // 到貨更新狀態採「同品項批次套用」：
+  // 例如同品項有多個顏色，只要其中一筆按完成 / 忽略，就會把同品項、同目前狀態的資料一起更新，避免一筆一筆點。
+  const {data:task,error:taskError}=await db
+    .from('shopee_stock_tasks')
+    .select('id,item_name,code,status')
+    .eq('id',id)
+    .maybeSingle();
+  dbError(taskError);
+  if(!task)throw new Error('找不到到貨更新資料');
+
+  const itemName=String(task.item_name||'').trim();
+  const currentStatus=String(task.status||'pending');
+
+  let query=db.from('shopee_stock_tasks').update({status});
+  if(itemName){
+    query=query.eq('item_name',itemName).eq('status',currentStatus);
+  }else{
+    query=query.eq('id',id);
+  }
+
+  const {data,error}=await query.select('id');
   dbError(error);
-  return{message:status==='done'?'已標記完成':(status==='ignored'?'已忽略此筆更新':'已改回待更新')};
+
+  const count=(data||[]).length || 1;
+  const actionText=status==='done'?'已標記完成':(status==='ignored'?'已忽略':'已改回待更新');
+  return{message:itemName?`同品項「${itemName}」${actionText}，共 ${count} 筆`:`${actionText}，共 ${count} 筆`};
 }
 async function clearAll(){
   for(const t of ['shopee_stock_tasks','sales_logs','stock_logs','purchase_batches','products']){
