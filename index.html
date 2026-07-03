@@ -16,7 +16,7 @@
     }
     *{box-sizing:border-box}
     body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","Microsoft JhengHei",Arial,sans-serif;background:linear-gradient(180deg,#eaf1ff 0,var(--bg) 280px);color:var(--text)}
-    button,input,select{font:inherit}
+    button,input,select,textarea{font:inherit}
     button{cursor:pointer;border:0}
     a{color:var(--primary);font-weight:800;text-decoration:none}
     .app{width:min(1960px,calc(100vw - 32px));margin:0 auto;padding:26px 0 80px}
@@ -37,8 +37,9 @@
     .span-12{grid-column:span 12}.span-9{grid-column:span 9}.span-8{grid-column:span 8}.span-7{grid-column:span 7}.span-6{grid-column:span 6}.span-5{grid-column:span 5}.span-4{grid-column:span 4}.span-3{grid-column:span 3}
     .form-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}.field{grid-column:span 6}.field.full{grid-column:span 12}.field.third{grid-column:span 4}
     label{display:block;font-size:13px;font-weight:900;color:#374151;margin-bottom:6px}
-    input,select{width:100%;min-height:42px;border-radius:12px;border:1px solid #d1d5db;background:#fff;color:var(--text);padding:10px 12px;outline:0}
-    input:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(37,99,235,.12)}
+    input,select,textarea{width:100%;min-height:42px;border-radius:12px;border:1px solid #d1d5db;background:#fff;color:var(--text);padding:10px 12px;outline:0}
+    input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(37,99,235,.12)}
+    .multi-url-textarea{min-height:98px!important;resize:vertical;line-height:1.55;white-space:pre-wrap}
     .big-scan-input{min-height:72px;font-size:28px;font-weight:900;letter-spacing:.04em;padding:14px 18px;border-radius:18px}.big-scan-input::placeholder{font-size:22px;font-weight:700;letter-spacing:0}
     .muted{color:var(--muted)}.notice{border-radius:16px;padding:14px 16px;border:1px solid var(--line);background:#f9fafb;color:#374151;margin-bottom:14px}.notice.warning{background:#fffbeb;border-color:#fde68a}.notice.danger{background:#fef2f2;border-color:#fecaca}.notice.success{background:#f0fdf4;border-color:#bbf7d0}
     .summary{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}.metric{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px}.metric .value{font-size:28px;font-weight:1000;color:var(--primary);line-height:1.1}.metric .label{margin-top:4px;color:#4b5563;font-weight:900;font-size:13px}
@@ -432,18 +433,21 @@
 
     body.dark-mode input,
     body.dark-mode select,
+    body.dark-mode textarea,
     body.dark-mode .app-modal-input{
       background:#0b1220;
       border-color:#334155;
       color:#e5e7eb;
     }
 
-    body.dark-mode input::placeholder{
+    body.dark-mode input::placeholder,
+    body.dark-mode textarea::placeholder{
       color:#64748b;
     }
 
     body.dark-mode input:focus,
     body.dark-mode select:focus,
+    body.dark-mode textarea:focus,
     body.dark-mode .app-modal-input:focus{
       border-color:#60a5fa;
       box-shadow:0 0 0 4px rgba(96,165,250,.18);
@@ -820,6 +824,7 @@
     }
     body:not(.printing-labels) input,
     body:not(.printing-labels) select,
+    body:not(.printing-labels) textarea,
     body:not(.printing-labels) button,
     body:not(.printing-labels) .btn,
     body:not(.printing-labels) .tab-btn,
@@ -3014,7 +3019,7 @@
             <div class="field"><label>成本</label><input id="pCost" type="number" min="0" step="1"></div>
             <div class="field"><label>售價</label><input id="pPrice" type="number" min="0" step="1"></div>
             <div class="field full product-profit-field"><label>利潤</label><input id="pProfitPreview" readonly tabindex="-1" placeholder="輸入成本與售價後自動計算"><div class="muted" style="font-size:13px;margin-top:6px">依照設定頁費率公式即時計算</div></div>
-            <div class="field full"><label>蝦皮網址</label><input id="pShopee"></div>
+            <div class="field full"><label>蝦皮網址（可輸入多個，一行一個）</label><textarea id="pShopee" class="multi-url-textarea" placeholder="https://shopee.tw/xxxxx\nhttps://shopee.tw/yyyyy"></textarea><div class="muted" style="font-size:13px;margin-top:6px">同一商品有多個販售頁時，一行貼一個網址；商品表點「開啟」會一次全開。</div></div>
             <div class="field full"><label>進貨網址</label><input id="pPurchase"></div>
             <div class="field full"><button class="btn primary" type="submit">儲存商品</button><button class="btn ghost" type="button" id="btnCancelEditProduct">取消編輯</button></div>
           </form>
@@ -3260,6 +3265,85 @@ const toNum=v=>{const n=Number(v);return Number.isFinite(n)?n:0};
 const money=n=>Math.round(toNum(n)).toLocaleString('zh-TW');
 const esc=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
 const normalizeCode=c=>String(c||'').replace(/\*/g,'').trim().toUpperCase();
+function parseMultiUrls(value){
+  return [...new Set(
+    String(value||'')
+      .split(/\n|,|，|\s+/g)
+      .map(v=>v.trim())
+      .filter(v=>/^https?:\/\//i.test(v))
+  )];
+}
+function openUrlList(urls,label){
+  const raw=Array.isArray(urls)?urls.join('\n'):String(urls||'');
+  const list=parseMultiUrls(raw);
+
+  if(!list.length){
+    appAlert('這個商品沒有設定有效的蝦皮網址','沒有網址');
+    return false;
+  }
+
+  if(list.length>1){
+    const ok=confirm(`${label||'此商品'} 共有 ${list.length} 個蝦皮網址，是否全部開啟？`);
+    if(!ok)return false;
+  }
+
+  // 重要：多分頁必須在使用者點擊事件內「同步」開啟。
+  // 不可用 setTimeout 逐個開，Chrome 會把第 2 個以後判定成彈出視窗而擋掉。
+  const blocked=[];
+  list.forEach(url=>{
+    const win=window.open(url,'_blank');
+    if(!win)blocked.push(url);
+  });
+
+  if(blocked.length){
+    appAlert(
+      `已嘗試開啟 ${list.length} 個網址，但有 ${blocked.length} 個被瀏覽器封鎖。\n\n請在 Chrome 右上角允許此網頁的彈出式視窗後，再點一次。`,
+      '部分網址被封鎖',
+      {danger:true}
+    );
+  }
+
+  return false;
+}
+function openShopeeLinksByCode(code,event){
+  if(event){event.preventDefault();event.stopPropagation();}
+  const p=findProduct(code);
+  const urls=parseMultiUrls(p?.shopeeUrl||'');
+  return openUrlList(urls,p?.itemName||normalizeCode(code));
+}
+function openShopeeLinksByArrivalId(id,event){
+  if(event){event.preventDefault();event.stopPropagation();}
+  const task=(state.arrivalUpdates||[]).find(x=>String(x.id||'')===String(id||''));
+  const p=task?findProduct(task.code):null;
+  const urls=parseMultiUrls(task?.shopeeUrl||p?.shopeeUrl||'');
+  return openUrlList(urls,task?.itemName||p?.itemName||'此商品');
+}
+function shopeeLinkHtml(p,label,emptyHtml='-'){
+  const urls=parseMultiUrls(p?.shopeeUrl||'');
+  if(!urls.length)return emptyHtml;
+  const code=normalizeCode(p?.code||'');
+  const display=label==='開啟' ? `開啟${urls.length>1?urls.length+'個':''}` : String(label||'開啟');
+  const title=urls.length>1?`點擊開啟 ${urls.length} 個蝦皮網址`:'點擊開啟蝦皮網址';
+  return `<a href="${esc(urls[0])}" target="_blank" title="${esc(title)}" onclick="return openShopeeLinksByCode('${esc(code)}',event)">${esc(display)}</a>`;
+}
+function shopeeButtonHtml(p,label='開啟',extraClass='btn small primary',emptyHtml='-'){
+  const urls=parseMultiUrls(p?.shopeeUrl||'');
+  if(!urls.length)return emptyHtml;
+  const code=normalizeCode(p?.code||'');
+  const display=label==='開啟' ? `開啟${urls.length>1?urls.length+'個':''}` : String(label||'開啟');
+  const title=urls.length>1?`點擊開啟 ${urls.length} 個蝦皮網址`:'點擊開啟蝦皮網址';
+  return `<a class="${esc(extraClass)}" href="${esc(urls[0])}" target="_blank" title="${esc(title)}" onclick="return openShopeeLinksByCode('${esc(code)}',event)">${esc(display)}</a>`;
+}
+function arrivalShopeeLinkHtml(task,label,emptyHtml='-',extraClass=''){
+  const p=task?findProduct(task.code):null;
+  const urls=parseMultiUrls(task?.shopeeUrl||p?.shopeeUrl||'');
+  if(!urls.length)return emptyHtml;
+  const display=label==='開啟' ? `開啟${urls.length>1?urls.length+'個':''}` : String(label||'開啟');
+  const title=urls.length>1?`點擊開啟 ${urls.length} 個蝦皮網址`:'點擊開啟蝦皮網址';
+  const cls=extraClass?` class="${esc(extraClass)}"`:'';
+  return `<a${cls} href="${esc(urls[0])}" target="_blank" title="${esc(title)}" onclick="return openShopeeLinksByArrivalId('${esc(task?.id||'')}',event)">${esc(display)}</a>`;
+}
+
 function todayInputDate(){const d=new Date(),p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`}
 function formatDateSlash(v){return v?String(v).replaceAll('-','/'):''}
 function parseColorList(t){return String(t||'').trim().split(/[\s,，、/／|｜]+/g).map(v=>v.trim()).filter(Boolean)}
@@ -3303,9 +3387,8 @@ function productByRecordCode(row){
 function shipItemCell(row){
   const p=productByRecordCode(row);
   const text=String(row?.itemName||p?.itemName||'').trim();
-  const url=String(p?.shopeeUrl||'').trim();
   if(!text)return '';
-  return url?`<a href="${esc(url)}" target="_blank">${esc(text)}</a>`:esc(text);
+  return p?shopeeLinkHtml(p,text,esc(text)):esc(text);
 }
 function shipColorCell(row){
   const p=productByRecordCode(row);
@@ -4744,13 +4827,44 @@ function toggleStockNextDayOnly(){state.filters.stockNextDayOnly=!state.filters.
 function togglePurchaseNextDayOnly(){state.filters.purchaseNextDayOnly=!state.filters.purchaseNextDayOnly;renderPurchase()}
 function renderDashboard(){
   const rows=nextDayStockWarnings();
-  $('lowStockList').innerHTML=rows.length?`<div class="notice danger"><strong>隔日配缺貨警告：</strong>有 ${rows.length} 個顏色已開啟隔日配但現貨為 0，請補貨或按「警告排除」。</div><div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>現貨</th><th>進貨庫存</th><th>未到貨</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr class="nextday-row"><td>${nextDayButton(p)}</td><td>${longStockButton(p)}</td><td>${statusFor(p)}</td><td>${p.shopeeUrl?`<a href="${esc(p.shopeeUrl)}" target="_blank">${esc(p.itemName)}</a>`:esc(p.itemName)}</td><td>${colorWithWarning(p)}</td><td><span class="code">${esc(p.code)}</span></td><td>${toNum(p.currentStock)}</td><td>${totalStock(p)}</td><td>${pendingQty(p)}</td><td><button class="btn small green" onclick="quickInbound('${esc(p.code)}')">+1庫存</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">目前沒有隔日配缺貨警告。</div>'
+  $('lowStockList').innerHTML=rows.length?`<div class="notice danger"><strong>隔日配缺貨警告：</strong>有 ${rows.length} 個顏色已開啟隔日配但現貨為 0，請補貨、前往進貨或按「警告排除」。</div><div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>現貨</th><th>進貨庫存</th><th>未到貨</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr class="nextday-row"><td>${nextDayButton(p)}</td><td>${longStockButton(p)}</td><td>${statusFor(p)}</td><td>${shopeeLinkHtml(p,p.itemName,esc(p.itemName))}</td><td>${colorWithWarning(p)}</td><td><span class="code">${esc(p.code)}</span></td><td>${toNum(p.currentStock)}</td><td>${totalStock(p)}</td><td>${pendingQty(p)}</td><td><div class="action-buttons"><button class="btn small primary" type="button" onclick="goToPurchaseFromWarning('${esc(p.code)}')">前往進貨</button><button class="btn small green" type="button" onclick="quickInbound('${esc(p.code)}')">+1庫存</button></div></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">目前沒有隔日配缺貨警告。</div>'
 }
-function renderProducts(){const rows=productRows(state.filters.product);$('productTable').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>品項</th><th>顏色</th><th>編號</th><th>蝦皮</th><th>進貨</th><th>成本</th><th>售價</th><th>利潤</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr><td>${esc(p.itemName)}</td><td>${esc(p.color)}</td><td><span class="code">${esc(p.code)}</span></td><td>${p.shopeeUrl?`<a href="${esc(p.shopeeUrl)}" target="_blank">開啟</a>`:'-'}</td><td>${p.purchaseUrl?`<a href="${esc(p.purchaseUrl)}" target="_blank">開啟</a>`:'-'}</td><td>$${money(p.cost)}</td><td>$${money(p.price)}</td><td>$${money(profit(p))}</td><td><div class="action-buttons"><button class="btn small green" onclick="editProduct('${esc(p.code)}')">編輯</button><button class="btn small primary" onclick="copyProduct('${esc(p.code)}')">複製</button><button class="btn small red" onclick="deleteProduct('${esc(p.code)}')">刪除</button></div></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">尚無商品。</div>'}
+
+function goToPurchaseFromWarning(code){
+  const fullCode=normalizeCode(code);
+  if(!fullCode)return;
+
+  // 隔日配缺貨警告的「前往進貨」只帶入前面四碼。
+  // 例：M13301 / M13302 / M13399 → 只搜尋 M133，方便一次看到同品項全部顏色。
+  const target=fullCode.slice(0,4);
+
+  state.filters.purchase=target;
+  state.filters.purchaseNextDayOnly=false;
+
+  const input=$('purchaseJumpCode');
+  if(input)input.value=target;
+
+  switchTab('purchase');
+
+  setTimeout(()=>{
+    const row=findPurchaseVisibleRowByKeyword(target)||findPurchaseRowByCode(fullCode);
+    if(row){
+      scrollPurchaseRowToCenter(row);
+      highlightPurchaseRow(row);
+    }
+
+    const jumpInput=$('purchaseJumpCode');
+    if(jumpInput){
+      jumpInput.focus();
+      jumpInput.select();
+    }
+  },120);
+}
+function renderProducts(){const rows=productRows(state.filters.product);$('productTable').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>品項</th><th>顏色</th><th>編號</th><th>蝦皮</th><th>進貨</th><th>成本</th><th>售價</th><th>利潤</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr><td>${esc(p.itemName)}</td><td>${esc(p.color)}</td><td><span class="code">${esc(p.code)}</span></td><td>${shopeeLinkHtml(p,'開啟','-')}</td><td>${p.purchaseUrl?`<a href="${esc(p.purchaseUrl)}" target="_blank">開啟</a>`:'-'}</td><td>$${money(p.cost)}</td><td>$${money(p.price)}</td><td>$${money(profit(p))}</td><td><div class="action-buttons"><button class="btn small green" onclick="editProduct('${esc(p.code)}')">編輯</button><button class="btn small primary" onclick="copyProduct('${esc(p.code)}')">複製</button><button class="btn small red" onclick="deleteProduct('${esc(p.code)}')">刪除</button></div></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">尚無商品。</div>'}
 function renderStock(){
   updateNextDayFilterButtons();
   const rows=stockRows();
-  $('stockTable').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>條碼</th><th>現貨</th><th>進貨</th><th>未到貨</th><th>總成本</th><th>累積銷量</th><th>累積成本</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr data-stock-code="${esc(p.code)}" class="${rowClassFor(p).trim()}"><td data-stock-nextday>${nextDayButton(p)}</td><td data-stock-longstock>${longStockButton(p)}</td><td data-stock-status>${statusFor(p)}</td><td>${p.shopeeUrl?`<a href="${esc(p.shopeeUrl)}" target="_blank">${esc(p.itemName)}</a>`:esc(p.itemName)}</td><td data-stock-color>${colorWithWarning(p)}</td><td><span class="code stock-code-btn" title="點擊帶入手動校正現貨並複製編號" onclick="fillAdjustCode('${esc(p.code)}')">${esc(p.code)}</span></td><td><span class="stock-barcode stock-barcode-click" title="點擊列印標籤" onclick="printLabelsForCode('${esc(p.code)}',1)">*${esc(p.code)}*</span></td><td data-stock-current><span class="stock-edit" title="點擊直接修改現貨" onclick="quickAdjustStock('${esc(p.code)}')">${toNum(p.currentStock)}</span></td><td data-stock-total>${totalStock(p)}</td><td data-stock-pending>${pendingQty(p)}</td><td data-stock-total-cost>$${money(totalCost(p))}</td><td data-stock-sales>${toNum(p.totalSales)}</td><td data-stock-sales-cost>$${money(salesCost(p))}</td><td><div class="stock-actions"><button class="btn small green" onclick="quickInbound('${esc(p.code)}')">+1庫存</button><button class="btn small orange" onclick="quickDecreaseStock('${esc(p.code)}')">-1庫存</button><button class="btn small primary" onclick="quickShip('${esc(p.code)}')">出貨</button><button class="btn small purple" onclick="printLabelsForCode('${esc(p.code)}',1)">印標籤</button><button class="btn small red" onclick="zeroStock('${esc(p.code)}')">歸零庫存</button></div></td></tr>`).join('')}</tbody></table></div>`:`<div class="empty">${state.filters.stockNextDayOnly?'目前沒有已開啟隔日配的商品。':'查無庫存資料。'}</div>`;
+  $('stockTable').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>條碼</th><th>現貨</th><th>進貨</th><th>未到貨</th><th>總成本</th><th>累積銷量</th><th>累積成本</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr data-stock-code="${esc(p.code)}" class="${rowClassFor(p).trim()}"><td data-stock-nextday>${nextDayButton(p)}</td><td data-stock-longstock>${longStockButton(p)}</td><td data-stock-status>${statusFor(p)}</td><td>${shopeeLinkHtml(p,p.itemName,esc(p.itemName))}</td><td data-stock-color>${colorWithWarning(p)}</td><td><span class="code stock-code-btn" title="點擊帶入手動校正現貨並複製編號" onclick="fillAdjustCode('${esc(p.code)}')">${esc(p.code)}</span></td><td><span class="stock-barcode stock-barcode-click" title="點擊列印標籤" onclick="printLabelsForCode('${esc(p.code)}',1)">*${esc(p.code)}*</span></td><td data-stock-current><span class="stock-edit" title="點擊直接修改現貨" onclick="quickAdjustStock('${esc(p.code)}')">${toNum(p.currentStock)}</span></td><td data-stock-total>${totalStock(p)}</td><td data-stock-pending>${pendingQty(p)}</td><td data-stock-total-cost>$${money(totalCost(p))}</td><td data-stock-sales>${toNum(p.totalSales)}</td><td data-stock-sales-cost>$${money(salesCost(p))}</td><td><div class="stock-actions"><button class="btn small green" onclick="quickInbound('${esc(p.code)}')">+1庫存</button><button class="btn small orange" onclick="quickDecreaseStock('${esc(p.code)}')">-1庫存</button><button class="btn small primary" onclick="quickShip('${esc(p.code)}')">出貨</button><button class="btn small purple" onclick="printLabelsForCode('${esc(p.code)}',1)">印標籤</button><button class="btn small red" onclick="zeroStock('${esc(p.code)}')">歸零庫存</button></div></td></tr>`).join('')}</tbody></table></div>`:`<div class="empty">${state.filters.stockNextDayOnly?'目前沒有已開啟隔日配的商品。':'查無庫存資料。'}</div>`;
 }
 function patchLocalProduct(product){
   if(!product||!product.code)return null;
@@ -4788,7 +4902,7 @@ function updateStockRow(product){
 }
 
 function purchaseRowHtml(p){
-  const itemCell=p.shopeeUrl?`<a href="${esc(p.shopeeUrl)}" target="_blank">${esc(p.itemName)}</a>`:esc(p.itemName);
+  const itemCell=shopeeLinkHtml(p,p.itemName,esc(p.itemName));
   const colorCell=colorWithWarning(p);
   const codeCell=`<button type="button" class="code code-btn" title="點擊補印標籤" onclick="printLabelsForCode('${esc(p.code)}',1)">${esc(p.code)}</button>`;
 
@@ -4959,9 +5073,9 @@ function renderArrivalUpdates(){
     const shopeeUrl=String(r.shopeeUrl||p?.shopeeUrl||'').trim();
     const purchaseUrl=String(p?.purchaseUrl||'').trim();
     const status=String(r.status||'pending');
-    const itemCell=shopeeUrl?`<a href="${esc(shopeeUrl)}" target="_blank">${esc(itemText)}</a>`:esc(itemText);
+    const itemCell=arrivalShopeeLinkHtml(r,itemText,esc(itemText));
     const colorCell=purchaseUrl?`<a href="${esc(purchaseUrl)}" target="_blank">${esc(colorText)}</a>`:esc(colorText);
-    const urlCell=shopeeUrl?`<a class="btn small primary" href="${esc(shopeeUrl)}" target="_blank">開啟</a>`:`<span class="arrival-update-url-missing">缺少網址</span>`;
+    const urlCell=arrivalShopeeLinkHtml(r,'開啟',`<span class="arrival-update-url-missing">缺少網址</span>`,'btn small primary');
     const doneBtn=status==='done'?`<button class="btn small ghost" type="button" onclick="setArrivalUpdateStatus('${esc(r.id)}','pending')">改回待更新</button>`:`<button class="btn small green" type="button" onclick="setArrivalUpdateStatus('${esc(r.id)}','done')">完成</button>`;
     const ignoreBtn=status==='ignored'?`<button class="btn small ghost" type="button" onclick="setArrivalUpdateStatus('${esc(r.id)}','pending')">取消忽略</button>`:`<button class="btn small red" type="button" onclick="setArrivalUpdateStatus('${esc(r.id)}','ignored')">忽略</button>`;
     return `<tr><td><span class="status ${arrivalStatusClass(status)}">${arrivalStatusText(status)}</span></td><td><span class="arrival-source-pill">${esc(arrivalSourceText(r.source))}</span></td><td>${esc(r.time)}</td><td>${itemCell}</td><td>${colorCell}</td><td>${copyCodeCell(r.code)}</td><td>${toNum(r.arrivalQty)}</td><td>${toNum(r.beforeStock)}</td><td><strong>${toNum(r.targetStock)}</strong></td><td>${r.batchNo?`第 ${esc(r.batchNo)} 批`:'-'}</td><td>${urlCell}</td><td><div class="arrival-update-actions">${doneBtn}${ignoreBtn}</div></td></tr>`;
