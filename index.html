@@ -3265,13 +3265,37 @@ const toNum=v=>{const n=Number(v);return Number.isFinite(n)?n:0};
 const money=n=>Math.round(toNum(n)).toLocaleString('zh-TW');
 const esc=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
 const normalizeCode=c=>String(c||'').replace(/\*/g,'').trim().toUpperCase();
+function urlDedupKey(value){
+  const raw=String(value||'').trim();
+  if(!raw)return '';
+  try{
+    const u=new URL(raw);
+    u.hash='';
+    const protocol=u.protocol.toLowerCase();
+    const hostname=u.hostname.toLowerCase();
+    const port=u.port?`:${u.port}`:'';
+    let pathname=u.pathname||'';
+    pathname=pathname.replace(/\/+$/,'');
+    if(pathname==='/')pathname='';
+    return `${protocol}//${hostname}${port}${pathname}${u.search}`;
+  }catch(e){
+    return raw.replace(/\/+$/,'').toLowerCase();
+  }
+}
 function parseMultiUrls(value){
-  return [...new Set(
-    String(value||'')
-      .split(/\n|,|，|\s+/g)
-      .map(v=>v.trim())
-      .filter(v=>/^https?:\/\//i.test(v))
-  )];
+  const result=[];
+  const seen=new Set();
+  String(value||'')
+    .split(/\n|,|，|\s+/g)
+    .map(v=>v.trim())
+    .filter(v=>/^https?:\/\//i.test(v))
+    .forEach(url=>{
+      const key=urlDedupKey(url);
+      if(!key||seen.has(key))return;
+      seen.add(key);
+      result.push(url);
+    });
+  return result;
 }
 function openUrlList(urls,label){
   const raw=Array.isArray(urls)?urls.join('\n'):String(urls||'');
@@ -3350,7 +3374,8 @@ function arrivalShopeeLinkHtml(task,label,emptyHtml='-',extraClass=''){
   const display=String(label||'開啟');
   const title=urls.length>1?`點擊開啟 ${urls.length} 個蝦皮網址`:'點擊開啟蝦皮網址';
   const cls=extraClass?` class="${esc(extraClass)}"`:'';
-  return `<a${cls} href="${esc(urls[0])}" target="_blank" title="${esc(title)}" onclick="return openShopeeLinksByArrivalId('${esc(task?.id||'')}',event)">${esc(display)}</a>`;
+  // 不讓 a 標籤自己再開第一個網址；所有分頁只交給 openUrlList 統一處理，避免第一個網址重複開啟。
+  return `<a${cls} href="#" role="button" title="${esc(title)}" onclick="return openShopeeLinksByArrivalId('${esc(task?.id||'')}',event)">${esc(display)}</a>`;
 }
 
 function todayInputDate(){const d=new Date(),p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`}
