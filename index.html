@@ -3311,11 +3311,21 @@ function openShopeeLinksByCode(code,event){
   const urls=parseMultiUrls(p?.shopeeUrl||'');
   return openUrlList(urls,p?.itemName||normalizeCode(code));
 }
+function arrivalShopeeUrls(task){
+  const p=task?findProduct(task.code):null;
+
+  // 優先讀取「商品資訊」目前最新的蝦皮網址，並合併到貨任務建立當下保存的網址。
+  // 這樣舊的到貨更新資料，即使當初只有 1 個網址，商品資訊後來增加多網址後也能全部開啟。
+  return parseMultiUrls([
+    p?.shopeeUrl||'',
+    task?.shopeeUrl||''
+  ].filter(Boolean).join('\n'));
+}
 function openShopeeLinksByArrivalId(id,event){
   if(event){event.preventDefault();event.stopPropagation();}
   const task=(state.arrivalUpdates||[]).find(x=>String(x.id||'')===String(id||''));
   const p=task?findProduct(task.code):null;
-  const urls=parseMultiUrls(task?.shopeeUrl||p?.shopeeUrl||'');
+  const urls=arrivalShopeeUrls(task);
   return openUrlList(urls,task?.itemName||p?.itemName||'此商品');
 }
 function shopeeLinkHtml(p,label,emptyHtml='-'){
@@ -3335,10 +3345,9 @@ function shopeeButtonHtml(p,label='開啟',extraClass='btn small primary',emptyH
   return `<a class="${esc(extraClass)}" href="${esc(urls[0])}" target="_blank" title="${esc(title)}" onclick="return openShopeeLinksByCode('${esc(code)}',event)">${esc(display)}</a>`;
 }
 function arrivalShopeeLinkHtml(task,label,emptyHtml='-',extraClass=''){
-  const p=task?findProduct(task.code):null;
-  const urls=parseMultiUrls(task?.shopeeUrl||p?.shopeeUrl||'');
+  const urls=arrivalShopeeUrls(task);
   if(!urls.length)return emptyHtml;
-  const display=label==='開啟' ? `開啟${urls.length>1?urls.length+'個':''}` : String(label||'開啟');
+  const display=String(label||'開啟');
   const title=urls.length>1?`點擊開啟 ${urls.length} 個蝦皮網址`:'點擊開啟蝦皮網址';
   const cls=extraClass?` class="${esc(extraClass)}"`:'';
   return `<a${cls} href="${esc(urls[0])}" target="_blank" title="${esc(title)}" onclick="return openShopeeLinksByArrivalId('${esc(task?.id||'')}',event)">${esc(display)}</a>`;
