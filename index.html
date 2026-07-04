@@ -3338,12 +3338,13 @@ function openShopeeLinksByCode(code,event){
 function arrivalShopeeUrls(task){
   const p=task?findProduct(task.code):null;
 
-  // 優先讀取「商品資訊」目前最新的蝦皮網址，並合併到貨任務建立當下保存的網址。
-  // 這樣舊的到貨更新資料，即使當初只有 1 個網址，商品資訊後來增加多網址後也能全部開啟。
-  return parseMultiUrls([
-    p?.shopeeUrl||'',
-    task?.shopeeUrl||''
-  ].filter(Boolean).join('\n'));
+  // 到貨更新一律以「商品資訊目前設定的蝦皮網址」為準。
+  // 不再把到貨任務建立當下保存的舊網址合併進來，避免舊網址多開。
+  const latestUrls=parseMultiUrls(p?.shopeeUrl||'');
+  if(latestUrls.length)return latestUrls;
+
+  // 只有商品資料已不存在，或商品資訊目前完全沒有網址時，才使用舊任務網址備援。
+  return parseMultiUrls(task?.shopeeUrl||'');
 }
 function openShopeeLinksByArrivalId(id,event){
   if(event){event.preventDefault();event.stopPropagation();}
