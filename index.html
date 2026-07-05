@@ -3316,6 +3316,8 @@ function ensureUrlBatchPicker(){
     .url-batch-picker-btn{min-height:62px;padding:10px 14px;border-radius:15px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-weight:1000;text-align:left;line-height:1.45;cursor:pointer}
     .url-batch-picker-btn:hover{background:#2563eb;color:#fff;border-color:#2563eb;box-shadow:0 10px 22px rgba(37,99,235,.22)}
     .url-batch-picker-btn small{display:block;margin-top:3px;font-size:12px;font-weight:900;opacity:.8}
+    .url-batch-picker-btn.open-all{grid-column:1 / -1;background:#fff7ed;color:#c2410c;border-color:#fdba74;text-align:center}
+    .url-batch-picker-btn.open-all:hover{background:#ea580c;color:#fff;border-color:#ea580c;box-shadow:0 10px 22px rgba(234,88,12,.24)}
     .url-batch-picker-actions{display:flex;justify-content:flex-end;margin-top:18px}
     .url-batch-picker-cancel{min-height:40px;padding:8px 16px;border-radius:12px;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;font-weight:1000;cursor:pointer}
     body.dark-mode .url-batch-picker-card{background:#111827;border-color:#334155}
@@ -3323,6 +3325,8 @@ function ensureUrlBatchPicker(){
     body.dark-mode .url-batch-picker-desc{color:#cbd5e1}
     body.dark-mode .url-batch-picker-btn{background:#172554;color:#bfdbfe;border-color:#1d4ed8}
     body.dark-mode .url-batch-picker-btn:hover{background:#2563eb;color:#fff;border-color:#60a5fa}
+    body.dark-mode .url-batch-picker-btn.open-all{background:#431407;color:#fed7aa;border-color:#ea580c}
+    body.dark-mode .url-batch-picker-btn.open-all:hover{background:#ea580c;color:#fff;border-color:#fb923c}
     body.dark-mode .url-batch-picker-cancel{background:#1f2937;color:#e5e7eb;border-color:#475569}
     @media(max-width:560px){.url-batch-picker-grid{grid-template-columns:1fr}}
   `;
@@ -3408,6 +3412,53 @@ function openSelectedUrlBatch(list,label,batchIndex){
   return false;
 }
 
+function openAllUrlList(list,label){
+  if(!Array.isArray(list)||!list.length)return false;
+
+  const opened=[];
+  const blocked=[];
+
+  // 點擊「全開」當下先同步建立所有空白分頁，之後再依序載入，降低同時載入造成的卡頓。
+  list.forEach((url,index)=>{
+    const win=window.open('about:blank','_blank');
+    if(!win){
+      blocked.push(url);
+      return;
+    }
+
+    try{
+      win.document.title=`等待開啟 ${index+1}/${list.length}`;
+      win.document.body.innerHTML=`<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft JhengHei',sans-serif;padding:32px;color:#334155"><h2 style="margin:0 0 10px">網頁排隊載入中</h2><p style="margin:0;line-height:1.7">全開模式，第 ${index+1} / ${list.length} 個網址，請稍候。</p></div>`;
+    }catch(e){}
+
+    opened.push({win,url});
+  });
+
+  opened.forEach((item,index)=>{
+    window.setTimeout(()=>{
+      try{
+        if(item.win&&!item.win.closed)item.win.location.replace(item.url);
+      }catch(e){
+        try{item.win.location.href=item.url}catch(_e){}
+      }
+    },index*MULTI_URL_LOAD_DELAY_MS);
+  });
+
+  if(typeof showCopyToast==='function'){
+    showCopyToast(`全開：正在依序載入 ${opened.length} 個網頁`);
+  }
+
+  if(blocked.length){
+    appAlert(
+      `全開共有 ${list.length} 個網址，但有 ${blocked.length} 個分頁被瀏覽器封鎖。\n\n請在 Chrome 右上角允許此網頁的彈出式視窗後，再重新點擊「全開」。`,
+      '部分網址被封鎖',
+      {danger:true}
+    );
+  }
+
+  return false;
+}
+
 function showUrlBatchPicker(list,label){
   const overlay=ensureUrlBatchPicker();
   const total=list.length;
@@ -3415,7 +3466,7 @@ function showUrlBatchPicker(list,label){
   const desc=overlay.querySelector('#urlBatchPickerDesc');
   const grid=overlay.querySelector('#urlBatchPickerGrid');
 
-  desc.textContent=`${label||'此商品'}共有 ${total} 個網址，每批最多開啟 ${URLS_PER_OPEN_BATCH} 個，共 ${totalBatches} 批。請選擇本次要開啟的批次。`;
+  desc.textContent=`${label||'此商品'}共有 ${total} 個網址，每批最多開啟 ${URLS_PER_OPEN_BATCH} 個，共 ${totalBatches} 批。可選擇單一批次，或使用「全開」。`;
   grid.innerHTML='';
 
   for(let batchIndex=0;batchIndex<totalBatches;batchIndex++){
@@ -3433,6 +3484,17 @@ function showUrlBatchPicker(list,label){
     });
     grid.appendChild(btn);
   }
+
+  const openAllBtn=document.createElement('button');
+  openAllBtn.type='button';
+  openAllBtn.className='url-batch-picker-btn open-all';
+  openAllBtn.innerHTML=`全開<small>一次建立全部 ${total} 個分頁，並依序載入</small>`;
+  openAllBtn.addEventListener('click',()=>{
+    overlay.classList.remove('show');
+    overlay.setAttribute('aria-hidden','true');
+    openAllUrlList(list,label);
+  });
+  grid.appendChild(openAllBtn);
 
   overlay.classList.add('show');
   overlay.setAttribute('aria-hidden','false');
