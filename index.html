@@ -3297,6 +3297,150 @@ function parseMultiUrls(value){
     });
   return result;
 }
+const URLS_PER_OPEN_BATCH=3;
+const MULTI_URL_LOAD_DELAY_MS=550;
+
+function ensureUrlBatchPicker(){
+  let overlay=document.getElementById('urlBatchPickerOverlay');
+  if(overlay)return overlay;
+
+  const style=document.createElement('style');
+  style.id='urlBatchPickerStyle';
+  style.textContent=`
+    .url-batch-picker-overlay{position:fixed;inset:0;z-index:1900;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(15,23,42,.56);backdrop-filter:blur(5px)}
+    .url-batch-picker-overlay.show{display:flex}
+    .url-batch-picker-card{width:min(620px,100%);max-height:min(760px,calc(100vh - 48px));overflow:auto;background:#fff;border:1px solid #e5e7eb;border-radius:24px;box-shadow:0 30px 90px rgba(15,23,42,.32);padding:24px}
+    .url-batch-picker-title{margin:0 0 8px;font-size:24px;line-height:1.25;font-weight:1000;color:#111827}
+    .url-batch-picker-desc{margin:0 0 18px;color:#4b5563;font-weight:800;line-height:1.65}
+    .url-batch-picker-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .url-batch-picker-btn{min-height:62px;padding:10px 14px;border-radius:15px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-weight:1000;text-align:left;line-height:1.45;cursor:pointer}
+    .url-batch-picker-btn:hover{background:#2563eb;color:#fff;border-color:#2563eb;box-shadow:0 10px 22px rgba(37,99,235,.22)}
+    .url-batch-picker-btn small{display:block;margin-top:3px;font-size:12px;font-weight:900;opacity:.8}
+    .url-batch-picker-actions{display:flex;justify-content:flex-end;margin-top:18px}
+    .url-batch-picker-cancel{min-height:40px;padding:8px 16px;border-radius:12px;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;font-weight:1000;cursor:pointer}
+    body.dark-mode .url-batch-picker-card{background:#111827;border-color:#334155}
+    body.dark-mode .url-batch-picker-title{color:#f8fafc}
+    body.dark-mode .url-batch-picker-desc{color:#cbd5e1}
+    body.dark-mode .url-batch-picker-btn{background:#172554;color:#bfdbfe;border-color:#1d4ed8}
+    body.dark-mode .url-batch-picker-btn:hover{background:#2563eb;color:#fff;border-color:#60a5fa}
+    body.dark-mode .url-batch-picker-cancel{background:#1f2937;color:#e5e7eb;border-color:#475569}
+    @media(max-width:560px){.url-batch-picker-grid{grid-template-columns:1fr}}
+  `;
+  document.head.appendChild(style);
+
+  overlay=document.createElement('div');
+  overlay.id='urlBatchPickerOverlay';
+  overlay.className='url-batch-picker-overlay';
+  overlay.setAttribute('aria-hidden','true');
+  overlay.innerHTML=`
+    <div class="url-batch-picker-card" role="dialog" aria-modal="true" aria-labelledby="urlBatchPickerTitle">
+      <h3 class="url-batch-picker-title" id="urlBatchPickerTitle">選擇要開啟的批次</h3>
+      <p class="url-batch-picker-desc" id="urlBatchPickerDesc"></p>
+      <div class="url-batch-picker-grid" id="urlBatchPickerGrid"></div>
+      <div class="url-batch-picker-actions">
+        <button type="button" class="url-batch-picker-cancel" id="urlBatchPickerCancel">取消</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const close=()=>{
+    overlay.classList.remove('show');
+    overlay.setAttribute('aria-hidden','true');
+  };
+  overlay.querySelector('#urlBatchPickerCancel').addEventListener('click',close);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)close()});
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&overlay.classList.contains('show'))close();
+  });
+  return overlay;
+}
+
+function openSelectedUrlBatch(list,label,batchIndex){
+  const totalBatches=Math.ceil(list.length/URLS_PER_OPEN_BATCH);
+  const start=batchIndex*URLS_PER_OPEN_BATCH;
+  const selected=list.slice(start,start+URLS_PER_OPEN_BATCH);
+
+  if(!selected.length)return false;
+
+  const opened=[];
+  const blocked=[];
+
+  // 必須在使用者點擊批次按鈕的當下，先同步建立最多 3 個空白分頁，避免 Chrome 阻擋。
+  selected.forEach((url,index)=>{
+    const win=window.open('about:blank','_blank');
+    if(!win){
+      blocked.push(url);
+      return;
+    }
+
+    try{
+      win.document.title=`等待開啟 ${index+1}/${selected.length}`;
+      win.document.body.innerHTML=`<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft JhengHei',sans-serif;padding:32px;color:#334155"><h2 style="margin:0 0 10px">網頁排隊載入中</h2><p style="margin:0;line-height:1.7">第 ${batchIndex+1} 批，第 ${index+1} / ${selected.length} 個網址，請稍候。</p></div>`;
+    }catch(e){}
+
+    opened.push({win,url});
+  });
+
+  // 一批最多 3 個，仍稍微錯開載入，降低蝦皮頁面同時吃滿資源的機率。
+  opened.forEach((item,index)=>{
+    window.setTimeout(()=>{
+      try{
+        if(item.win&&!item.win.closed)item.win.location.replace(item.url);
+      }catch(e){
+        try{item.win.location.href=item.url}catch(_e){}
+      }
+    },index*MULTI_URL_LOAD_DELAY_MS);
+  });
+
+  if(typeof showCopyToast==='function'){
+    showCopyToast(`第 ${batchIndex+1}/${totalBatches} 批：正在開啟 ${opened.length} 個網頁`);
+  }
+
+  if(blocked.length){
+    appAlert(
+      `第 ${batchIndex+1} 批共有 ${selected.length} 個網址，但有 ${blocked.length} 個分頁被瀏覽器封鎖。\n\n請在 Chrome 右上角允許此網頁的彈出式視窗後，再重新選擇這一批。`,
+      '部分網址被封鎖',
+      {danger:true}
+    );
+  }
+
+  return false;
+}
+
+function showUrlBatchPicker(list,label){
+  const overlay=ensureUrlBatchPicker();
+  const total=list.length;
+  const totalBatches=Math.ceil(total/URLS_PER_OPEN_BATCH);
+  const desc=overlay.querySelector('#urlBatchPickerDesc');
+  const grid=overlay.querySelector('#urlBatchPickerGrid');
+
+  desc.textContent=`${label||'此商品'}共有 ${total} 個網址，每批最多開啟 ${URLS_PER_OPEN_BATCH} 個，共 ${totalBatches} 批。請選擇本次要開啟的批次。`;
+  grid.innerHTML='';
+
+  for(let batchIndex=0;batchIndex<totalBatches;batchIndex++){
+    const start=batchIndex*URLS_PER_OPEN_BATCH;
+    const end=Math.min(start+URLS_PER_OPEN_BATCH,total);
+    const count=end-start;
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='url-batch-picker-btn';
+    btn.innerHTML=`第 ${batchIndex+1} 批<small>網址 ${start+1}～${end}，共 ${count} 個</small>`;
+    btn.addEventListener('click',()=>{
+      overlay.classList.remove('show');
+      overlay.setAttribute('aria-hidden','true');
+      openSelectedUrlBatch(list,label,batchIndex);
+    });
+    grid.appendChild(btn);
+  }
+
+  overlay.classList.add('show');
+  overlay.setAttribute('aria-hidden','false');
+  const first=grid.querySelector('button');
+  if(first)setTimeout(()=>first.focus(),30);
+  return false;
+}
+
 function openUrlList(urls,label){
   const raw=Array.isArray(urls)?urls.join('\n'):String(urls||'');
   const list=parseMultiUrls(raw);
@@ -3306,28 +3450,12 @@ function openUrlList(urls,label){
     return false;
   }
 
-  if(list.length>1){
-    const ok=confirm(`${label||'此商品'} 共有 ${list.length} 個蝦皮網址，是否全部開啟？`);
-    if(!ok)return false;
+  // 只有 1～3 個網址時直接開啟；超過 3 個才顯示批次選擇視窗。
+  if(list.length<=URLS_PER_OPEN_BATCH){
+    return openSelectedUrlBatch(list,label,0);
   }
 
-  // 重要：多分頁必須在使用者點擊事件內「同步」開啟。
-  // 不可用 setTimeout 逐個開，Chrome 會把第 2 個以後判定成彈出視窗而擋掉。
-  const blocked=[];
-  list.forEach(url=>{
-    const win=window.open(url,'_blank');
-    if(!win)blocked.push(url);
-  });
-
-  if(blocked.length){
-    appAlert(
-      `已嘗試開啟 ${list.length} 個網址，但有 ${blocked.length} 個被瀏覽器封鎖。\n\n請在 Chrome 右上角允許此網頁的彈出式視窗後，再點一次。`,
-      '部分網址被封鎖',
-      {danger:true}
-    );
-  }
-
-  return false;
+  return showUrlBatchPicker(list,label);
 }
 function openShopeeLinksByCode(code,event){
   if(event){event.preventDefault();event.stopPropagation();}
