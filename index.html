@@ -3100,6 +3100,7 @@
               <button class="btn primary" id="btnPurchaseJump" type="button">查詢</button>
               <button class="btn" id="btnShowAllPurchase" type="button">顯示全部</button>
               <button class="btn primary" id="btnPurchaseShowNextDayOnly" type="button">顯示已開啟隔日配商品</button>
+              <button class="btn green" id="btnPurchaseShowPendingOnly" type="button">顯示進貨的商品</button>
             </div>
           </div>
           <div id="purchaseTable"></div>
@@ -3249,7 +3250,7 @@ const DB_USAGE_LIMIT_MB=500;
 let dbUsageTimer=null;
 let currentUser=null;
 let sessionLoginPassword='';
-const state={products:[],sales:[],actions:[],previews:[],arrivalUpdates:[],arrivalUpdateFilter:'pending',settings:{feePlatform:.055,feeService:.02,feeExtra:.02,feeOther:0,shippingBase:60,lowStockThreshold:3,shipFailVolume:80},filters:{product:'',stock:'',purchase:'',stockNextDayOnly:false,purchaseNextDayOnly:false},actionFilters:{startDate:''},salesFilters:{actionMode:'all',dateRange:'today',customStart:'',customEnd:''}};
+const state={products:[],sales:[],actions:[],previews:[],arrivalUpdates:[],arrivalUpdateFilter:'pending',settings:{feePlatform:.055,feeService:.02,feeExtra:.02,feeOther:0,shippingBase:60,lowStockThreshold:3,shipFailVolume:80},filters:{product:'',stock:'',purchase:'',stockNextDayOnly:false,purchaseNextDayOnly:false,purchasePendingOnly:false},actionFilters:{startDate:''},salesFilters:{actionMode:'all',dateRange:'today',customStart:'',customEnd:''}};
 const shipQueue=[];
 let shipQueueRunning=false;
 let shipQueueSeq=0;
@@ -5046,10 +5047,41 @@ function searchProductRows(f='',sourceRows=state.products){
 }
 function productRows(f=''){return searchProductRows(f,state.products)}
 function stockRows(){let rows=searchProductRows(state.filters.stock,state.products);if(state.filters.stockNextDayOnly)rows=rows.filter(p=>isNextDayItem(p.itemName));return rows}
-function purchaseRows(){let rows=searchProductRows(state.filters.purchase,state.products);if(state.filters.purchaseNextDayOnly)rows=rows.filter(p=>isNextDayItem(p.itemName));return rows}
-function updateNextDayFilterButtons(){const stockBtn=$('btnStockShowNextDayOnly');if(stockBtn){stockBtn.textContent=state.filters.stockNextDayOnly?'顯示全部商品':'顯示已開啟隔日配商品'}const purchaseBtn=$('btnPurchaseShowNextDayOnly');if(purchaseBtn){purchaseBtn.textContent=state.filters.purchaseNextDayOnly?'顯示全部商品':'顯示已開啟隔日配商品'}}
+function purchaseRows(){
+  let rows=searchProductRows(state.filters.purchase,state.products);
+  if(state.filters.purchaseNextDayOnly)rows=rows.filter(p=>isNextDayItem(p.itemName));
+  if(state.filters.purchasePendingOnly)rows=rows.filter(p=>pendingQty(p)>0);
+  return rows;
+}
+function updateNextDayFilterButtons(){
+  const stockBtn=$('btnStockShowNextDayOnly');
+  if(stockBtn){
+    stockBtn.textContent=state.filters.stockNextDayOnly?'顯示全部商品':'顯示已開啟隔日配商品';
+  }
+
+  const purchaseBtn=$('btnPurchaseShowNextDayOnly');
+  if(purchaseBtn){
+    purchaseBtn.textContent=state.filters.purchaseNextDayOnly?'顯示全部商品':'顯示已開啟隔日配商品';
+  }
+
+  const pendingBtn=$('btnPurchaseShowPendingOnly');
+  if(pendingBtn){
+    pendingBtn.textContent=state.filters.purchasePendingOnly?'顯示全部商品':'顯示進貨的商品';
+  }
+}
 function toggleStockNextDayOnly(){state.filters.stockNextDayOnly=!state.filters.stockNextDayOnly;renderStock()}
-function togglePurchaseNextDayOnly(){state.filters.purchaseNextDayOnly=!state.filters.purchaseNextDayOnly;renderPurchase()}
+function togglePurchaseNextDayOnly(){
+  const enabled=!state.filters.purchaseNextDayOnly;
+  state.filters.purchaseNextDayOnly=enabled;
+  if(enabled)state.filters.purchasePendingOnly=false;
+  renderPurchase();
+}
+function togglePurchasePendingOnly(){
+  const enabled=!state.filters.purchasePendingOnly;
+  state.filters.purchasePendingOnly=enabled;
+  if(enabled)state.filters.purchaseNextDayOnly=false;
+  renderPurchase();
+}
 function renderDashboard(){
   const rows=nextDayStockWarnings();
   $('lowStockList').innerHTML=rows.length?`<div class="notice danger"><strong>隔日配缺貨警告：</strong>有 ${rows.length} 個顏色已開啟隔日配但現貨為 0，請補貨、前往進貨或按「警告排除」。</div><div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>現貨</th><th>進貨庫存</th><th>未到貨</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr class="nextday-row"><td>${nextDayButton(p)}</td><td>${longStockButton(p)}</td><td>${statusFor(p)}</td><td>${shopeeLinkHtml(p,p.itemName,esc(p.itemName))}</td><td>${colorWithWarning(p)}</td><td><span class="code">${esc(p.code)}</span></td><td>${toNum(p.currentStock)}</td><td>${totalStock(p)}</td><td>${pendingQty(p)}</td><td><div class="action-buttons"><button class="btn small primary" type="button" onclick="goToPurchaseFromWarning('${esc(p.code)}')">前往進貨</button><button class="btn small green" type="button" onclick="quickInbound('${esc(p.code)}')">+1庫存</button></div></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">目前沒有隔日配缺貨警告。</div>'
@@ -5065,6 +5097,7 @@ function goToPurchaseFromWarning(code){
 
   state.filters.purchase=target;
   state.filters.purchaseNextDayOnly=false;
+  state.filters.purchasePendingOnly=false;
 
   const input=$('purchaseJumpCode');
   if(input)input.value=target;
@@ -5325,7 +5358,11 @@ function renderPurchase(){
   const rows=purchaseRows();
   if(!rows.length){
     const hasSearch=String(state.filters.purchase||'').trim();
-    $('purchaseTable').innerHTML='<div class="empty">'+(hasSearch?'查無符合的進貨 / 到貨商品。':(state.filters.purchaseNextDayOnly?'目前沒有已開啟隔日配的商品。':'尚無商品資料。'))+'</div>';
+    let emptyText='尚無商品資料。';
+    if(hasSearch)emptyText='查無符合的進貨 / 到貨商品。';
+    else if(state.filters.purchaseNextDayOnly)emptyText='目前沒有已開啟隔日配的商品。';
+    else if(state.filters.purchasePendingOnly)emptyText='目前沒有進貨中、尚未全部到貨的商品。';
+    $('purchaseTable').innerHTML=`<div class="empty">${emptyText}</div>`;
     return;
   }
 
@@ -6339,6 +6376,7 @@ function bindEvents(){
   };
   if($('btnStockShowNextDayOnly'))$('btnStockShowNextDayOnly').onclick=toggleStockNextDayOnly;
   if($('btnPurchaseShowNextDayOnly'))$('btnPurchaseShowNextDayOnly').onclick=togglePurchaseNextDayOnly;
+  if($('btnPurchaseShowPendingOnly'))$('btnPurchaseShowPendingOnly').onclick=togglePurchasePendingOnly;
   $('btnSortProduct').onclick=()=>callApi('sortProducts',{});
   $('btnAddColorCopy').onclick=async()=>{const c=await appPrompt('輸入要複製的商品編號','','複製選取商品',{confirmText:'複製'});if(c)copyProduct(c)};
 
@@ -6369,7 +6407,7 @@ function bindEvents(){
   if($('btnActionDateClear'))$('btnActionDateClear').onclick=()=>{$('actionStartDate').value='';state.actionFilters.startDate='';renderActions()};
   if($('actionStartDate'))$('actionStartDate').onkeydown=e=>{if(e.key==='Enter'){state.actionFilters.startDate=$('actionStartDate').value;renderActions()}};
   if($('btnPurchaseJump'))$('btnPurchaseJump').onclick=purchaseJumpToCode;
-  if($('btnShowAllPurchase'))$('btnShowAllPurchase').onclick=()=>{$('purchaseJumpCode').value='';state.filters.purchase='';state.filters.purchaseNextDayOnly=false;renderPurchase()};
+  if($('btnShowAllPurchase'))$('btnShowAllPurchase').onclick=()=>{$('purchaseJumpCode').value='';state.filters.purchase='';state.filters.purchaseNextDayOnly=false;state.filters.purchasePendingOnly=false;renderPurchase()};
   if($('purchaseJumpCode')){
     $('purchaseJumpCode').oninput=null;
     $('purchaseJumpCode').onfocus=e=>e.target.select();
