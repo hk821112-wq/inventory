@@ -2906,6 +2906,96 @@
 
 
   </style>
+<style>
+/* =========================================================
+       V61 AI 智慧補貨決策中心
+       不新增資料表，直接分析 sales_logs 最近 90 天資料
+       ========================================================= */
+    #aiReorder{padding-top:0}
+    .ai-reorder-page{display:grid;gap:16px}
+    .ai-hero{position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,.65fr);gap:18px;padding:24px;border:2px solid #111827;background:#111827;color:#fff;box-shadow:8px 8px 0 #c7ff3d}
+    .ai-hero::after{content:'AI';position:absolute;right:-18px;top:-48px;font-size:190px;line-height:1;font-weight:1000;color:rgba(255,255,255,.045);letter-spacing:-.12em;pointer-events:none}
+    .ai-hero-copy{position:relative;z-index:1}
+    .ai-eyebrow{display:inline-flex;align-items:center;gap:8px;margin-bottom:12px;font-size:12px;font-weight:1000;letter-spacing:.16em;color:#c7ff3d}
+    .ai-live-dot{width:9px;height:9px;border-radius:50%;background:#c7ff3d;box-shadow:0 0 0 6px rgba(199,255,61,.14);animation:aiPulse 1.8s ease-in-out infinite}
+    @keyframes aiPulse{50%{box-shadow:0 0 0 11px rgba(199,255,61,0)}}
+    .ai-hero h2{margin:0 0 10px;color:#fff!important;font-size:34px!important;letter-spacing:-.045em}
+    .ai-hero p{max-width:760px;margin:0;color:#cbd5e1;font-size:14px;line-height:1.75;font-weight:750}
+    .ai-hero-status{position:relative;z-index:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;border:1px solid #475569;background:#475569;align-self:stretch}
+    .ai-hero-stat{background:#172033;padding:15px;min-height:88px;display:flex;flex-direction:column;justify-content:space-between}
+    .ai-hero-stat span{font-size:11px;font-weight:1000;letter-spacing:.08em;color:#94a3b8}
+    .ai-hero-stat strong{font-size:23px;line-height:1;color:#fff;font-weight:1000}
+    .ai-hero-stat strong.accent{color:#c7ff3d}
+    .ai-config-card{border:2px solid #111827;background:#fff;padding:16px;box-shadow:5px 5px 0 #dbe4f0}
+    .ai-config-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:13px}
+    .ai-config-head h3{margin:0 0 4px;font-size:19px}
+    .ai-config-head p{margin:0;color:#64748b;font-size:12px;font-weight:800}
+    .ai-config-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;align-items:end}
+    .ai-config-field label{height:auto;margin:0 0 5px;color:#334155;font-size:11px!important;line-height:1.2;font-weight:1000}
+    .ai-config-field input,.ai-config-field select{height:38px;min-height:38px;border-radius:0;border:1.5px solid #94a3b8;background:#fff;padding:7px 9px;font-size:13px!important;font-weight:900}
+    .ai-config-actions{display:flex;gap:8px;justify-content:flex-end;align-items:end}
+    .ai-square-btn{height:38px;min-height:38px;border:2px solid #111827;border-radius:0;background:#fff;color:#111827;padding:7px 13px;font-size:13px!important;font-weight:1000;box-shadow:3px 3px 0 #111827;white-space:nowrap}
+    .ai-square-btn:hover{transform:translate(1px,1px);box-shadow:2px 2px 0 #111827}
+    .ai-square-btn.primary{background:#3157ff;color:#fff}
+    .ai-square-btn.lime{background:#c7ff3d;color:#111827}
+    .ai-square-btn.danger{background:#ff625c;color:#fff}
+    .ai-summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+    .ai-summary-card{position:relative;overflow:hidden;border:2px solid #111827;background:#fff;padding:15px;min-height:102px}
+    .ai-summary-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:7px;background:#3157ff}
+    .ai-summary-card.hot::before{background:#ff625c}.ai-summary-card.money::before{background:#f6b817}.ai-summary-card.safe::before{background:#21b573}.ai-summary-card.data::before{background:#8b5cf6}
+    .ai-summary-card span{display:block;margin-left:8px;color:#64748b;font-size:11px;font-weight:1000;letter-spacing:.05em}
+    .ai-summary-card strong{display:block;margin:12px 0 0 8px;font-size:28px;line-height:1;color:#111827;font-weight:1000}
+    .ai-summary-card small{display:block;margin:6px 0 0 8px;color:#64748b;font-size:11px;font-weight:850}
+    .ai-table-card{border:2px solid #111827;background:#fff;overflow:hidden}
+    .ai-table-toolbar{display:grid;grid-template-columns:minmax(240px,1fr) auto auto auto auto;gap:8px;align-items:center;padding:12px;border-bottom:2px solid #111827;background:#f7f4ed}
+    .ai-table-toolbar input,.ai-table-toolbar select{height:38px;min-height:38px;border:1.5px solid #111827;border-radius:0;background:#fff;padding:7px 10px;font-size:13px!important;font-weight:900}
+    .ai-table-meta{display:flex;align-items:center;gap:9px;padding:9px 12px;border-bottom:1px solid #cbd5e1;background:#fff;font-size:12px;font-weight:900;color:#475569;flex-wrap:wrap}
+    .ai-table-meta b{color:#111827}.ai-last-update{margin-left:auto}
+    .ai-analysis-table{max-height:calc(100vh - 385px);overflow:auto;background:#fff}
+    .ai-analysis-table table{min-width:1440px;width:100%;border-collapse:separate;border-spacing:0}
+    .ai-analysis-table th{position:sticky;top:0;z-index:12;background:#111827!important;color:#fff!important;border-right:1px solid #334155;border-bottom:0;padding:10px 8px;font-size:11px!important;letter-spacing:.03em}
+    .ai-analysis-table td{padding:9px 8px;border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;font-size:12px!important;background:#fff;vertical-align:middle}
+    .ai-analysis-table tr:hover td{background:#f5f8ff!important}
+    .ai-analysis-table tr.ai-row-urgent td{background:#fff5f4}
+    .ai-analysis-table tr.ai-row-selected td{background:#eef2ff!important}
+    .ai-check{width:18px;height:18px;accent-color:#3157ff;cursor:pointer}
+    .ai-product-main{display:flex;flex-direction:column;gap:3px;min-width:180px;white-space:normal}
+    .ai-product-main strong{font-size:13px;color:#111827}.ai-product-main small{font-size:11px;color:#64748b;font-weight:850}
+    .ai-grade{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:2px solid #111827;font-size:19px;font-weight:1000;box-shadow:3px 3px 0 #111827}
+    .ai-grade-S{background:#ff625c;color:#fff}.ai-grade-A{background:#ffcf3d;color:#111827}.ai-grade-B{background:#c7ff3d;color:#111827}.ai-grade-C{background:#93c5fd;color:#111827}.ai-grade-D{background:#e2e8f0;color:#475569}
+    .ai-trend{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:1000}.ai-trend.up{color:#15803d}.ai-trend.down{color:#dc2626}.ai-trend.flat{color:#64748b}
+    .ai-stock-days{display:flex;flex-direction:column;gap:3px}.ai-stock-days strong{font-size:13px}.ai-stock-days small{font-size:10px;color:#64748b;font-weight:850}
+    .ai-stock-days.danger strong{color:#dc2626}.ai-stock-days.warning strong{color:#c2410c}.ai-stock-days.safe strong{color:#15803d}
+    .ai-suggestion{display:flex;align-items:center;gap:7px}.ai-suggestion strong{display:inline-flex;align-items:center;justify-content:center;min-width:52px;height:34px;padding:0 10px;border:2px solid #111827;background:#c7ff3d;color:#111827;font-size:17px;font-weight:1000}.ai-suggestion.none strong{background:#e2e8f0;color:#64748b}
+    .ai-confidence{display:inline-flex;align-items:center;padding:4px 7px;border:1px solid #94a3b8;background:#f8fafc;font-size:10px;font-weight:1000}.ai-confidence.high{border-color:#16a34a;color:#15803d;background:#f0fdf4}.ai-confidence.medium{border-color:#f59e0b;color:#b45309;background:#fffbeb}.ai-confidence.low{border-color:#94a3b8;color:#64748b}
+    .ai-reason-btn,.ai-order-btn{height:32px;min-height:32px;border:1.5px solid #111827;border-radius:0;padding:5px 9px;font-size:11px!important;font-weight:1000;white-space:nowrap}
+    .ai-reason-btn{background:#fff;color:#111827}.ai-order-btn{background:#3157ff;color:#fff}.ai-order-btn:disabled{background:#e2e8f0;color:#94a3b8;border-color:#94a3b8;cursor:not-allowed}
+    .ai-empty{padding:52px 24px;text-align:center;background:#fff;color:#64748b;font-weight:900}.ai-empty strong{display:block;margin-bottom:8px;color:#111827;font-size:20px}
+    .ai-loading{display:grid;place-items:center;min-height:260px;background:repeating-linear-gradient(135deg,#fff,#fff 12px,#f8fafc 12px,#f8fafc 24px);text-align:center}.ai-loading strong{font-size:22px}.ai-loading p{margin:8px 0 0;color:#64748b;font-weight:850}
+    .ai-spinner{width:42px;height:42px;margin:0 auto 14px;border:5px solid #dbe4f0;border-top-color:#3157ff;border-radius:50%;animation:aiSpin .8s linear infinite}@keyframes aiSpin{to{transform:rotate(360deg)}}
+    .ai-modal-overlay{position:fixed;inset:0;z-index:2100;display:none;align-items:center;justify-content:center;padding:22px;background:rgba(15,23,42,.64);backdrop-filter:blur(5px)}
+    .ai-modal-overlay.show{display:flex}
+    .ai-modal-card{width:min(620px,100%);max-height:calc(100vh - 44px);overflow:auto;border:3px solid #111827;background:#fff;box-shadow:12px 12px 0 #3157ff}
+    .ai-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px;border-bottom:2px solid #111827;background:#f7f4ed}.ai-modal-head small{display:block;color:#3157ff;font-size:11px;font-weight:1000;letter-spacing:.12em}.ai-modal-head h3{margin:4px 0 0;font-size:22px}.ai-modal-close{width:38px;height:38px;border:2px solid #111827;background:#fff;font-size:23px;font-weight:1000}
+    .ai-modal-body{padding:18px}.ai-modal-product{display:grid;grid-template-columns:52px 1fr;gap:12px;align-items:center;margin-bottom:15px}.ai-modal-product .ai-grade{width:48px;height:48px}.ai-modal-product strong{display:block;font-size:17px}.ai-modal-product small{display:block;margin-top:4px;color:#64748b;font-weight:850}
+    .ai-reason-box{border:2px solid #111827;background:#f8fafc;padding:14px;line-height:1.75;font-size:13px;font-weight:850;color:#334155}.ai-reason-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}.ai-reason-metric{border:1px solid #cbd5e1;padding:10px;background:#fff}.ai-reason-metric span{display:block;font-size:10px;color:#64748b;font-weight:1000}.ai-reason-metric strong{display:block;margin-top:6px;font-size:16px;color:#111827}
+    .ai-order-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.ai-order-field label{margin:0 0 6px;font-size:12px!important;font-weight:1000}.ai-order-field input,.ai-order-field select{height:42px;min-height:42px;border:2px solid #111827;border-radius:0;font-weight:900}.ai-order-total{grid-column:1/-1;border:2px solid #111827;background:#c7ff3d;padding:13px;display:flex;align-items:center;justify-content:space-between;gap:12px}.ai-order-total span{font-weight:900}.ai-order-total strong{font-size:22px}
+    .ai-modal-actions{display:flex;justify-content:flex-end;gap:9px;padding:15px 18px;border-top:2px solid #111827;background:#f7f4ed}
+    .ai-batch-progress{position:fixed;left:50%;bottom:86px;z-index:2300;display:none;transform:translateX(-50%);min-width:320px;border:2px solid #111827;background:#111827;color:#fff;padding:12px 16px;box-shadow:7px 7px 0 #c7ff3d;font-size:13px;font-weight:900}.ai-batch-progress.show{display:block}
+    body.dark-mode .ai-config-card,body.dark-mode .ai-summary-card,body.dark-mode .ai-table-card,body.dark-mode .ai-analysis-table,body.dark-mode .ai-analysis-table td,body.dark-mode .ai-modal-card,body.dark-mode .ai-reason-metric{background:#111827;color:#e5e7eb;border-color:#64748b}
+    body.dark-mode .ai-config-head p,body.dark-mode .ai-summary-card span,body.dark-mode .ai-summary-card small,body.dark-mode .ai-table-meta,body.dark-mode .ai-product-main small,body.dark-mode .ai-stock-days small,body.dark-mode .ai-modal-product small{color:#94a3b8}
+    body.dark-mode .ai-config-field label,body.dark-mode .ai-summary-card strong,body.dark-mode .ai-product-main strong,body.dark-mode .ai-modal-product strong,body.dark-mode .ai-reason-metric strong{color:#f8fafc}
+    body.dark-mode .ai-config-field input,body.dark-mode .ai-config-field select,body.dark-mode .ai-table-toolbar input,body.dark-mode .ai-table-toolbar select,body.dark-mode .ai-order-field input,body.dark-mode .ai-order-field select{background:#0b1220;color:#e5e7eb;border-color:#64748b}
+    body.dark-mode .ai-table-toolbar,body.dark-mode .ai-modal-head,body.dark-mode .ai-modal-actions{background:#1e293b;border-color:#64748b}
+    body.dark-mode .ai-table-meta{background:#0f172a;border-color:#334155}
+    body.dark-mode .ai-analysis-table td{border-color:#334155}.dark-mode .ai-analysis-table tr:hover td{background:#172554!important}.dark-mode .ai-analysis-table tr.ai-row-urgent td{background:#291313}
+    body.dark-mode .ai-reason-box{background:#0f172a;color:#cbd5e1;border-color:#64748b}
+    body.dark-mode .ai-square-btn,body.dark-mode .ai-reason-btn,body.dark-mode .ai-modal-close{background:#1e293b;color:#f8fafc;border-color:#94a3b8;box-shadow:3px 3px 0 #94a3b8}
+    @media(max-width:1320px){.ai-config-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.ai-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.ai-table-toolbar{grid-template-columns:minmax(220px,1fr) auto auto}.ai-table-toolbar .ai-bulk-action{grid-column:span 1}}
+    @media(max-width:900px){.ai-hero{grid-template-columns:1fr}.ai-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ai-table-toolbar{grid-template-columns:1fr 1fr}.ai-table-toolbar input{grid-column:1/-1}.ai-config-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ai-config-actions{grid-column:1/-1;justify-content:stretch}.ai-config-actions button{flex:1}.ai-last-update{margin-left:0;width:100%}}
+    @media(max-width:560px){.ai-config-grid,.ai-summary-grid,.ai-order-grid{grid-template-columns:1fr}.ai-table-toolbar{grid-template-columns:1fr}.ai-order-total{grid-column:auto}.ai-hero{padding:18px;box-shadow:5px 5px 0 #c7ff3d}.ai-hero-status{grid-template-columns:1fr 1fr}.ai-reason-grid{grid-template-columns:1fr}.ai-modal-actions .ai-square-btn{flex:1}}
+
+</style>
 </head>
 <body class="auth-checking">
 
@@ -2963,6 +3053,7 @@
       <button class="tab-btn active" data-tab="dashboard"><span class="tab-icon">📊</span>總覽</button>
       <button class="tab-btn" data-tab="ship"><span class="tab-icon">📦</span>商品出貨</button>
       <button class="tab-btn" data-tab="stock"><span class="tab-icon">📋</span>庫存資料</button>
+      <button class="tab-btn" data-tab="aiReorder"><span class="tab-icon">🧠</span>AI 智慧補貨</button>
       <button class="tab-btn" data-tab="purchase"><span class="tab-icon">🚚</span>進貨 / 到貨</button>
       <button class="tab-btn" data-tab="arrivalUpdate"><span class="tab-icon">🔄</span>到貨更新</button>
       <button class="tab-btn" data-tab="records"><span class="tab-icon">🧾</span>出貨紀錄</button>
@@ -3089,6 +3180,74 @@
         </article>
       </div>
     </section>
+
+<section class="tab" id="aiReorder">
+      <div class="ai-reorder-page">
+        <section class="ai-hero">
+          <div class="ai-hero-copy">
+            <div class="ai-eyebrow"><span class="ai-live-dot"></span> SMART REPLENISHMENT ENGINE</div>
+            <h2>AI 智慧補貨決策</h2>
+            <p>自動分析近 7／30／90 日出貨速度、退貨抵扣、銷售趨勢、現貨、進貨中數量與同品項顏色占比，產生可解釋的熱銷分級與建議進貨量。</p>
+          </div>
+          <div class="ai-hero-status">
+            <div class="ai-hero-stat"><span>資料範圍</span><strong id="aiHeroRange">最近 90 天</strong></div>
+            <div class="ai-hero-stat"><span>分析筆數</span><strong id="aiHeroLogCount">--</strong></div>
+            <div class="ai-hero-stat"><span>AI 狀態</span><strong class="accent" id="aiHeroStatus">等待分析</strong></div>
+            <div class="ai-hero-stat"><span>最後更新</span><strong id="aiHeroUpdated">--:--</strong></div>
+          </div>
+        </section>
+
+        <section class="ai-config-card">
+          <div class="ai-config-head">
+            <div><h3>補貨參數</h3><p>參數只保存在這台電腦，不會修改 Supabase 資料表。</p></div>
+            <span class="ai-confidence low" id="aiConfigHint">自動模式</span>
+          </div>
+          <div class="ai-config-grid">
+            <div class="ai-config-field"><label for="aiLeadDays">平均到貨天數</label><input id="aiLeadDays" type="number" min="1" max="120" step="1" value="14"></div>
+            <div class="ai-config-field"><label for="aiSafetyDays">安全庫存天數</label><input id="aiSafetyDays" type="number" min="0" max="90" step="1" value="7"></div>
+            <div class="ai-config-field"><label for="aiDemandMultiplier">需求倍率</label><select id="aiDemandMultiplier"><option value="0.8">保守 80%</option><option value="1" selected>標準 100%</option><option value="1.2">積極 120%</option><option value="1.5">旺季 150%</option></select></div>
+            <div class="ai-config-field"><label for="aiMinQty">最低建議量</label><input id="aiMinQty" type="number" min="1" max="999" step="1" value="3"></div>
+            <div class="ai-config-field"><label for="aiMaxQty">單色最高量</label><input id="aiMaxQty" type="number" min="1" max="9999" step="1" value="100"></div>
+            <div class="ai-config-field"><label for="aiBudget">本次進貨預算</label><input id="aiBudget" type="number" min="0" step="100" value="0" placeholder="0 = 不限制"></div>
+            <div class="ai-config-actions" style="grid-column:1/-1">
+              <button class="ai-square-btn" id="btnAiSaveConfig" type="button">儲存參數</button>
+              <button class="ai-square-btn primary" id="btnAiAnalyze" type="button">重新分析</button>
+              <button class="ai-square-btn lime" id="btnAiExport" type="button">匯出建議 CSV</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="ai-summary-grid" id="aiSummaryGrid">
+          <div class="ai-summary-card hot"><span>S／A 熱銷 SKU</span><strong id="aiSummaryHot">0</strong><small>近期銷售速度較高</small></div>
+          <div class="ai-summary-card"><span>建議補貨 SKU</span><strong id="aiSummarySku">0</strong><small>扣除現貨與進貨中</small></div>
+          <div class="ai-summary-card safe"><span>建議總數量</span><strong id="aiSummaryQty">0</strong><small>依安全庫存計算</small></div>
+          <div class="ai-summary-card money"><span>預估進貨成本</span><strong id="aiSummaryCost">$0</strong><small>受預算上限控制</small></div>
+          <div class="ai-summary-card data"><span>可能缺貨 SKU</span><strong id="aiSummaryRisk">0</strong><small>現貨可售天數低於到貨天數</small></div>
+        </section>
+
+        <section class="ai-table-card">
+          <div class="ai-table-toolbar">
+            <input id="aiSearch" placeholder="搜尋品項、顏色、編號">
+            <select id="aiGradeFilter"><option value="all">全部熱度</option><option value="S">S 爆款</option><option value="A">A 熱銷</option><option value="B">B 正常</option><option value="C">C 慢銷</option><option value="D">D 滯銷</option></select>
+            <select id="aiSuggestionFilter"><option value="suggested">只看建議補貨</option><option value="risk">只看缺貨風險</option><option value="all">顯示全部</option></select>
+            <button class="ai-square-btn" id="btnAiSelectAll" type="button">全選建議</button>
+            <button class="ai-square-btn primary ai-bulk-action" id="btnAiBulkOrder" type="button">建立選取進貨</button>
+          </div>
+          <div class="ai-table-meta">
+            <span>熱度依近期速度與同品項排名判斷</span>
+            <span>｜</span>
+            <span>退貨會抵扣，核銷不計入銷量</span>
+            <span class="ai-last-update" id="aiTableMeta">尚未分析</span>
+          </div>
+          <div id="aiAnalysisTable" class="ai-analysis-table">
+            <div class="ai-empty"><strong>登入後會自動分析</strong>也可以按「重新分析」立即讀取最近 90 天完整出貨紀錄。</div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+
+    
 
     <section class="tab" id="purchase">
       <div class="grid">
@@ -6429,6 +6588,470 @@ function bindEvents(){
   if($('btnClearAll'))$('btnClearAll').onclick=confirmClearAllWithPassword;
 }
 bindEvents();initTheme();initUiFontSize();if($('orderDate'))$('orderDate').value=todayInputDate();initAuth();
+</script>
+<script>
+(function(){
+'use strict';
+const AI_CONFIG_KEY='kashiyang_ai_reorder_config_v1';
+const AI_CACHE_MS=5*60*1000;
+const AI_LOOKBACK_DAYS=90;
+const AI_PAGE_SIZE=1000;
+const AI_MAX_LOGS=50000;
+const aiState={
+  rawLogs:[],rows:[],lastLoaded:0,lastAnalyzed:0,loading:false,loadPromise:null,error:'',selected:new Set(),userId:'',
+  config:{leadDays:14,safetyDays:7,demandMultiplier:1,minQty:3,maxQty:100,budget:0},
+  filters:{search:'',grade:'all',suggestion:'suggested'},activeOrderCode:''
+};
+function aiEl(id){return document.getElementById(id)}
+function aiClamp(v,min,max){return Math.min(Math.max(Number(v)||0,min),max)}
+function aiRound(v,d=2){const m=10**d;return Math.round((Number(v)||0)*m)/m}
+function aiLoadConfig(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(AI_CONFIG_KEY)||'{}');
+    aiState.config={
+      leadDays:aiClamp(saved.leadDays??14,1,120),
+      safetyDays:aiClamp(saved.safetyDays??7,0,90),
+      demandMultiplier:aiClamp(saved.demandMultiplier??1,.1,5),
+      minQty:aiClamp(saved.minQty??3,1,999),
+      maxQty:aiClamp(saved.maxQty??100,1,9999),
+      budget:Math.max(0,Number(saved.budget)||0)
+    };
+  }catch(e){}
+  aiSyncConfigToInputs();
+}
+function aiReadConfigFromInputs(){
+  aiState.config={
+    leadDays:aiClamp(aiEl('aiLeadDays')?.value,1,120),
+    safetyDays:aiClamp(aiEl('aiSafetyDays')?.value,0,90),
+    demandMultiplier:aiClamp(aiEl('aiDemandMultiplier')?.value,.1,5),
+    minQty:aiClamp(aiEl('aiMinQty')?.value,1,999),
+    maxQty:aiClamp(aiEl('aiMaxQty')?.value,1,9999),
+    budget:Math.max(0,Number(aiEl('aiBudget')?.value)||0)
+  };
+  return aiState.config;
+}
+function aiSyncConfigToInputs(){
+  const c=aiState.config;
+  if(aiEl('aiLeadDays'))aiEl('aiLeadDays').value=c.leadDays;
+  if(aiEl('aiSafetyDays'))aiEl('aiSafetyDays').value=c.safetyDays;
+  if(aiEl('aiDemandMultiplier'))aiEl('aiDemandMultiplier').value=String(c.demandMultiplier);
+  if(aiEl('aiMinQty'))aiEl('aiMinQty').value=c.minQty;
+  if(aiEl('aiMaxQty'))aiEl('aiMaxQty').value=c.maxQty;
+  if(aiEl('aiBudget'))aiEl('aiBudget').value=c.budget||0;
+}
+function aiSaveConfig(showToast=true){
+  aiReadConfigFromInputs();
+  localStorage.setItem(AI_CONFIG_KEY,JSON.stringify(aiState.config));
+  aiComputeAnalysis();
+  renderAiReorder();
+  if(showToast&&typeof showMiniToast==='function')showMiniToast('AI 補貨參數已儲存');
+}
+function aiParseDate(value){
+  if(!value)return null;
+  if(value instanceof Date)return Number.isNaN(value.getTime())?null:value;
+  let raw=String(value).trim();
+  let d=new Date(raw);
+  if(!Number.isNaN(d.getTime()))return d;
+  raw=raw.replaceAll('/','-').replace(' 上午 ',' ').replace(' 下午 ',' ');
+  d=new Date(raw);
+  return Number.isNaN(d.getTime())?null:d;
+}
+function aiNetUnit(action){
+  if(action==='出貨')return 1;
+  if(action==='退貨')return -1;
+  return 0;
+}
+function aiFallbackLogs(){
+  return (state.sales||[]).map(r=>({code:normalizeCode(r.code),action:r.action||'',created_at:aiParseDate(r.time)?.toISOString()||''})).filter(r=>r.code&&r.created_at);
+}
+async function aiFetchSalesLogs(force=false){
+  if(!currentUser)throw new Error('請先登入帳號');
+  const activeUserId=String(currentUser.id||currentUser.email||'');
+  if(aiState.userId&&aiState.userId!==activeUserId){aiState.rawLogs=[];aiState.rows=[];aiState.lastLoaded=0;aiState.lastAnalyzed=0;aiState.selected.clear()}
+  aiState.userId=activeUserId;
+  if(aiState.loading&&aiState.loadPromise)return aiState.loadPromise;
+  if(!force&&aiState.lastLoaded&&Date.now()-aiState.lastLoaded<AI_CACHE_MS)return aiState.rawLogs;
+  aiState.loading=true;
+  aiState.error='';
+  aiRenderLoading('正在讀取最近 90 天完整出貨紀錄…');
+  const promise=(async()=>{
+    try{
+      const since=new Date(Date.now()-AI_LOOKBACK_DAYS*86400000).toISOString();
+      let rows=[];
+      let from=0;
+      while(rows.length<AI_MAX_LOGS){
+        const to=from+AI_PAGE_SIZE-1;
+        const {data,error}=await db.from('sales_logs').select('code,action,created_at').gte('created_at',since).order('created_at',{ascending:true}).range(from,to);
+        dbError(error);
+        const page=data||[];
+        rows=rows.concat(page);
+        if(page.length<AI_PAGE_SIZE)break;
+        from+=AI_PAGE_SIZE;
+      }
+      aiState.rawLogs=rows.slice(0,AI_MAX_LOGS);
+      aiState.lastLoaded=Date.now();
+      return aiState.rawLogs;
+    }catch(err){
+      const fallback=aiFallbackLogs();
+      if(fallback.length){
+        aiState.rawLogs=fallback;
+        aiState.lastLoaded=Date.now();
+        aiState.error='完整紀錄讀取失敗，目前改用畫面內的最近紀錄分析：'+(err.message||err);
+        return fallback;
+      }
+      throw err;
+    }finally{
+      aiState.loading=false;
+      aiState.loadPromise=null;
+    }
+  })();
+  aiState.loadPromise=promise;
+  return promise;
+}
+function aiWindowNet(logs,startMs,endMs){
+  let total=0;
+  for(const row of logs){
+    const t=aiParseDate(row.created_at||row.time)?.getTime();
+    if(!t||t<startMs||t>=endMs)continue;
+    total+=aiNetUnit(row.action);
+  }
+  return Math.max(0,total);
+}
+function aiHistoryDays(logs,nowMs){
+  let first=Infinity;
+  logs.forEach(r=>{const t=aiParseDate(r.created_at||r.time)?.getTime();if(t&&t<first)first=t});
+  if(!Number.isFinite(first))return AI_LOOKBACK_DAYS;
+  return Math.max(1,Math.min(AI_LOOKBACK_DAYS,Math.ceil((nowMs-first)/86400000)+1));
+}
+function aiConfidence(total90,historyDays){
+  if(total90>=20&&historyDays>=45)return {key:'high',label:'高信心',factor:1};
+  if(total90>=7&&historyDays>=21)return {key:'medium',label:'中信心',factor:.88};
+  return {key:'low',label:'低信心',factor:.68};
+}
+function aiPercentile(sorted,value){
+  if(!sorted.length||value<=0)return 0;
+  let count=0;for(const n of sorted)if(n<=value)count++;
+  return count/sorted.length;
+}
+function aiGradeFor(row,velocityValues){
+  const pct=aiPercentile(velocityValues,row.velocity);
+  if(row.s30<=0&&row.s90<2)return 'D';
+  if((pct>=.9&&row.s30>=4)||row.velocity>=1.4)return 'S';
+  if((pct>=.65&&row.s30>=2)||row.velocity>=.65)return 'A';
+  if((pct>=.32&&row.s30>=1)||row.velocity>=.22)return 'B';
+  if(row.s90>0)return 'C';
+  return 'D';
+}
+function aiGradeRank(grade){return ({S:5,A:4,B:3,C:2,D:1})[grade]||0}
+function aiSuggestedBatchIndex(p){
+  const batches=p?.batches||[];
+  let idx=batches.findIndex(b=>toNum(b.ordered)===0&&toNum(b.arrived)===0);
+  if(idx>=0)return idx;
+  idx=batches.findIndex(b=>toNum(b.ordered)<=toNum(b.arrived));
+  if(idx>=0)return idx;
+  let best=0,min=Infinity;
+  batches.forEach((b,i)=>{const remain=Math.max(toNum(b.ordered)-toNum(b.arrived),0);if(remain<min){min=remain;best=i}});
+  return best;
+}
+function aiComputeAnalysis(){
+  const cfg=aiReadConfigFromInputs();
+  const now=Date.now();
+  const logsByCode={};
+  (aiState.rawLogs||[]).forEach(r=>{const code=normalizeCode(r.code);if(!code)return;(logsByCode[code]||(logsByCode[code]=[])).push(r)});
+  let base=(state.products||[]).filter(p=>!p.isSoldOut).map(p=>{
+    const logs=logsByCode[normalizeCode(p.code)]||[];
+    const hist=aiHistoryDays(logs,now);
+    const d7=Math.min(7,hist),d30=Math.min(30,hist),d90=Math.min(90,hist);
+    const s7=aiWindowNet(logs,now-7*86400000,now+1);
+    const prev7=aiWindowNet(logs,now-14*86400000,now-7*86400000);
+    const s30=aiWindowNet(logs,now-30*86400000,now+1);
+    const s90=aiWindowNet(logs,now-90*86400000,now+1);
+    const v7=s7/Math.max(d7,1),v30=s30/Math.max(d30,1),v90=s90/Math.max(d90,1);
+    const confidence=aiConfidence(s90,hist);
+    const velocity=(v7*.55+v30*.30+v90*.15)*cfg.demandMultiplier*confidence.factor;
+    const trend=prev7<=0?(s7>0?100:0):((s7-prev7)/prev7*100);
+    const current=toNum(p.currentStock),pending=pendingQty(p),available=current+pending;
+    const stockDays=velocity>0?current/velocity:Infinity;
+    const leadDays=cfg.leadDays+(isLongStockItem(p.itemName)?7:0);
+    const safetyDays=cfg.safetyDays+(isNextDayItem(p.itemName)?5:0);
+    return {p,code:p.code,itemName:p.itemName,color:p.color,cost:toNum(p.cost),current,pending,available,s7,prev7,s30,s90,v7,v30,v90,velocity,trend,historyDays:hist,confidence,stockDays,leadDays,safetyDays,coverDays:leadDays+safetyDays,target:0,rawSuggestion:0,suggestion:0,budgetLimited:false,grade:'D',reason:''};
+  });
+  const velocities=base.map(x=>x.velocity).filter(v=>v>0).sort((a,b)=>a-b);
+  base.forEach(r=>r.grade=aiGradeFor(r,velocities));
+
+  const families={};
+  base.forEach(r=>(families[r.itemName]||(families[r.itemName]=[])).push(r));
+  Object.values(families).forEach(rows=>{
+    const familyVelocity=rows.reduce((s,r)=>s+r.velocity,0);
+    const n=Math.max(rows.length,1);
+    rows.forEach(r=>{
+      const rawShare=familyVelocity>0?r.velocity/familyVelocity:1/n;
+      const share=rawShare*.82+(1/n)*.18;
+      r.colorShare=share;
+      r.target=familyVelocity*share*r.coverDays;
+      let shortage=Math.ceil(Math.max(0,r.target-r.available));
+      if(shortage>0&&shortage<aiState.config.minQty)shortage=aiState.config.minQty;
+      shortage=Math.min(shortage,aiState.config.maxQty);
+      if(familyVelocity<=0)shortage=0;
+      r.rawSuggestion=shortage;
+      r.suggestion=shortage;
+    });
+  });
+
+  const priority=base.slice().sort((a,b)=>{
+    const riskA=a.stockDays<a.leadDays?1:0,riskB=b.stockDays<b.leadDays?1:0;
+    return riskB-riskA||aiGradeRank(b.grade)-aiGradeRank(a.grade)||b.velocity-a.velocity||a.stockDays-b.stockDays;
+  });
+  let budgetLeft=cfg.budget>0?cfg.budget:Infinity;
+  priority.forEach(r=>{
+    if(r.suggestion<=0)return;
+    const unitCost=Math.max(r.cost,0);
+    if(Number.isFinite(budgetLeft)&&unitCost>0){
+      const affordable=Math.floor(budgetLeft/unitCost);
+      const finalQty=Math.max(0,Math.min(r.suggestion,affordable));
+      if(finalQty<r.suggestion)r.budgetLimited=true;
+      r.suggestion=finalQty>=cfg.minQty?finalQty:0;
+      budgetLeft-=r.suggestion*unitCost;
+    }
+  });
+
+  base.forEach(r=>{
+    const trendText=r.trend>=15?`較前一週增加 ${Math.round(r.trend)}%`:r.trend<=-15?`較前一週下降 ${Math.abs(Math.round(r.trend))}%`:'與前一週接近';
+    const daysText=Number.isFinite(r.stockDays)?`${aiRound(r.stockDays,1)} 天`:'無法估算';
+    r.reason=`近 7 日淨售出 ${r.s7} 件，近 30 日 ${r.s30} 件，${trendText}。加權日銷量約 ${aiRound(r.velocity,2)} 件；目前現貨 ${r.current} 件、進貨中 ${r.pending} 件，現貨約可售 ${daysText}。依到貨 ${r.leadDays} 天與安全庫存 ${r.safetyDays} 天計算，建議補貨 ${r.suggestion} 件${r.budgetLimited?'（已受預算限制）':''}。`;
+    r.risk=Number.isFinite(r.stockDays)&&r.stockDays<r.leadDays;
+    r.urgent=isNextDayItem(r.itemName)&&r.current<=0||r.stockDays<Math.max(3,r.leadDays*.45);
+  });
+  aiState.rows=base.sort((a,b)=>b.suggestion-a.suggestion||aiGradeRank(b.grade)-aiGradeRank(a.grade)||a.stockDays-b.stockDays||String(a.code).localeCompare(String(b.code),'en',{numeric:true}));
+  aiState.lastAnalyzed=Date.now();
+  [...aiState.selected].forEach(code=>{const row=aiState.rows.find(r=>normalizeCode(r.code)===normalizeCode(code));if(!row||row.suggestion<=0)aiState.selected.delete(code)});
+  return aiState.rows;
+}
+function aiFilteredRows(){
+  const q=String(aiState.filters.search||'').trim().toUpperCase();
+  return (aiState.rows||[]).filter(r=>{
+    if(q&&!`${r.itemName} ${r.color} ${r.code}`.toUpperCase().includes(q))return false;
+    if(aiState.filters.grade!=='all'&&r.grade!==aiState.filters.grade)return false;
+    if(aiState.filters.suggestion==='suggested'&&r.suggestion<=0)return false;
+    if(aiState.filters.suggestion==='risk'&&!r.risk)return false;
+    return true;
+  });
+}
+function aiTrendHtml(r){
+  const cls=r.trend>10?'up':r.trend<-10?'down':'flat';
+  const icon=cls==='up'?'↑':cls==='down'?'↓':'→';
+  const text=r.prev7<=0&&r.s7>0?'新成長':`${r.trend>=0?'+':''}${Math.round(r.trend)}%`;
+  return `<span class="ai-trend ${cls}">${icon} ${esc(text)}</span>`;
+}
+function aiStockDaysHtml(r){
+  const days=Number.isFinite(r.stockDays)?aiRound(r.stockDays,1):'∞';
+  const cls=r.risk?'danger':r.stockDays<r.leadDays+r.safetyDays?'warning':'safe';
+  return `<div class="ai-stock-days ${cls}"><strong>${days} 天</strong><small>到貨需 ${r.leadDays} 天</small></div>`;
+}
+function aiRenderLoading(text){
+  const target=aiEl('aiAnalysisTable');if(!target)return;
+  target.innerHTML=`<div class="ai-loading"><div><div class="ai-spinner"></div><strong>AI 正在分析</strong><p>${esc(text||'整理銷售與庫存資料中…')}</p></div></div>`;
+  if(aiEl('aiHeroStatus'))aiEl('aiHeroStatus').textContent='分析中';
+}
+function aiUpdateSummary(){
+  const rows=aiState.rows||[];
+  const suggested=rows.filter(r=>r.suggestion>0);
+  const set=(id,val)=>{const e=aiEl(id);if(e)e.textContent=val};
+  set('aiSummaryHot',rows.filter(r=>r.grade==='S'||r.grade==='A').length);
+  set('aiSummarySku',suggested.length);
+  set('aiSummaryQty',suggested.reduce((s,r)=>s+r.suggestion,0));
+  set('aiSummaryCost','$'+money(suggested.reduce((s,r)=>s+r.suggestion*r.cost,0)));
+  set('aiSummaryRisk',rows.filter(r=>r.risk).length);
+  set('aiHeroLogCount',String(aiState.rawLogs.length));
+  set('aiHeroStatus',aiState.error?'備援分析':'分析完成');
+  const time=aiState.lastAnalyzed?new Date(aiState.lastAnalyzed).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false}):'--:--';
+  set('aiHeroUpdated',time);
+  const meta=aiEl('aiTableMeta');if(meta)meta.textContent=(aiState.error?aiState.error+'｜':'')+`共分析 ${rows.length} 個 SKU｜${time} 更新`;
+}
+function aiRenderTable(){
+  const el=aiEl('aiAnalysisTable');if(!el)return;
+  const rows=aiFilteredRows();
+  if(!aiState.rows.length){
+    el.innerHTML='<div class="ai-empty"><strong>目前沒有可分析的商品</strong>請先建立商品資料，或重新讀取資料。</div>';return;
+  }
+  if(!rows.length){
+    el.innerHTML='<div class="ai-empty"><strong>沒有符合篩選條件的商品</strong>請調整搜尋、熱度或建議篩選。</div>';return;
+  }
+  el.innerHTML=`<table><thead><tr><th><input class="ai-check" id="aiHeaderCheck" type="checkbox" aria-label="選取全部"></th><th>AI 熱度</th><th>商品</th><th>近 7 日</th><th>近 30 日</th><th>趨勢</th><th>日銷預估</th><th>現貨</th><th>進貨中</th><th>可售天數</th><th>建議進貨</th><th>預估成本</th><th>信心</th><th>判斷</th><th>操作</th></tr></thead><tbody>${rows.map(r=>{
+    const checked=aiState.selected.has(normalizeCode(r.code));
+    const suggestClass=r.suggestion>0?'':'none';
+    return `<tr class="${r.urgent?'ai-row-urgent':''} ${checked?'ai-row-selected':''}" data-ai-row="${esc(r.code)}"><td><input class="ai-check" data-ai-check="${esc(r.code)}" type="checkbox" ${checked?'checked':''} ${r.suggestion<=0?'disabled':''}></td><td><span class="ai-grade ai-grade-${r.grade}" title="${r.grade==='S'?'爆款':r.grade==='A'?'熱銷':r.grade==='B'?'正常':r.grade==='C'?'慢銷':'滯銷'}">${r.grade}</span></td><td><div class="ai-product-main"><strong>${esc(r.itemName)} · ${esc(r.color)}</strong><small>${esc(r.code)}｜顏色需求占比 ${Math.round((r.colorShare||0)*100)}%</small></div></td><td><strong>${r.s7}</strong></td><td>${r.s30}</td><td>${aiTrendHtml(r)}</td><td><strong>${aiRound(r.velocity,2)}</strong> / 日</td><td><strong>${r.current}</strong></td><td>${r.pending}</td><td>${aiStockDaysHtml(r)}</td><td><div class="ai-suggestion ${suggestClass}"><strong>${r.suggestion}</strong>${r.budgetLimited?'<span title="受預算限制">$</span>':''}</div></td><td>$${money(r.suggestion*r.cost)}</td><td><span class="ai-confidence ${r.confidence.key}">${r.confidence.label}</span></td><td><button class="ai-reason-btn" data-ai-reason="${esc(r.code)}" type="button">查看原因</button></td><td><button class="ai-order-btn" data-ai-order="${esc(r.code)}" type="button" ${r.suggestion<=0?'disabled':''}>建立進貨</button></td></tr>`;
+  }).join('')}</tbody></table>`;
+  const header=aiEl('aiHeaderCheck');
+  if(header){
+    const selectable=rows.filter(r=>r.suggestion>0);
+    header.checked=selectable.length>0&&selectable.every(r=>aiState.selected.has(normalizeCode(r.code)));
+    header.indeterminate=!header.checked&&selectable.some(r=>aiState.selected.has(normalizeCode(r.code)));
+    header.onchange=()=>{selectable.forEach(r=>header.checked?aiState.selected.add(normalizeCode(r.code)):aiState.selected.delete(normalizeCode(r.code)));aiRenderTable()};
+  }
+  el.querySelectorAll('[data-ai-check]').forEach(input=>input.onchange=()=>{const code=normalizeCode(input.dataset.aiCheck);input.checked?aiState.selected.add(code):aiState.selected.delete(code);aiRenderTable()});
+  el.querySelectorAll('[data-ai-reason]').forEach(btn=>btn.onclick=()=>aiOpenReason(btn.dataset.aiReason));
+  el.querySelectorAll('[data-ai-order]').forEach(btn=>btn.onclick=()=>aiOpenOrder(btn.dataset.aiOrder));
+}
+function renderAiReorder(){
+  if(!aiEl('aiReorder'))return;
+  if(aiState.loading){aiRenderLoading();return}
+  if(!aiState.rawLogs.length&&!aiState.lastLoaded){
+    aiUpdateSummary();
+    const target=aiEl('aiAnalysisTable');if(target)target.innerHTML='<div class="ai-empty"><strong>登入後會自動分析</strong>按「重新分析」可立即讀取最近 90 天完整出貨紀錄。</div>';
+    return;
+  }
+  aiComputeAnalysis();
+  aiUpdateSummary();
+  aiRenderTable();
+}
+async function aiAnalyze(force=true){
+  if(!currentUser){await appAlert('請先登入後再使用 AI 智慧補貨。','尚未登入');return}
+  try{
+    await aiFetchSalesLogs(force);
+    aiComputeAnalysis();
+    renderAiReorder();
+    if(typeof flowRefresh==='function')setTimeout(flowRefresh,0);
+  }catch(err){
+    aiState.error=err.message||String(err);
+    const target=aiEl('aiAnalysisTable');if(target)target.innerHTML=`<div class="ai-empty"><strong>分析失敗</strong>${esc(aiState.error)}</div>`;
+    if(aiEl('aiHeroStatus'))aiEl('aiHeroStatus').textContent='分析失敗';
+    await appAlert('AI 補貨分析失敗：'+aiState.error,'分析失敗',{danger:true});
+  }
+}
+let aiAutoTimer=null;
+function aiScheduleAutoAnalyze(delay=1000){
+  clearTimeout(aiAutoTimer);
+  if(!currentUser||!(state.products||[]).length||aiState.loading)return;
+  if(aiState.lastLoaded&&Date.now()-aiState.lastLoaded<AI_CACHE_MS){aiComputeAnalysis();if(activeTabId()==='aiReorder')renderAiReorder();return}
+  aiAutoTimer=setTimeout(()=>aiAnalyze(false),delay);
+}
+function aiRowByCode(code){return aiState.rows.find(r=>normalizeCode(r.code)===normalizeCode(code))}
+function aiEnsureModals(){
+  if(aiEl('aiReasonModal'))return;
+  const reason=document.createElement('div');reason.id='aiReasonModal';reason.className='ai-modal-overlay';reason.innerHTML=`<div class="ai-modal-card"><div class="ai-modal-head"><div><small>EXPLAINABLE AI</small><h3>AI 判斷原因</h3></div><button class="ai-modal-close" data-ai-modal-close type="button">×</button></div><div class="ai-modal-body" id="aiReasonBody"></div><div class="ai-modal-actions"><button class="ai-square-btn" data-ai-modal-close type="button">關閉</button><button class="ai-square-btn primary" id="aiReasonOrder" type="button">依建議建立進貨</button></div></div>`;document.body.appendChild(reason);
+  const order=document.createElement('div');order.id='aiOrderModal';order.className='ai-modal-overlay';order.innerHTML=`<div class="ai-modal-card"><div class="ai-modal-head"><div><small>CREATE PURCHASE</small><h3>建立 AI 建議進貨</h3></div><button class="ai-modal-close" data-ai-modal-close type="button">×</button></div><div class="ai-modal-body"><div class="ai-modal-product" id="aiOrderProduct"></div><div class="ai-order-grid"><div class="ai-order-field"><label for="aiOrderQty">進貨數量</label><input id="aiOrderQty" type="number" min="1" step="1"></div><div class="ai-order-field"><label for="aiOrderBatch">進貨批次</label><select id="aiOrderBatch">${batchNames.map((b,i)=>`<option value="${i}">${b}</option>`).join('')}</select></div><div class="ai-order-field"><label for="aiOrderDate">進貨日期</label><input id="aiOrderDate" type="date"></div><div class="ai-order-field"><label>目前庫存</label><input id="aiOrderStock" readonly></div><div class="ai-order-total"><span>預估進貨成本</span><strong id="aiOrderCost">$0</strong></div></div></div><div class="ai-modal-actions"><button class="ai-square-btn" data-ai-modal-close type="button">取消</button><button class="ai-square-btn lime" id="btnAiConfirmOrder" type="button">確認建立進貨</button></div></div>`;document.body.appendChild(order);
+  const progress=document.createElement('div');progress.id='aiBatchProgress';progress.className='ai-batch-progress';document.body.appendChild(progress);
+  document.querySelectorAll('[data-ai-modal-close]').forEach(b=>b.onclick=()=>b.closest('.ai-modal-overlay')?.classList.remove('show'));
+  [reason,order].forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('show')}));
+  aiEl('aiReasonOrder').onclick=()=>{const code=aiState.activeOrderCode;reason.classList.remove('show');aiOpenOrder(code)};
+  aiEl('aiOrderQty').oninput=aiUpdateOrderCost;
+  aiEl('btnAiConfirmOrder').onclick=aiSubmitOrder;
+}
+function aiOpenReason(code){
+  aiEnsureModals();const r=aiRowByCode(code);if(!r)return;
+  aiState.activeOrderCode=normalizeCode(code);
+  aiEl('aiReasonBody').innerHTML=`<div class="ai-modal-product"><span class="ai-grade ai-grade-${r.grade}">${r.grade}</span><div><strong>${esc(r.itemName)} · ${esc(r.color)}</strong><small>${esc(r.code)}｜${r.confidence.label}</small></div></div><div class="ai-reason-box">${esc(r.reason)}</div><div class="ai-reason-grid"><div class="ai-reason-metric"><span>近 7 日淨銷量</span><strong>${r.s7}</strong></div><div class="ai-reason-metric"><span>近 30 日淨銷量</span><strong>${r.s30}</strong></div><div class="ai-reason-metric"><span>近 90 日淨銷量</span><strong>${r.s90}</strong></div><div class="ai-reason-metric"><span>加權日銷量</span><strong>${aiRound(r.velocity,2)}</strong></div><div class="ai-reason-metric"><span>目標庫存</span><strong>${Math.ceil(r.target)}</strong></div><div class="ai-reason-metric"><span>建議進貨</span><strong>${r.suggestion}</strong></div></div>`;
+  aiEl('aiReasonOrder').disabled=r.suggestion<=0;
+  aiEl('aiReasonModal').classList.add('show');
+}
+function aiOpenOrder(code){
+  aiEnsureModals();const r=aiRowByCode(code),p=findProduct(code);if(!r||!p)return;
+  aiState.activeOrderCode=normalizeCode(code);
+  aiEl('aiOrderProduct').innerHTML=`<span class="ai-grade ai-grade-${r.grade}">${r.grade}</span><div><strong>${esc(r.itemName)} · ${esc(r.color)}</strong><small>${esc(r.code)}｜AI 建議 ${r.suggestion} 件｜進貨中 ${r.pending}</small></div>`;
+  aiEl('aiOrderQty').value=Math.max(r.suggestion,1);
+  aiEl('aiOrderBatch').value=String(aiSuggestedBatchIndex(p));
+  aiEl('aiOrderDate').value=todayInputDate();
+  aiEl('aiOrderStock').value=`現貨 ${r.current}｜進貨中 ${r.pending}`;
+  aiUpdateOrderCost();
+  aiEl('aiOrderModal').classList.add('show');setTimeout(()=>{aiEl('aiOrderQty').focus();aiEl('aiOrderQty').select()},60);
+}
+function aiUpdateOrderCost(){
+  const r=aiRowByCode(aiState.activeOrderCode);const qty=Math.max(0,Math.floor(Number(aiEl('aiOrderQty')?.value)||0));
+  if(aiEl('aiOrderCost'))aiEl('aiOrderCost').textContent='$'+money(qty*toNum(r?.cost));
+}
+async function aiCreatePurchase(code,qty,batchIndex,orderDate){
+  const p=findProduct(code);if(!p)throw new Error('找不到商品：'+code);
+  blockSoldOutProduct(p,'登記進貨');
+  const finalQty=Math.floor(Number(qty)||0);if(finalQty<=0)throw new Error('進貨數量必須大於 0');
+  const idx=Number(batchIndex);if(idx<0||idx>4)throw new Error('進貨批次錯誤');
+  await addPurchase({code,batchIndex:idx,qty:finalQty,orderDate:orderDate||todayInputDate()});
+  const oldBatch=p.batches[idx]||{ordered:0,arrived:0,orderDate:''};
+  const next=(p.batches&&p.batches.length?p.batches:emptyBatches()).map(b=>({...b}));
+  next[idx]={ordered:toNum(oldBatch.ordered)+finalQty,arrived:toNum(oldBatch.arrived),orderDate:orderDate||todayInputDate()};
+  p.batches=next;
+  return p;
+}
+async function aiSubmitOrder(){
+  const code=aiState.activeOrderCode,qty=Math.floor(Number(aiEl('aiOrderQty')?.value)||0),batch=Number(aiEl('aiOrderBatch')?.value),date=aiEl('aiOrderDate')?.value||todayInputDate();
+  if(qty<=0)return appAlert('進貨數量必須大於 0','數量錯誤',{danger:true});
+  setLoading(true);
+  try{
+    await aiCreatePurchase(code,qty,batch,date);
+    aiEl('aiOrderModal').classList.remove('show');
+    aiComputeAnalysis();renderSummary();renderAiReorder();
+    if(typeof flowRefresh==='function')flowRefresh();
+    showMiniToast(`已建立 ${code} 進貨 ${qty} 件`);
+  }catch(err){await appAlert(friendlyErrorMessage(err),'建立進貨失敗',{danger:true})}
+  finally{setLoading(false)}
+}
+function aiToggleSelectAll(){
+  const rows=aiFilteredRows().filter(r=>r.suggestion>0);
+  const all=rows.length&&rows.every(r=>aiState.selected.has(normalizeCode(r.code)));
+  rows.forEach(r=>all?aiState.selected.delete(normalizeCode(r.code)):aiState.selected.add(normalizeCode(r.code)));
+  aiRenderTable();
+}
+async function aiBulkOrder(){
+  const selected=(aiState.rows||[]).filter(r=>aiState.selected.has(normalizeCode(r.code))&&r.suggestion>0);
+  if(!selected.length)return appAlert('請先勾選要建立進貨的商品。','尚未選取');
+  const totalQty=selected.reduce((s,r)=>s+r.suggestion,0),totalCost=selected.reduce((s,r)=>s+r.suggestion*r.cost,0);
+  const ok=await appConfirm(`準備建立 ${selected.length} 個 SKU 的進貨資料。\n\n總數量：${totalQty} 件\n預估成本：$${money(totalCost)}\n\n系統會自動選擇空白或已完成的進貨批次。`,'建立 AI 批次進貨',{confirmText:'確認建立',cancelText:'取消'});
+  if(!ok)return;
+  if(selected.length>50)return appAlert('一次最多建立 50 個 SKU，請分批處理。','數量過多',{danger:true});
+  aiEnsureModals();const progress=aiEl('aiBatchProgress');progress.classList.add('show');
+  let success=0,failed=[];setLoading(true);
+  try{
+    for(let i=0;i<selected.length;i++){
+      const r=selected[i],p=findProduct(r.code);progress.textContent=`AI 批次進貨 ${i+1}/${selected.length}：${r.code} × ${r.suggestion}`;
+      try{await aiCreatePurchase(r.code,r.suggestion,aiSuggestedBatchIndex(p),todayInputDate());success++}catch(err){failed.push(`${r.code}：${friendlyErrorMessage(err)}`)}
+    }
+    aiState.selected.clear();aiComputeAnalysis();renderSummary();renderAiReorder();if(typeof flowRefresh==='function')flowRefresh();
+    const msg=`已完成 ${success} 個 SKU${failed.length?`，失敗 ${failed.length} 個\n\n${failed.slice(0,8).join('\n')}`:''}`;
+    await appAlert(msg,failed.length?'批次進貨部分完成':'批次進貨完成',{danger:failed.length>0});
+  }finally{setLoading(false);progress.classList.remove('show')}
+}
+function aiExportCsv(){
+  if(!aiState.rows.length)return appAlert('目前沒有可匯出的 AI 分析結果。','沒有資料');
+  const h=['AI熱度','品項','顏色','編號','近7日','近30日','近90日','趨勢%','日銷預估','現貨','進貨中','可售天數','到貨天數','安全庫存天數','建議進貨','預估成本','信心','判斷原因'];
+  const rows=aiState.rows.map(r=>[r.grade,r.itemName,r.color,r.code,r.s7,r.s30,r.s90,Math.round(r.trend),aiRound(r.velocity,2),r.current,r.pending,Number.isFinite(r.stockDays)?aiRound(r.stockDays,1):'',r.leadDays,r.safetyDays,r.suggestion,r.suggestion*r.cost,r.confidence.label,r.reason]);
+  downloadText('\uFEFF'+[h,...rows].map(row=>row.map(csvEscape).join(',')).join('\n'),`AI補貨建議_${dateFileName()}.csv`,'text/csv;charset=utf-8');
+}
+function aiBind(){
+  aiLoadConfig();aiEnsureModals();
+  if(aiEl('btnAiSaveConfig'))aiEl('btnAiSaveConfig').onclick=()=>aiSaveConfig(true);
+  if(aiEl('btnAiAnalyze'))aiEl('btnAiAnalyze').onclick=()=>aiAnalyze(true);
+  if(aiEl('btnAiExport'))aiEl('btnAiExport').onclick=aiExportCsv;
+  if(aiEl('btnAiSelectAll'))aiEl('btnAiSelectAll').onclick=aiToggleSelectAll;
+  if(aiEl('btnAiBulkOrder'))aiEl('btnAiBulkOrder').onclick=aiBulkOrder;
+  if(aiEl('aiSearch'))aiEl('aiSearch').oninput=e=>{aiState.filters.search=e.target.value;aiRenderTable()};
+  if(aiEl('aiGradeFilter'))aiEl('aiGradeFilter').onchange=e=>{aiState.filters.grade=e.target.value;aiRenderTable()};
+  if(aiEl('aiSuggestionFilter'))aiEl('aiSuggestionFilter').onchange=e=>{aiState.filters.suggestion=e.target.value;aiRenderTable()};
+  ['aiLeadDays','aiSafetyDays','aiDemandMultiplier','aiMinQty','aiMaxQty','aiBudget'].forEach(id=>{const e=aiEl(id);if(e)e.onchange=()=>{aiReadConfigFromInputs();aiComputeAnalysis();renderAiReorder()}});
+}
+window.renderAiReorder=renderAiReorder;
+window.aiAnalyze=aiAnalyze;
+window.aiReorderQuickCandidates=function(){return (aiState.rows||[]).filter(r=>r.suggestion>0).sort((a,b)=>b.suggestion-a.suggestion)};
+window.aiOpenOrder=aiOpenOrder;
+window.aiState=aiState;
+
+try{
+  const originalUpdateAuthUI=updateAuthUI;
+  updateAuthUI=function(){
+    if(!currentUser){aiState.rawLogs=[];aiState.rows=[];aiState.lastLoaded=0;aiState.lastAnalyzed=0;aiState.selected.clear();aiState.userId=''}
+    return originalUpdateAuthUI.apply(this,arguments);
+  };
+}catch(e){}
+
+const originalRenderCurrentTab=renderCurrentTab;
+renderCurrentTab=function(){if(activeTabId()==='aiReorder'){renderAiReorder();aiScheduleAutoAnalyze(100);return}return originalRenderCurrentTab.apply(this,arguments)};
+const originalRenderAll=renderAll;
+renderAll=function(){const result=originalRenderAll.apply(this,arguments);aiScheduleAutoAnalyze();return result};
+try{
+  const originalRealtimeSale=handleRealtimeSaleLog;
+  handleRealtimeSaleLog=function(row){const result=originalRealtimeSale.apply(this,arguments);if(row?.code&&row?.created_at){aiState.rawLogs.push({code:row.code,action:row.action,created_at:row.created_at});aiComputeAnalysis();if(activeTabId()==='aiReorder')renderAiReorder()}return result};
+}catch(e){}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',aiBind);else aiBind();
+})();
 </script>
 </body>
 </html>
