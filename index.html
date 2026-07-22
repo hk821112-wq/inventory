@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>卡仕羊庫存系統</title>
+  <title>卡仕羊庫存系統｜圖源中心 V4 防卡死版</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&display=swap" rel="stylesheet">
@@ -7324,6 +7324,8 @@ function renderSocialOps(){
     <section class="social-toolbar"><div class="social-toolbar-copy"><strong>每週建立一次，平日照表發布</strong><small>第一版不使用 AI 金鑰；內容與狀態暫存在目前瀏覽器。</small></div><div class="social-toolbar-actions"><button class="social-square-btn primary" type="button" onclick="socialGenerateWeek(false)">建立未來 7 天</button><button class="social-square-btn yellow" type="button" onclick="socialCopyWeeklyPrompt()">複製本週 AI 任務</button><button class="social-square-btn lime" type="button" onclick="socialOpenImport()">匯入 AI JSON</button><button class="social-square-btn" type="button" onclick="socialExport()">匯出排程</button></div></section>
     <section class="social-summary-grid"><div class="social-summary-card"><span>本週任務</span><strong>${summary.total}</strong><small>未來 7 天排程</small></div><div class="social-summary-card attention"><span>待製作</span><strong>${summary.draft}</strong><small>需要確認或精修</small></div><div class="social-summary-card ready"><span>已備妥</span><strong>${summary.ready}</strong><small>可以直接發布</small></div><div class="social-summary-card published"><span>已發布</span><strong>${summary.published}</strong><small>已完成紀錄</small></div><div class="social-summary-card stock"><span>排程商品現貨</span><strong>${summary.stock}</strong><small>自動排除售罄與零庫存</small></div></section>
     <section class="social-workspace"><div class="social-panel"><div class="social-panel-head"><div><h3>未來 7 天</h3><small>點選日期查看完整內容</small></div></div><div class="social-schedule-list">${socialRenderSchedule(rows)}</div></div><div class="social-panel"><div class="social-panel-head"><div><h3>當日執行包</h3><small>文案可直接修改，離開欄位即保存</small></div></div>${socialRenderEditor(selected)}</div></section>`;
+    // V4：社群頁完成後只更新一次圖源槽。
+    window.setTimeout(()=>window.renderSocialImageSlot?.(),0);
   }finally{socialState.rendering=false}
 }
 function socialFindRow(id){return socialLoad().schedules.find(x=>x.id===id)}
@@ -7527,9 +7529,29 @@ function isImportExcel(file){if(!file)return;if(!window.XLSX)return appAlert('Ex
 function isReanalyze(){isState.selectedUrls.clear();renderImageSources();showCopyToast('圖源完整度已重新計算')}
 function isExportSettings(){const d=isLoad();const compact={exportedAt:new Date().toISOString(),version:d.version,sourceName:d.sourceName,importedAt:d.importedAt,preferences:d.preferences};downloadText(JSON.stringify(compact,null,2),`卡仕羊圖源設定_${dateFileName()}.json`,'application/json')}
 function isGoToModel(model){const p=isEnrichedProducts().find(x=>String(x.model||'').toUpperCase()===String(model||'').toUpperCase());if(p){isState.selectedProductId=p.productId;isState.filter.search=p.model;isState.filter.quick='all';isState.filter.gallery='全部';isState.selectedUrls.clear()}switchTab('imageSources');renderImageSources()}
-function isRenderSocialSlot(){const slot=isEl('socialImageSourceSlot');if(!slot)return;const id=slot.dataset.socialId;const key=`csmr_social_center_v1_${currentUser?.id||'local'}`;let d;try{d=JSON.parse(localStorage.getItem(key)||'null')}catch(e){};const row=d?.schedules?.find(x=>x.id===id);if(!row)return;let imgs=Array.isArray(row.imageSources)?row.imageSources:[];if(!imgs.length)imgs=isRecommendedForModel(row.model,3);slot.innerHTML=`<div class="social-source-title"><strong>本次推薦圖源</strong><span>${imgs.length?'已選 '+imgs.length+' 張':'尚未選圖'}</span></div>${imgs.length?`<div class="social-source-thumbs">${imgs.map(x=>`<img class="social-source-thumb" loading="lazy" src="${isEsc(x.url)}" title="${isEsc(x.type||'圖源')}｜${isEsc(x.label||'')}" onerror="isImageFallback(this)">`).join('')}</div>`:'<div class="social-source-empty">圖源中心尚未選定素材。先前往圖源中心設定推薦圖，再帶回社群排程。</div>'}<div class="social-source-actions"><button class="social-mini-btn" type="button" onclick="isGoToModel('${isEsc(row.model)}')">前往圖源中心</button>${imgs.length?`<button class="social-mini-btn" type="button" onclick="isCopy('${isEsc(imgs.map(x=>x.url).join('\\n'))}','已複製圖片網址')">複製圖源網址</button>`:''}</div>`}
-function isInstallSocialObserver(){const root=isEl('socialOpsRoot');if(!root||root.dataset.imageObserver==='1')return;root.dataset.imageObserver='1';const obs=new MutationObserver(()=>isRenderSocialSlot());obs.observe(root,{childList:true,subtree:true});isRenderSocialSlot()}
-window.imageSourceRecommendedForModel=isRecommendedForModel;window.renderImageSources=renderImageSources;window.isSelectProduct=isSelectProduct;window.isShowMore=isShowMore;window.isSearchChange=isSearchChange;window.isFilterChange=isFilterChange;window.isQuickFilter=isQuickFilter;window.isResetFilters=isResetFilters;window.isSetGallery=isSetGallery;window.isToggleSelect=isToggleSelect;window.isClearSelection=isClearSelection;window.isSetType=isSetType;window.isToggleRecommended=isToggleRecommended;window.isToggleDisabled=isToggleDisabled;window.isSelectRecommended=isSelectRecommended;window.isSelectAllVisible=isSelectAllVisible;window.isOpenPreview=isOpenPreview;window.isRenderPreview=isRenderPreview;window.isImageFallback=isImageFallbackGlobal;window.isOpenShopee=isOpenShopee;window.isAddImageUrl=isAddImageUrl;window.isOpenSelectedImages=isOpenSelectedImages;window.isCopyDesignTask=isCopyDesignTask;window.isAttachSelectedToSocial=isAttachSelectedToSocial;window.isChooseExcel=isChooseExcel;window.isReanalyze=isReanalyze;window.isExportSettings=isExportSettings;window.isGoToModel=isGoToModel;window.isCopy=isCopy;window.isRetrySeed=isRetrySeed;
+function isRenderSocialSlot(){
+  const slot=isEl('socialImageSourceSlot');
+  if(!slot)return;
+  const id=slot.dataset.socialId;
+  const key=`csmr_social_center_v1_${currentUser?.id||'local'}`;
+  let d;
+  try{d=JSON.parse(localStorage.getItem(key)||'null')}catch(e){}
+  const row=d?.schedules?.find(x=>x.id===id);
+  if(!row)return;
+
+  // V4：社群頁只讀取已附加在排程內的少量圖源，絕不掃描全部商品圖片。
+  const imgs=Array.isArray(row.imageSources)?row.imageSources.slice(0,6):[];
+  const signature=[id,...imgs.map(x=>x.url)].join('|');
+  if(slot.dataset.renderSignature===signature)return;
+  slot.dataset.renderSignature=signature;
+
+  slot.innerHTML=`<div class="social-source-title"><strong>本次推薦圖源</strong><span>${imgs.length?'已選 '+imgs.length+' 張':'尚未選圖'}</span></div>${imgs.length?`<div class="social-source-thumbs">${imgs.map(x=>`<img class="social-source-thumb" loading="lazy" src="${isEsc(x.url)}" title="${isEsc(x.type||'圖源')}｜${isEsc(x.label||'')}" onerror="isImageFallback(this)">`).join('')}</div>`:'<div class="social-source-empty">尚未替這筆排程選圖。請按「前往圖源中心」，挑選圖片後再送回社群營運。</div>'}<div class="social-source-actions"><button class="social-mini-btn" type="button" onclick="isGoToModel('${isEsc(row.model)}')">前往圖源中心</button>${imgs.length?`<button class="social-mini-btn" type="button" onclick="isCopy('${isEsc(imgs.map(x=>x.url).join('\n'))}','已複製圖片網址')">複製圖源網址</button>`:''}</div>`;
+}
+function isInstallSocialObserver(){
+  // V4：停用 MutationObserver。V3 會監控到自己寫入 innerHTML，形成無限重繪與卡死。
+  window.setTimeout(isRenderSocialSlot,0);
+}
+window.imageSourceRecommendedForModel=isRecommendedForModel;window.renderSocialImageSlot=isRenderSocialSlot;window.renderImageSources=renderImageSources;window.isSelectProduct=isSelectProduct;window.isShowMore=isShowMore;window.isSearchChange=isSearchChange;window.isFilterChange=isFilterChange;window.isQuickFilter=isQuickFilter;window.isResetFilters=isResetFilters;window.isSetGallery=isSetGallery;window.isToggleSelect=isToggleSelect;window.isClearSelection=isClearSelection;window.isSetType=isSetType;window.isToggleRecommended=isToggleRecommended;window.isToggleDisabled=isToggleDisabled;window.isSelectRecommended=isSelectRecommended;window.isSelectAllVisible=isSelectAllVisible;window.isOpenPreview=isOpenPreview;window.isRenderPreview=isRenderPreview;window.isImageFallback=isImageFallbackGlobal;window.isOpenShopee=isOpenShopee;window.isAddImageUrl=isAddImageUrl;window.isOpenSelectedImages=isOpenSelectedImages;window.isCopyDesignTask=isCopyDesignTask;window.isAttachSelectedToSocial=isAttachSelectedToSocial;window.isChooseExcel=isChooseExcel;window.isReanalyze=isReanalyze;window.isExportSettings=isExportSettings;window.isGoToModel=isGoToModel;window.isCopy=isCopy;window.isRetrySeed=isRetrySeed;
 isInstallUI();isInstallSocialObserver();
 const prevRenderCurrentTab=renderCurrentTab;renderCurrentTab=function(){if(activeTabId()==='imageSources'){renderImageSources();return}const r=prevRenderCurrentTab.apply(this,arguments);setTimeout(isInstallSocialObserver,0);return r};
 try{const prevUpdateAuthUI=updateAuthUI;updateAuthUI=function(){const r=prevUpdateAuthUI.apply(this,arguments);isState.loadedKey='';isState.data=null;isState.selectedProductId='';isState.selectedUrls.clear();if(activeTabId()==='imageSources')renderImageSources();setTimeout(isInstallSocialObserver,0);return r}}catch(e){}
