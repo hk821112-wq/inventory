@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>卡仕羊庫存系統｜圖源中心 V5 型號搜尋版</title>
+  <title>卡仕羊庫存系統｜V7 快速連結製圖版</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&display=swap" rel="stylesheet">
@@ -7688,6 +7688,168 @@ isInstallUI();isInstallSocialObserver();
 const prevRenderCurrentTab=renderCurrentTab;renderCurrentTab=function(){if(activeTabId()==='imageSources'){renderImageSources();return}const r=prevRenderCurrentTab.apply(this,arguments);setTimeout(isInstallSocialObserver,0);return r};
 try{const prevUpdateAuthUI=updateAuthUI;updateAuthUI=function(){const r=prevUpdateAuthUI.apply(this,arguments);isState.loadedKey='';isState.data=null;isState.selectedProductId='';isState.selectedUrls.clear();if(activeTabId()==='imageSources')renderImageSources();setTimeout(isInstallSocialObserver,0);return r}}catch(e){}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{isInstallUI();isInstallSocialObserver()});else{isInstallUI();isInstallSocialObserver()}
+})();
+</script>
+
+
+<!-- ==============================
+     V7 快速連結製圖 MVP
+     貼完整蝦皮商品連結 → 比對 image_source_seed.json → 自動選圖 → 交接網頁版 ChatGPT
+     ============================== -->
+<style>
+#quickLinkDesign{padding-top:0}
+.ql-page{display:grid;gap:16px}
+.ql-hero{position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr);gap:18px;padding:24px;border:2px solid #111827;background:linear-gradient(135deg,#0f172a 0%,#164e63 100%);color:#fff;box-shadow:8px 8px 0 #67e8f9}
+.ql-hero:after{content:'QUICK';position:absolute;right:-22px;top:-30px;font-size:104px;line-height:1;font-weight:1000;color:rgba(255,255,255,.045);letter-spacing:-.08em;pointer-events:none}
+.ql-hero-copy,.ql-hero-status{position:relative;z-index:1}.ql-eyebrow{display:inline-flex;align-items:center;gap:8px;margin-bottom:11px;color:#67e8f9;font-size:12px;font-weight:1000;letter-spacing:.12em}.ql-live-dot{width:9px;height:9px;border-radius:50%;background:#67e8f9;box-shadow:0 0 0 6px rgba(103,232,249,.15)}
+.ql-hero h2{margin:0 0 10px;color:#fff!important;font-size:34px!important;letter-spacing:-.045em}.ql-hero p{max-width:760px;margin:0;color:#cbd5e1;font-size:14px;line-height:1.75;font-weight:750}
+.ql-hero-status{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;border:1px solid #475569;background:#475569}.ql-hero-stat{background:#172033;padding:14px;min-height:82px;display:flex;flex-direction:column;justify-content:space-between}.ql-hero-stat span{font-size:10px;font-weight:1000;letter-spacing:.08em;color:#94a3b8}.ql-hero-stat strong{font-size:19px;line-height:1.15;color:#fff;font-weight:1000}.ql-hero-stat strong.accent{color:#67e8f9}
+.ql-card{border:2px solid #111827;background:#fff;overflow:hidden}.ql-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:2px solid #111827;background:#f7f4ed}.ql-card-head h3{margin:0;font-size:19px}.ql-card-head small{color:#64748b;font-weight:850}.ql-card-body{padding:16px;display:grid;gap:14px}
+.ql-link-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:8px}.ql-input,.ql-select{min-height:44px;border:2px solid #111827;border-radius:0;background:#fff;color:#111827;padding:9px 11px;font-size:13px!important;font-weight:800}.ql-btn{min-height:42px;border:2px solid #111827;border-radius:0;background:#fff;color:#111827;padding:8px 13px;font-size:12px!important;font-weight:1000;box-shadow:3px 3px 0 #111827;white-space:nowrap}.ql-btn:hover{transform:translate(1px,1px);box-shadow:2px 2px 0 #111827}.ql-btn.primary{background:#3157ff;color:#fff}.ql-btn.cyan{background:#67e8f9;color:#111827}.ql-btn.green{background:#10a37f;color:#fff}.ql-btn.yellow{background:#ffcf3d;color:#111827}.ql-btn.red{background:#ff625c;color:#fff}.ql-help{color:#64748b;font-size:11px;line-height:1.65;font-weight:850}
+.ql-loading{display:none;align-items:center;gap:9px;border:2px dashed #0891b2;background:#ecfeff;color:#155e75;padding:12px;font-size:12px;font-weight:1000}.ql-loading.show{display:flex}.ql-spinner{width:18px;height:18px;border:3px solid #a5f3fc;border-top-color:#0891b2;border-radius:50%;animation:qlSpin .8s linear infinite}@keyframes qlSpin{to{transform:rotate(360deg)}}
+.ql-empty{padding:42px 20px;text-align:center;color:#64748b;font-weight:850}.ql-empty strong{display:block;margin-bottom:7px;color:#111827;font-size:19px}.ql-error{border:2px solid #dc2626;background:#fef2f2;color:#991b1b;padding:12px 14px;font-size:12px;line-height:1.65;font-weight:900}
+.ql-product{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,.75fr);gap:14px}.ql-product-info{border:2px solid #111827;background:#111827;color:#fff;padding:15px}.ql-product-info h3{margin:0 0 7px;color:#fff!important;font-size:20px}.ql-product-info p{margin:0;color:#cbd5e1;font-size:12px;line-height:1.7;font-weight:800}.ql-facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:13px}.ql-fact{border:1px solid #475569;background:#172033;padding:9px;min-width:0}.ql-fact span{display:block;color:#94a3b8;font-size:9px;font-weight:1000}.ql-fact strong{display:block;margin-top:5px;color:#fff;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ql-product-preview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.ql-product-preview img{width:100%;aspect-ratio:1/1;object-fit:cover;border:2px solid #111827;background:#e2e8f0}
+.ql-settings{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(280px,.75fr);gap:14px}.ql-type-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.ql-type{min-height:82px;border:2px solid #94a3b8;background:#fff;color:#334155;padding:10px;text-align:left;cursor:pointer}.ql-type strong{display:block;color:#111827;font-size:13px}.ql-type span{display:block;margin-top:5px;color:#64748b;font-size:10px;line-height:1.45;font-weight:800}.ql-type.active{border-color:#111827;background:#c7ff3d;box-shadow:3px 3px 0 #111827}.ql-setting-fields{display:grid;gap:10px}.ql-field{display:grid;gap:6px}.ql-field label{margin:0;font-size:12px!important;font-weight:1000;color:#334155}
+.ql-source-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.ql-source-actions{display:flex;gap:7px;flex-wrap:wrap}.ql-image-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}.ql-image-card{position:relative;border:2px solid #cbd5e1;background:#fff;overflow:hidden;cursor:pointer}.ql-image-card.selected{border-color:#3157ff;box-shadow:0 0 0 3px rgba(49,87,255,.14)}.ql-image-card img{display:block;width:100%;aspect-ratio:1/1;object-fit:cover;background:#e2e8f0}.ql-image-meta{padding:8px}.ql-image-meta strong{display:block;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ql-image-meta span{display:block;margin-top:4px;color:#64748b;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:800}.ql-image-check{position:absolute;right:7px;top:7px;width:22px;height:22px;display:grid;place-items:center;border:2px solid #111827;background:#fff;color:#111827;font-size:13px;font-weight:1000}.ql-image-card.selected .ql-image-check{background:#3157ff;color:#fff}
+.ql-summary{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:stretch;border:2px solid #111827;background:#f7f4ed;padding:14px}.ql-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.ql-summary-item{border:1px solid #cbd5e1;background:#fff;padding:9px}.ql-summary-item span{display:block;color:#64748b;font-size:9px;font-weight:1000}.ql-summary-item strong{display:block;margin-top:5px;color:#111827;font-size:12px}.ql-summary-actions{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap}.ql-summary-actions .ql-btn{min-height:100%;box-shadow:none}
+.ql-prompt{width:100%;min-height:260px;border:2px solid #111827;border-radius:0;background:#f8fafc;color:#111827;padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px!important;line-height:1.65;resize:vertical}
+.ql-modal-overlay{position:fixed;inset:0;z-index:2850;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(2,6,23,.74);backdrop-filter:blur(6px)}.ql-modal-overlay.show{display:flex}.ql-modal-card{width:min(1000px,100%);max-height:calc(100vh - 40px);overflow:auto;border:3px solid #111827;background:#fff;box-shadow:12px 12px 0 #67e8f9}.ql-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px;border-bottom:2px solid #111827;background:#ecfeff}.ql-modal-head h3{margin:0;font-size:21px}.ql-modal-head p{margin:5px 0 0;color:#475569;font-size:12px;font-weight:850}.ql-modal-close{width:38px;height:38px;border:2px solid #111827;background:#fff;font-size:22px;font-weight:1000}.ql-modal-body{padding:16px;display:grid;gap:13px}.ql-modal-sources{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.ql-modal-source{border:2px solid #111827;background:#fff;overflow:hidden}.ql-modal-source img{display:block;width:100%;aspect-ratio:1/1;object-fit:contain;background:#f1f5f9}.ql-modal-source div{padding:9px}.ql-modal-source strong{display:block;font-size:11px}.ql-modal-source small{display:block;margin-top:4px;color:#64748b;font-size:10px;font-weight:800}.ql-modal-source-actions{display:grid!important;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px;padding:0!important}.ql-modal-source-actions button{min-height:32px;border:1.5px solid #111827;background:#fff;font-size:10px!important;font-weight:1000}.ql-modal-source-actions button.primary{background:#3157ff;color:#fff}.ql-modal-hint{border:2px dashed #10a37f;background:#ecfdf5;color:#065f46;padding:12px;font-size:12px;line-height:1.65;font-weight:900}.ql-modal-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;padding:14px 16px;border-top:2px solid #111827;background:#f8fafc}
+body.dark-mode .ql-card,body.dark-mode .ql-card-body,body.dark-mode .ql-empty,body.dark-mode .ql-image-card,body.dark-mode .ql-modal-card{background:#111827;color:#e5e7eb;border-color:#64748b}body.dark-mode .ql-card-head,body.dark-mode .ql-summary,body.dark-mode .ql-modal-head,body.dark-mode .ql-modal-actions{background:#1e293b;border-color:#64748b}body.dark-mode .ql-card-head h3,body.dark-mode .ql-empty strong,body.dark-mode .ql-type strong,body.dark-mode .ql-summary-item strong,body.dark-mode .ql-modal-head h3,body.dark-mode .ql-image-meta strong{color:#f8fafc}body.dark-mode .ql-card-head small,body.dark-mode .ql-help,body.dark-mode .ql-type span,body.dark-mode .ql-image-meta span,body.dark-mode .ql-summary-item span,body.dark-mode .ql-modal-head p{color:#94a3b8}body.dark-mode .ql-input,body.dark-mode .ql-select,body.dark-mode .ql-type,body.dark-mode .ql-summary-item,body.dark-mode .ql-prompt,body.dark-mode .ql-modal-source,body.dark-mode .ql-modal-source-actions button{background:#0f172a;color:#e5e7eb;border-color:#64748b}body.dark-mode .ql-type.active{background:#365314;color:#fff;border-color:#a3e635}body.dark-mode .ql-field label{color:#cbd5e1}body.dark-mode .ql-modal-hint{background:#052e1b;color:#bbf7d0;border-color:#10a37f}
+@media(max-width:1100px){.ql-product,.ql-settings{grid-template-columns:1fr}.ql-image-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.ql-summary{grid-template-columns:1fr}.ql-summary-actions .ql-btn{min-height:42px}}
+@media(max-width:800px){.ql-hero{grid-template-columns:1fr}.ql-link-row{grid-template-columns:1fr 1fr}.ql-link-row .ql-input{grid-column:1/-1}.ql-type-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ql-image-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.ql-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ql-modal-sources{grid-template-columns:1fr}}
+@media(max-width:520px){.ql-link-row{grid-template-columns:1fr}.ql-link-row .ql-input{grid-column:auto}.ql-product-preview{grid-template-columns:repeat(3,minmax(0,1fr))}.ql-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.ql-type-grid{grid-template-columns:1fr}.ql-image-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ql-summary-grid{grid-template-columns:1fr}.ql-summary-actions{display:grid;grid-template-columns:1fr}.ql-hero-status{grid-template-columns:1fr 1fr}}
+</style>
+<script>
+(function(){
+'use strict';
+const QL_SEED_URL='./image_source_seed.json';
+const QL_GPT_URL_KEY='csmr_social_gpt_url_v1';
+const qlState={products:[],loaded:false,loading:false,error:'',input:'',product:null,taskType:'ig',theme:'商品主推',style:'日系生活型錄',selected:new Set(),prompt:''};
+const qlTaskTypes={
+  ig:{label:'IG 主圖',ratio:'1:1',desc:'商品主推曝光',kind:'ig'},
+  color:{label:'顏色比較圖',ratio:'1:1',desc:'真實顏色快速比較',kind:'igColor'},
+  threads:{label:'Threads 配圖',ratio:'1:1',desc:'自然生活感、少廣告感',kind:'ig'},
+  story1:{label:'限動第 1 頁',ratio:'9:16',desc:'商品亮相',kind:'story',index:0},
+  story2:{label:'限動第 2 頁',ratio:'9:16',desc:'顏色互動／投票',kind:'story',index:1},
+  story3:{label:'限動第 3 頁',ratio:'9:16',desc:'導購與連結貼紙',kind:'story',index:2}
+};
+function qlEl(id){return document.getElementById(id)}
+function qlEsc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+function qlToast(msg){if(typeof showCopyToast==='function')showCopyToast(msg);else console.log(msg)}
+function qlCopy(text,label='已複製'){const value=String(text||'');const done=()=>qlToast(label);if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(value).then(done).catch(()=>{copyTextFallback(value);done()});else{copyTextFallback(value);done()}}
+function qlToday(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function qlWeekday(){return ['週日','週一','週二','週三','週四','週五','週六'][new Date().getDay()]}
+function qlGptUrl(){const value=String(localStorage.getItem(QL_GPT_URL_KEY)||'').trim();return /^https?:\/\//i.test(value)?value:'https://chatgpt.com/'}
+function qlNormalizeModel(v){const m=String(v||'').match(/\bM\d{2,5}\b/i);return m?m[0].toUpperCase():''}
+function qlNormalizeUrl(value){try{const u=new URL(String(value||'').trim());['utm_source','utm_medium','utm_campaign','sp_atk','xptdk','share_channel_code'].forEach(k=>u.searchParams.delete(k));u.hash='';return u.href.replace(/\/$/,'')}catch(e){return String(value||'').trim()}}
+function qlParseInput(value){
+  const raw=String(value||'').trim();let decoded=raw;try{decoded=decodeURIComponent(raw)}catch(e){}
+  const model=qlNormalizeModel(decoded);
+  let productId='';
+  const direct=decoded.match(/^\d{7,}$/);if(direct)productId=direct[0];
+  const patterns=[/i\.\d+\.(\d+)(?:[?/#]|$)/i,/\/product\/\d+\/(\d+)(?:[?/#]|$)/i,/[?&](?:itemid|item_id)=(\d+)/i];
+  for(const re of patterns){const m=decoded.match(re);if(m){productId=m[1];break}}
+  if(!productId&&/^https?:\/\//i.test(decoded)){try{const u=new URL(decoded);const nums=u.pathname.match(/\d{7,}/g)||[];if(nums.length>=2)productId=nums[nums.length-1]}catch(e){}}
+  return{raw,normalized:qlNormalizeUrl(raw),model,productId};
+}
+async function qlLoadSeed(){
+  if(qlState.loaded&&qlState.products.length)return qlState.products;
+  qlState.loading=true;qlState.error='';qlRender();
+  try{
+    const res=await fetch(new URL(QL_SEED_URL,document.baseURI).href,{cache:'no-store'});
+    if(!res.ok)throw new Error(`圖源資料讀取失敗（HTTP ${res.status}）`);
+    const rows=await res.json();if(!Array.isArray(rows))throw new Error('image_source_seed.json 格式錯誤');
+    qlState.products=rows;qlState.loaded=true;return rows;
+  }catch(err){qlState.error=err?.message||String(err);throw err}
+  finally{qlState.loading=false;qlRender()}
+}
+function qlMatchProduct(parsed){
+  const rows=qlState.products||[];
+  if(parsed.productId){const exact=rows.find(x=>String(x.productId||'')===parsed.productId);if(exact)return{product:exact,matchedBy:'商品 ID'}}
+  if(parsed.model){const exact=rows.find(x=>String(x.model||'').toUpperCase()===parsed.model);if(exact)return{product:exact,matchedBy:'商品型號'}}
+  const normalized=parsed.normalized.toLowerCase();
+  const byName=rows.find(x=>{const m=String(x.model||'').toLowerCase();return m&&normalized.includes(m)});if(byName)return{product:byName,matchedBy:'網址型號'};
+  return null;
+}
+function qlColors(product){return [...new Set((product?.images||[]).filter(x=>x.baseType==='顏色圖').map(x=>String(x.label||'').replace(new RegExp('^'+String(product.model||'')+'[-_\\s]*','i'),'').trim()).filter(Boolean))]}
+function qlAutoSelect(){
+  const p=qlState.product;if(!p)return;const imgs=(p.images||[]).filter(x=>x&&x.url);const main=imgs.filter(x=>x.baseType==='主圖');const normal=imgs.filter(x=>x.baseType==='商品附圖');const colors=imgs.filter(x=>x.baseType==='顏色圖');let order=[];
+  if(qlState.taskType==='color'||qlState.taskType==='story2')order=[...colors,...main,...normal];
+  else if(qlState.taskType==='story1'||qlState.taskType==='threads')order=[...main,...normal,...colors];
+  else if(qlState.taskType==='story3')order=[...main,...normal.slice(-2),...colors];
+  else order=[...main,...normal,...colors];
+  const limit=qlState.taskType==='color'?Math.min(Math.max(colors.length,3),5):qlState.taskType==='story2'?Math.min(Math.max(colors.length,2),4):3;
+  const seen=new Set();const picked=order.filter(x=>!seen.has(x.url)&&(seen.add(x.url),true)).slice(0,limit);
+  qlState.selected=new Set(picked.map(x=>x.url));qlBuildPrompt();qlRender();
+}
+function qlSelectedImages(){const set=qlState.selected;return (qlState.product?.images||[]).filter(x=>set.has(x.url))}
+function qlBuildPrompt(){
+  const p=qlState.product;if(!p){qlState.prompt='';return ''}const task=qlTaskTypes[qlState.taskType];const imgs=qlSelectedImages();const colors=qlColors(p);const sources=imgs.map((x,i)=>`圖源 ${i+1}：${x.baseType||'商品圖'}｜${x.label||''}`).join('\n')||'圖源：我會在此訊息一起上傳真實商品圖片。';
+  let output=`製作一張 ${task.ratio} Instagram／Facebook 社群主圖。`;
+  let page='';
+  if(qlState.taskType==='color')output='製作一張 1:1 正方形顏色比較圖，只呈現真實圖源中存在的顏色。';
+  if(qlState.taskType==='threads')output='製作一張 1:1 正方形 Threads 配圖，自然、生活感、低廣告感，畫面文字極少。';
+  if(qlState.taskType.startsWith('story')){const idx=Number(qlState.taskType.slice(-1));output=`製作一張 9:16 直式 Instagram 限時動態第 ${idx} 頁，必須是一個獨立圖片檔。`;page=idx===1?'商品亮相；簡短標題；保留乾淨留白。':idx===2?'顏色選擇互動；預留 Instagram 投票貼紙空間。':'導購頁；預留 Instagram 連結貼紙空間。'}
+  qlState.prompt=`你是一位專業蝦皮社群商品圖設計師。請根據我在此訊息上傳的真實商品圖源完成圖片編輯與設計。\n\n【本次輸出】\n${output}\n只生成一張完整成品，不要九宮格、拼接圖、設計稿預覽或多版本合併。\n\n【商品資料】\n商品型號：${p.model||''}\n商品名稱：${p.name||''}\n內容主題：${qlState.theme}\n真實顏色／規格：${colors.join('、')||'依上傳圖源為準'}\n\n【圖源順序】\n${sources}\n優先保留圖源中的商品造型、圖案、車線、配件、比例與真實顏色。可以更換乾淨背景、調整排版、光線與構圖，但不得把商品改成另一款。\n\n【視覺方向】\n${qlState.style}、低飽和、乾淨高級、有生活穿搭感。\n${page?`\n【本頁內容方向】\n${page}\n`:''}\n【強制真實性規則】\n1. 不得捏造商品名稱或資料未提供的材質、尺寸、機能、價格、優惠、銷量與品牌標章。\n2. 不得新增圖源中沒有的顏色、花紋、配件或裝飾。\n3. 中文主標控制在 12 字內；若無法正確呈現中文字，寧可保留乾淨留白區，不要生成亂碼。\n4. 商品必須是畫面主體，適合直接作為電商社群貼文使用。\n5. 完成圖片後不要輸出提示詞、分析或說明。`;
+  const ta=qlEl('qlPrompt');if(ta)ta.value=qlState.prompt;return qlState.prompt;
+}
+async function qlReadProduct(){
+  const input=String(qlEl('qlLinkInput')?.value||'').trim();qlState.input=input;qlState.product=null;qlState.selected.clear();qlState.error='';qlRender();
+  if(!input){qlState.error='請先貼上蝦皮商品完整連結，或直接輸入商品型號／商品 ID。';return qlRender()}
+  try{await qlLoadSeed();const parsed=qlParseInput(input);const match=qlMatchProduct(parsed);if(!match){if(/shope\.ee|s\.shopee/i.test(input))throw new Error('此為蝦皮短網址，網址本身沒有商品 ID。請先開啟商品頁，再複製瀏覽器網址列的完整連結。');throw new Error('本地圖源資料中找不到對應商品。請確認連結、型號，或更新 image_source_seed.json。')}
+    qlState.product={...match.product,_matchedBy:match.matchedBy,_sourceUrl:input};qlAutoSelect();
+  }catch(err){qlState.error=err?.message||String(err);qlRender()}
+}
+async function qlPaste(){try{const value=await navigator.clipboard.readText();qlEl('qlLinkInput').value=value;qlState.input=value;qlToast('已貼上商品連結')}catch(e){appAlert('瀏覽器無法直接讀取剪貼簿，請按 Ctrl＋V 手動貼上。','無法讀取剪貼簿',{danger:true})}}
+function qlClear(){qlState.input='';qlState.product=null;qlState.error='';qlState.selected.clear();qlState.prompt='';const input=qlEl('qlLinkInput');if(input)input.value='';qlRender()}
+function qlSetTask(type){if(!qlTaskTypes[type])return;qlState.taskType=type;qlAutoSelect()}
+function qlSetTheme(value){qlState.theme=value;qlBuildPrompt();qlRenderSummaryOnly()}
+function qlSetStyle(value){qlState.style=value;qlBuildPrompt();qlRenderSummaryOnly()}
+function qlToggleImage(url){if(qlState.selected.has(url)){if(qlState.selected.size<=1)return qlToast('至少保留 1 張圖源');qlState.selected.delete(url)}else{if(qlState.selected.size>=5)return appAlert('建議最多選 5 張圖源，避免 GPT 混淆商品細節。','已達選取上限');qlState.selected.add(url)}qlBuildPrompt();qlRender()}
+function qlRenderSummaryOnly(){const root=qlEl('quickLinkRoot');if(root)qlRender()}
+function qlOpenProduct(){const url=String(qlState.product?._sourceUrl||qlState.input||'').trim();if(/^https?:\/\//i.test(url))window.open(url,'_blank');else qlToast('目前沒有可開啟的商品網址')}
+function qlGoImageCenter(){if(qlState.product?.model&&typeof isGoToModel==='function')isGoToModel(qlState.product.model);else switchTab('imageSources')}
+function qlPromptPreview(){qlBuildPrompt();const ta=qlEl('qlPrompt');if(ta){ta.scrollIntoView({behavior:'smooth',block:'center'});ta.focus()}}
+function qlEnsureModal(){let overlay=qlEl('qlHandoffOverlay');if(overlay)return overlay;overlay=document.createElement('div');overlay.id='qlHandoffOverlay';overlay.className='ql-modal-overlay';overlay.innerHTML=`<div class="ql-modal-card"><div class="ql-modal-head"><div><h3 id="qlModalTitle">快速製圖交接</h3><p id="qlModalSub"></p></div><button class="ql-modal-close" type="button" onclick="qlCloseHandoff()">×</button></div><div class="ql-modal-body"><div class="ql-modal-hint" id="qlModalHint">提示詞已複製，ChatGPT 已在新分頁開啟。請將下方圖源貼入，再貼上提示詞。</div><div class="ql-modal-sources" id="qlModalSources"></div><textarea class="ql-prompt" id="qlModalPrompt" readonly></textarea></div><div class="ql-modal-actions"><button class="ql-btn" type="button" onclick="socialSetGptUrl&&socialSetGptUrl()">設定 GPT 連結</button><button class="ql-btn yellow" type="button" onclick="qlCopyPrompt()">複製提示詞</button><button class="ql-btn primary" type="button" onclick="qlOpenGpt()">重新開啟 GPT</button><button class="ql-btn green" type="button" onclick="qlCloseHandoff()">完成／關閉</button></div></div>`;document.body.appendChild(overlay);overlay.addEventListener('click',e=>{if(e.target===overlay)qlCloseHandoff()});return overlay}
+function qlHandoff(){
+  if(!qlState.product)return appAlert('請先讀取商品。','尚未選擇商品',{danger:true});if(!qlState.selected.size)return appAlert('請至少選擇 1 張商品圖。','尚未選圖',{danger:true});qlBuildPrompt();const overlay=qlEnsureModal();const imgs=qlSelectedImages();qlEl('qlModalTitle').textContent=`${qlState.product.model||''}｜${qlTaskTypes[qlState.taskType].label}`;qlEl('qlModalSub').textContent=`已自動從商品連結比對圖源，選取 ${imgs.length} 張圖片。此流程使用網頁版 ChatGPT，不使用 API。`;qlEl('qlModalPrompt').value=qlState.prompt;qlEl('qlModalSources').innerHTML=imgs.map((x,i)=>`<article class="ql-modal-source"><img loading="lazy" src="${qlEsc(x.url)}" alt="圖源 ${i+1}"><div><strong>圖源 ${i+1}｜${qlEsc(x.baseType||'商品圖')}</strong><small>${qlEsc(x.label||'')}</small><div class="ql-modal-source-actions"><button class="primary" type="button" onclick="qlCopyImage('${qlEsc(x.url)}',${i+1})">複製圖片</button><button type="button" onclick="qlOpenImage('${qlEsc(x.url)}')">開啟原圖</button></div></div></article>`).join('');qlCopy(qlState.prompt,'製圖提示詞已複製');const win=window.open(qlGptUrl(),'_blank');qlEl('qlModalHint').textContent=win?'ChatGPT 已在新分頁開啟，提示詞也已複製。請貼入商品圖源後，再貼上提示詞。':'瀏覽器阻擋了新分頁。請允許彈出式視窗，或按「重新開啟 GPT」。';overlay.classList.add('show')
+}
+function qlCloseHandoff(){qlEl('qlHandoffOverlay')?.classList.remove('show')}
+function qlCopyPrompt(){qlBuildPrompt();qlCopy(qlState.prompt,'製圖提示詞已複製')}
+function qlOpenGpt(){const w=window.open(qlGptUrl(),'_blank');if(!w)appAlert('請允許此網站開啟彈出式視窗。','無法開啟 ChatGPT',{danger:true})}
+function qlOpenImage(url){if(typeof socialOpenSourceImage==='function')socialOpenSourceImage(url);else window.open(url,'_blank')}
+function qlCopyImage(url,index){if(typeof socialCopySourceImage==='function')socialCopySourceImage(url,index);else qlOpenImage(url)}
+function qlSocialRow(){
+  const p=qlState.product,task=qlTaskTypes[qlState.taskType],imgs=qlSelectedImages(),colors=qlColors(p),today=qlToday();const id=`${today}_${p.model||p.productId}_quick_${Date.now()}`;const isColor=qlState.taskType==='color';const storyIndex=task.index??0;
+  const title=`${p.model||''} ${qlState.theme}`.trim();const ig=`${title}\n\n${p.name||''}\n\n想看完整款式與顏色，可前往商品頁查看。`;const stories=[`今天主推｜${p.model||''}\n${qlState.theme}`,`你會選哪一款？\n${colors.slice(0,2).join(' VS ')||'加入投票貼紙'}`,`${colors.join('、')||'查看完整款式'}\n點擊連結查看商品`];
+  return{id,date:today,weekday:qlWeekday(),productCode:p.model||p.productId,model:p.model||'',itemName:p.name||'',color:'',colors,currentStock:0,totalStock:0,totalSales:0,sales30:0,shopeeUrls:/^https?:\/\//i.test(qlState.input)?[qlState.input]:[],contentType:qlState.theme,platforms:qlState.taskType.startsWith('story')?['限動']:qlState.taskType==='threads'?['Threads']:['IG','Facebook'],purpose:'快速連結製圖',angle:task.label,ig,threads:`${p.model||''} 最近想推這款。\n${p.name||''}`,facebook:ig,stories,hashtags:'#卡仕羊 #CSMR #蝦皮購物 #穿搭配件 #日常穿搭',firstComment:`我會先選 ${colors[0]||'這款'}，你呢？`,imageBrief:`${task.ratio}｜${qlState.style}｜${task.desc}｜只生成一張獨立成品，不拼接、不捏造商品資料。`,imageSources:imgs.map(x=>({url:x.url,type:x.baseType,label:x.label,productId:p.productId,model:p.model})),status:'draft',postUrl:'',performance:'未評估',quickTaskType:qlState.taskType,updatedAt:new Date().toISOString(),_storyIndex:storyIndex,_isColor:isColor};
+}
+async function qlAddToSocial(){
+  if(!qlState.product)return appAlert('請先讀取商品。','尚未選擇商品',{danger:true});if(!qlState.selected.size)return appAlert('請至少選擇 1 張商品圖。','尚未選圖',{danger:true});const row=qlSocialRow();const key=`csmr_social_center_v1_${window.currentUser?.id||'local'}`;let data;try{data=JSON.parse(localStorage.getItem(key)||'null')}catch(e){}if(!data||!Array.isArray(data.schedules))data={version:1,schedules:[],lastExposure:{},updatedAt:''};data.schedules.push(row);data.updatedAt=new Date().toISOString();localStorage.setItem(key,JSON.stringify(data));sessionStorage.setItem('csmr_ql_open_social',row.id);location.reload();
+}
+function qlRender(){
+  const root=qlEl('quickLinkRoot');if(!root)return;const p=qlState.product;const task=qlTaskTypes[qlState.taskType];const selected=qlSelectedImages();const colors=qlColors(p);
+  root.innerHTML=`<div class="ql-page"><section class="ql-hero"><div class="ql-hero-copy"><div class="ql-eyebrow"><span class="ql-live-dot"></span>QUICK SOCIAL DESIGN</div><h2>快速連結製圖</h2><p>貼上蝦皮完整商品連結，系統直接從既有商品媒體資料比對商品、自動挑圖並建立 ChatGPT 製圖任務，不必先進圖源中心。</p></div><div class="ql-hero-status"><div class="ql-hero-stat"><span>圖源資料</span><strong class="accent">${qlState.loaded?qlState.products.length+' 件':'尚未載入'}</strong></div><div class="ql-hero-stat"><span>目前商品</span><strong>${p?qlEsc(p.model||p.productId):'尚未選擇'}</strong></div><div class="ql-hero-stat"><span>輸出格式</span><strong>${task.ratio}</strong></div><div class="ql-hero-stat"><span>已選圖源</span><strong>${selected.length} 張</strong></div></div></section>
+  <section class="ql-card"><div class="ql-card-head"><div><h3>1｜貼上商品連結</h3><small>也支援直接輸入 M004 或商品 ID</small></div></div><div class="ql-card-body"><div class="ql-link-row"><input class="ql-input" id="qlLinkInput" value="${qlEsc(qlState.input)}" placeholder="貼上蝦皮完整商品連結，例如：https://shopee.tw/商品名稱-i.店舖ID.商品ID" onkeydown="if(event.key==='Enter')qlReadProduct()"><button class="ql-btn cyan" type="button" onclick="qlPaste()">貼上剪貼簿</button><button class="ql-btn primary" type="button" onclick="qlReadProduct()">讀取商品</button><button class="ql-btn" type="button" onclick="qlClear()">清除</button></div><div class="ql-help">短網址通常不包含商品 ID。請先開啟蝦皮商品頁，再複製瀏覽器網址列中的完整網址。</div><div class="ql-loading ${qlState.loading?'show':''}"><span class="ql-spinner"></span>正在讀取 image_source_seed.json 並比對商品……</div>${qlState.error?`<div class="ql-error">${qlEsc(qlState.error)}</div>`:''}</div></section>
+  ${p?qlRenderProduct(p,selected,colors,task):`<section class="ql-card"><div class="ql-empty"><strong>等待商品連結</strong>讀取成功後，系統會直接顯示商品、推薦圖源與製圖設定。</div></section>`}</div>`;
+  const input=qlEl('qlLinkInput');if(input&&document.activeElement?.id==='qlLinkInput')input.focus();
+}
+function qlRenderProduct(p,selected,colors,task){
+  const previews=(p.images||[]).slice(0,3);const all=(p.images||[]).slice(0,15);
+  return `<section class="ql-card"><div class="ql-card-head"><div><h3>2｜商品辨識結果</h3><small>比對方式：${qlEsc(p._matchedBy||'本地圖源資料')}</small></div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="ql-btn yellow" type="button" onclick="qlOpenProduct()">開啟商品</button><button class="ql-btn" type="button" onclick="qlGoImageCenter()">前往圖源中心</button></div></div><div class="ql-card-body"><div class="ql-product"><div class="ql-product-info"><h3>${qlEsc(p.model||p.productId)}｜${qlEsc(p.name||'')}</h3><p>${qlEsc(p.category||'未分類')}</p><div class="ql-facts"><div class="ql-fact"><span>商品 ID</span><strong>${qlEsc(p.productId||'-')}</strong></div><div class="ql-fact"><span>圖片數量</span><strong>${(p.images||[]).length} 張</strong></div><div class="ql-fact"><span>顏色數量</span><strong>${colors.length}</strong></div><div class="ql-fact"><span>資料可用度</span><strong>${(p.images||[]).length>=3?'A 級':'B 級'}</strong></div></div></div><div class="ql-product-preview">${previews.map(x=>`<img loading="lazy" src="${qlEsc(x.url)}" alt="${qlEsc(x.label||'商品圖')}">`).join('')}</div></div></div></section>
+  <section class="ql-card"><div class="ql-card-head"><div><h3>3｜製圖設定</h3><small>更換類型時會自動重新挑選最適合的圖片</small></div></div><div class="ql-card-body"><div class="ql-settings"><div class="ql-type-grid">${Object.entries(qlTaskTypes).map(([key,x])=>`<button type="button" class="ql-type ${qlState.taskType===key?'active':''}" onclick="qlSetTask('${key}')"><strong>${qlEsc(x.label)}</strong><span>${qlEsc(x.ratio)}｜${qlEsc(x.desc)}</span></button>`).join('')}</div><div class="ql-setting-fields"><div class="ql-field"><label>內容主題</label><select class="ql-select" onchange="qlSetTheme(this.value)">${['商品主推','穿搭內容','顏色推薦','舊款重新曝光','熱銷推薦','出遊穿搭','百搭日常'].map(x=>`<option ${qlState.theme===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="ql-field"><label>視覺風格</label><select class="ql-select" onchange="qlSetStyle(this.value)">${['日系生活型錄','品牌型錄感','日系雜誌排版','清新簡約','自然生活感'].map(x=>`<option ${qlState.style===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="ql-help">商品真實性規則固定啟用：不得捏造材質、尺寸、功能、價格、優惠與不存在的顏色。</div></div></div></div></section>
+  <section class="ql-card"><div class="ql-card-head"><div><h3>4｜本次使用圖源</h3><small>已選 ${selected.length} 張，點圖片可加入或移除</small></div><div class="ql-source-actions"><button class="ql-btn cyan" type="button" onclick="qlAutoSelect()">重新自動選圖</button></div></div><div class="ql-card-body"><div class="ql-image-grid">${all.map((x,i)=>`<article class="ql-image-card ${qlState.selected.has(x.url)?'selected':''}" onclick="qlToggleImage('${qlEsc(x.url)}')"><span class="ql-image-check">${qlState.selected.has(x.url)?'✓':'＋'}</span><img loading="lazy" src="${qlEsc(x.url)}" alt="${qlEsc(x.label||'商品圖')}"><div class="ql-image-meta"><strong>${qlEsc(x.baseType||'商品圖')}</strong><span>${qlEsc(x.label||`圖片 ${i+1}`)}</span></div></article>`).join('')}</div>${(p.images||[]).length>15?`<div class="ql-help">目前先顯示前 15 張圖片。需要完整精選時再進入圖源中心。</div>`:''}</div></section>
+  <section class="ql-card"><div class="ql-card-head"><div><h3>5｜任務摘要與交接</h3><small>產圖後仍由人工確認、下載與發布</small></div></div><div class="ql-card-body"><div class="ql-summary"><div class="ql-summary-grid"><div class="ql-summary-item"><span>商品</span><strong>${qlEsc(p.model||p.productId)}</strong></div><div class="ql-summary-item"><span>製圖類型</span><strong>${qlEsc(task.label)}</strong></div><div class="ql-summary-item"><span>輸出比例</span><strong>${qlEsc(task.ratio)}</strong></div><div class="ql-summary-item"><span>圖源</span><strong>${selected.length} 張</strong></div></div><div class="ql-summary-actions"><button class="ql-btn" type="button" onclick="qlPromptPreview()">預覽提示詞</button><button class="ql-btn yellow" type="button" onclick="qlAddToSocial()">加入社群營運</button><button class="ql-btn green" type="button" onclick="qlHandoff()">交給 ChatGPT 製圖</button></div></div><textarea class="ql-prompt" id="qlPrompt" readonly>${qlEsc(qlState.prompt||qlBuildPrompt())}</textarea></div></section>`;
+}
+function qlInstallUI(){
+  if(!qlEl('quickLinkDesign')){const nav=document.querySelector('.tabs');const before=nav?.querySelector('[data-tab="imageSources"]')||nav?.querySelector('[data-tab="socialOps"]');const btn=document.createElement('button');btn.className='tab-btn';btn.dataset.tab='quickLinkDesign';btn.innerHTML='<span class="tab-icon">⚡</span>快速製圖';btn.onclick=()=>switchTab('quickLinkDesign');if(nav)nav.insertBefore(btn,before||nav.querySelector('[data-tab="purchase"]')||nav.querySelector('.db-usage-pill'));const section=document.createElement('section');section.className='tab';section.id='quickLinkDesign';section.innerHTML='<div id="quickLinkRoot"></div>';const imageTab=qlEl('imageSources');const social=qlEl('socialOps');if(imageTab)imageTab.parentNode.insertBefore(section,imageTab);else if(social)social.parentNode.insertBefore(section,social);else document.querySelector('.app')?.appendChild(section)}qlRender();
+}
+window.qlReadProduct=qlReadProduct;window.qlPaste=qlPaste;window.qlClear=qlClear;window.qlSetTask=qlSetTask;window.qlSetTheme=qlSetTheme;window.qlSetStyle=qlSetStyle;window.qlToggleImage=qlToggleImage;window.qlAutoSelect=qlAutoSelect;window.qlOpenProduct=qlOpenProduct;window.qlGoImageCenter=qlGoImageCenter;window.qlPromptPreview=qlPromptPreview;window.qlHandoff=qlHandoff;window.qlCloseHandoff=qlCloseHandoff;window.qlCopyPrompt=qlCopyPrompt;window.qlOpenGpt=qlOpenGpt;window.qlOpenImage=qlOpenImage;window.qlCopyImage=qlCopyImage;window.qlAddToSocial=qlAddToSocial;window.renderQuickLinkDesign=qlRender;
+qlInstallUI();
+try{const prev=renderCurrentTab;renderCurrentTab=function(){if(activeTabId()==='quickLinkDesign'){qlRender();return}return prev.apply(this,arguments)}}catch(e){}
+function qlOpenSocialAfterReload(){const id=sessionStorage.getItem('csmr_ql_open_social');if(!id)return;sessionStorage.removeItem('csmr_ql_open_social');setTimeout(()=>{switchTab('socialOps');setTimeout(()=>{if(typeof socialSelect==='function')socialSelect(id);if(typeof renderSocialOps==='function')renderSocialOps();qlToast('已加入社群營運')},180)},180)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{qlInstallUI();qlOpenSocialAfterReload()});else qlOpenSocialAfterReload();
 })();
 </script>
 
