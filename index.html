@@ -7440,7 +7440,7 @@ function socialRenderEditor(row){
     <div class="social-product-images-head"><div><h4>商品原圖</h4><p>系統會優先使用這筆排程的商品型號（賣家 SKU）比對媒體資料，並自動載入對應的主圖、商品附圖與顏色圖。找不到型號時，才會改用商品名稱與網址中的商品 ID 作為備援。發文時可直接複製或下載。</p></div><div class="social-product-images-actions"><button class="social-square-btn" type="button" onclick="socialProductImagesReload('${socialEsc(row.id)}')">重新讀取</button><button class="social-square-btn primary" type="button" onclick="socialProductImagesDownloadAll('${socialEsc(row.id)}')">下載全部</button></div></div>
     <div class="social-product-images-status" id="socialProductImagesStatus">正在讀取商品圖片……</div>
     <div class="social-product-images-filters" id="socialProductImagesFilters"></div>
-    <div class="social-product-images-grid" id="socialProductImagesGrid"><div class="social-product-images-empty">正在比對商品網址與圖源資料……</div></div>
+    <div class="social-product-images-grid" id="socialProductImagesGrid"><div class="social-product-images-empty">正在比對商品型號、賣家後台網址與圖源資料……</div></div>
     <div class="social-product-images-note">圖片來源為同層的 image_source_seed.json。系統會優先以排程中的商品型號／賣家 SKU 比對媒體資料，找不到時才改用商品名稱與網址商品 ID 作為備援。</div>
   </section>
   <div class="social-two-col"><div class="social-field"><div class="social-field-head"><label>Instagram 貼文</label><div class="social-field-actions"><button class="social-mini-btn" type="button" onclick="socialCopyField('${socialEsc(row.id)}','ig')">複製 IG</button></div></div><textarea oninput="socialUpdateField('${socialEsc(row.id)}','ig',this.value)">${socialEsc(row.ig)}</textarea></div><div class="social-field"><div class="social-field-head"><label>Threads</label><div class="social-field-actions"><button class="social-mini-btn" type="button" onclick="socialCopyField('${socialEsc(row.id)}','threads')">複製 Threads</button></div></div><textarea oninput="socialUpdateField('${socialEsc(row.id)}','threads',this.value)">${socialEsc(row.threads)}</textarea></div></div>
@@ -7454,7 +7454,7 @@ function renderSocialOps(){
   socialInstallUI();socialLoad();const root=socialEl('socialOpsRoot');if(!root||socialState.rendering)return;socialState.rendering=true;
   try{
     const rows=socialScheduleForView();const selected=socialSelected();const summary=socialSummary();const start=socialToday(),end=socialAddDays(start,6);
-    root.innerHTML=`<section class="social-hero"><div class="social-hero-copy"><div class="social-eyebrow"><span class="social-live-dot"></span> CSMR SOCIAL OPERATIONS</div><h2>社群營運中心</h2><p>系統會依現貨、售罄狀態、近期銷售訊號、季節與過去曝光，自動安排未來 7 天商品。進入當日任務後，系統會依商品網址自動載入原圖，發布時可直接複製圖片與文案。</p></div><div class="social-hero-status"><div class="social-hero-stat"><span>排程區間</span><strong>${socialPad(start.getMonth()+1)}/${socialPad(start.getDate())}－${socialPad(end.getMonth()+1)}/${socialPad(end.getDate())}</strong></div><div class="social-hero-stat"><span>今日任務</span><strong class="accent">${rows.find(x=>x.date===socialDateKey(start))?.model||'尚未建立'}</strong></div><div class="social-hero-stat"><span>資料來源</span><strong>庫存＋銷量</strong></div><div class="social-hero-stat"><span>保存方式</span><strong>網址讀圖 V9</strong></div></div></section>
+    root.innerHTML=`<section class="social-hero"><div class="social-hero-copy"><div class="social-eyebrow"><span class="social-live-dot"></span> CSMR SOCIAL OPERATIONS</div><h2>社群營運中心</h2><p>系統會依現貨、售罄狀態、近期銷售訊號、季節與過去曝光，自動安排未來 7 天商品。進入當日任務後，系統會依商品網址自動載入原圖，發布時可直接複製圖片與文案。</p></div><div class="social-hero-status"><div class="social-hero-stat"><span>排程區間</span><strong>${socialPad(start.getMonth()+1)}/${socialPad(start.getDate())}－${socialPad(end.getMonth()+1)}/${socialPad(end.getDate())}</strong></div><div class="social-hero-stat"><span>今日任務</span><strong class="accent">${rows.find(x=>x.date===socialDateKey(start))?.model||'尚未建立'}</strong></div><div class="social-hero-stat"><span>資料來源</span><strong>庫存＋銷量</strong></div><div class="social-hero-stat"><span>保存方式</span><strong>SKU 讀圖 V10.1</strong></div></div></section>
     <section class="social-toolbar"><div class="social-toolbar-copy"><strong>每週建立一次，平日照表發布</strong><small>商品文案與狀態保存在目前瀏覽器；商品原圖則由排程中的商品型號自動比對媒體資料，平日照排程直接發布。</small></div><div class="social-toolbar-actions"><button class="social-square-btn primary" type="button" onclick="socialGenerateWeek(false)">建立未來 7 天</button><button class="social-square-btn yellow" type="button" onclick="socialCopyWeeklyPrompt()">複製本週 AI 任務</button><button class="social-square-btn lime" type="button" onclick="socialOpenImport()">匯入 AI JSON</button><button class="social-square-btn" type="button" onclick="socialExport()">匯出排程</button></div></section>
     <section class="social-summary-grid"><div class="social-summary-card"><span>本週任務</span><strong>${summary.total}</strong><small>未來 7 天排程</small></div><div class="social-summary-card attention"><span>待製作</span><strong>${summary.draft}</strong><small>需要確認或精修</small></div><div class="social-summary-card ready"><span>已備妥</span><strong>${summary.ready}</strong><small>可以直接發布</small></div><div class="social-summary-card published"><span>已發布</span><strong>${summary.published}</strong><small>已完成紀錄</small></div><div class="social-summary-card stock"><span>排程商品現貨</span><strong>${summary.stock}</strong><small>自動排除售罄與零庫存</small></div></section>
     <section class="social-workspace"><div class="social-panel"><div class="social-panel-head"><div><h3>未來 7 天</h3><small>點選日期查看完整內容</small></div></div><div class="social-schedule-list">${socialRenderSchedule(rows)}</div></div><div class="social-panel"><div class="social-panel-head"><div><h3>當日執行包</h3><small>文案可直接修改，離開欄位即保存</small></div></div>${socialRenderEditor(selected)}</div></section>`;
@@ -7968,7 +7968,13 @@ async function spgLoadSeed(force=false){
   spgState.promise=fetch(new URL(SPG_SEED_URL,document.baseURI).href,{cache:force?'reload':'default'}).then(async res=>{if(!res.ok)throw new Error(`image_source_seed.json 讀取失敗（HTTP ${res.status}）`);const rows=await res.json();if(!Array.isArray(rows))throw new Error('image_source_seed.json 格式錯誤');spgState.products=rows;return rows}).finally(()=>{spgState.promise=null});
   return spgState.promise;
 }
-function spgFindRow(id){return typeof socialFindRow==='function'?socialFindRow(id):null}
+function spgFindRow(id){
+  const rows=(typeof socialLoad==='function'&&Array.isArray(socialLoad()?.schedules))?socialLoad().schedules:[];
+  const target=String(id??'');
+  return rows.find(x=>String(x?.id??'')===target)
+    ||(typeof socialSelected==='function'?socialSelected():null)
+    ||null;
+}
 function spgMatch(row,products){
   const candidates=[row?.model,row?.productCode,row?.code,row?.sku,row?.sellerSku].map(spgModel).filter(Boolean);
   for(const model of [...new Set(candidates)]){
@@ -8003,11 +8009,45 @@ function spgRenderGrid(scheduleId,match){
   grid.innerHTML=images.map((x,i)=>{const url=spgEsc(x.url);const type=spgEsc(spgImageType(x));const label=spgEsc(spgImageLabel(x,i));const filename=spgEsc(`${product.model||product.productId||'商品'}_${String(i+1).padStart(2,'0')}_${spgImageType(x)}.png`);return `<article class="social-product-image-card"><div class="social-product-image-preview" onclick="socialProductImagesOpen('${url}')"><img loading="lazy" src="${url}" alt="${label}" onerror="this.style.opacity='.25';this.alt='圖片載入失敗'"></div><div class="social-product-image-meta"><span class="social-product-image-type">${type}</span><strong title="${label}">${i+1}. ${label}</strong><small>${spgEsc(product.model||product.productId||'')}｜商品 ID ${spgEsc(product.productId||'')}</small><div class="social-product-image-buttons"><button class="primary" type="button" onclick="socialProductImagesCopy('${url}')">複製圖片</button><button type="button" onclick="socialProductImagesDownload('${url}','${filename}')">下載</button><button type="button" onclick="socialProductImagesOpen('${url}')">開啟原圖</button><button type="button" onclick="socialProductImagesCopyUrl('${url}')">複製網址</button></div></div></article>`}).join('')
 }
 async function spgRender(scheduleId,force=false){
-  const box=document.getElementById('socialProductImagesBox');const grid=document.getElementById('socialProductImagesGrid');if(!box||!grid||box.dataset.socialId!==scheduleId)return;
-  spgSetStatus('正在依商品型號比對商品圖片……');grid.innerHTML='<div class="social-product-images-empty">正在讀取 image_source_seed.json……</div>';
-  try{const row=spgFindRow(scheduleId);if(!row)throw new Error('找不到目前排程資料');const products=await spgLoadSeed(force);const match=spgMatch(row,products);spgState.matchBySchedule[scheduleId]=match;if(!match.product){spgSetStatus(`找不到對應商品圖片：${match.matchedBy}`,'error');const triedCode=spgEsc(spgModel(row?.model||row?.productCode||row?.code||row?.sku||row?.sellerSku)||'未提供型號');grid.innerHTML=`<div class="social-product-images-empty">媒體資料中找不到商品型號 ${triedCode} 對應的圖片。<br>請確認這筆排程的商品型號／賣家 SKU 是否正確，並更新 image_source_seed.json。</div>`;const filters=document.getElementById('socialProductImagesFilters');if(filters)filters.innerHTML='';return}
-    const images=spgUniqueImages(match.product);spgSetStatus(`已載入 ${images.length} 張商品圖片｜${match.matchedBy}`,'success');spgRenderGrid(scheduleId,match);
-  }catch(err){console.error(err);spgSetStatus(err?.message||String(err),'error');grid.innerHTML='<div class="social-product-images-empty">商品圖片讀取失敗。請確認 index.html 與 image_source_seed.json 位於同一層，再按「重新讀取」。如果媒體資料已更新，請重新覆蓋 image_source_seed.json。</div>'}
+  const box=document.getElementById('socialProductImagesBox');
+  const grid=document.getElementById('socialProductImagesGrid');
+  if(!box||!grid)return;
+  const activeId=String(box.dataset.socialId||scheduleId||'');
+  spgSetStatus('正在依商品型號與賣家後台網址比對商品圖片……');
+  grid.innerHTML='<div class="social-product-images-empty">正在讀取 image_source_seed.json……</div>';
+  try{
+    const row=spgFindRow(activeId);
+    if(!row)throw new Error(`找不到目前排程資料（排程 ID：${activeId||'空白'}）`);
+    const products=await spgLoadSeed(force);
+    const match=spgMatch(row,products);
+    spgState.matchBySchedule[activeId]=match;
+    if(!match.product){
+      const triedCode=spgEsc(spgModel(row?.model||row?.productCode||row?.code||row?.sku||row?.sellerSku)||'未提供型號');
+      const urls=Array.isArray(row?.shopeeUrls)?row.shopeeUrls.filter(Boolean):[];
+      const sellerId=urls.map(spgParseProductId).find(Boolean)||'未解析到商品 ID';
+      spgSetStatus(`媒體資料共 ${products.length} 筆，但找不到 ${triedCode}`,'error');
+      grid.innerHTML=`<div class="social-product-images-empty">
+        已成功讀取 image_source_seed.json（${products.length} 筆商品），但找不到對應圖片。<br>
+        排程型號／賣家 SKU：<strong>${triedCode}</strong><br>
+        賣家後台網址商品 ID：<strong>${spgEsc(sellerId)}</strong><br>
+        比對結果：${spgEsc(match.matchedBy)}<br><br>
+        請確認媒體資料是否包含此商品，或重新匯出最新商品媒體資訊。
+      </div>`;
+      const filters=document.getElementById('socialProductImagesFilters');
+      if(filters)filters.innerHTML='';
+      return;
+    }
+    const images=spgUniqueImages(match.product);
+    spgSetStatus(`已載入 ${images.length} 張商品圖片｜${match.matchedBy}｜媒體資料 ${products.length} 筆`,'success');
+    spgRenderGrid(activeId,match);
+  }catch(err){
+    console.error(err);
+    spgSetStatus(err?.message||String(err),'error');
+    grid.innerHTML=`<div class="social-product-images-empty">
+      ${spgEsc(err?.message||String(err))}<br><br>
+      這不是「檔案不在同一層」的固定判定。請先按「重新讀取」；若仍失敗，再確認 GitHub Pages 已完成部署。
+    </div>`;
+  }
 }
 async function spgFetchBlob(url){const res=await fetch(url,{mode:'cors',cache:'force-cache'});if(!res.ok)throw new Error(`圖片讀取失敗（HTTP ${res.status}）`);return res.blob()}
 async function spgToPng(blob){if(blob.type==='image/png')return blob;const bmp=await createImageBitmap(blob);const canvas=document.createElement('canvas');canvas.width=bmp.width;canvas.height=bmp.height;const ctx=canvas.getContext('2d');ctx.drawImage(bmp,0,0);bmp.close?.();return new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('圖片轉換失敗')),'image/png'))}
