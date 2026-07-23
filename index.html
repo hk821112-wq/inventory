@@ -7436,32 +7436,30 @@ function socialRenderEditor(row){
   const stories=Array.isArray(row.stories)?row.stories:['','',''];const colors=(row.colors||[]).join('、')||'-';
   return `<div class="social-editor"><section class="social-product-head"><div><h3>${socialEsc(row.date)} ${socialEsc(row.weekday)}｜${socialEsc(row.model)} ${socialEsc(row.contentType)}</h3><p>${socialEsc(row.itemName)}<br>平台：${socialEsc((row.platforms||[]).join('＋'))}｜目的：${socialEsc(row.purpose)}</p></div><div class="social-product-actions"><button class="social-square-btn yellow" type="button" onclick="socialOpenShopeeById('${socialEsc(row.id)}')">開啟蝦皮</button><button class="social-square-btn" type="button" onclick="socialRegenerateSelected()">重產基礎文案</button><button class="social-square-btn lime" type="button" onclick="socialCopyAllById('${socialEsc(row.id)}')">複製整包</button></div></section>
   <div class="social-fact-grid"><div class="social-fact"><span>現貨總數</span><strong>${Number(row.currentStock)||0}</strong></div><div class="social-fact"><span>近 30 日銷量</span><strong>${Number(row.sales30)||0}</strong></div><div class="social-fact"><span>累積銷量</span><strong>${Number(row.totalSales)||0}</strong></div><div class="social-fact"><span>顏色／規格</span><strong title="${socialEsc(colors)}">${socialEsc(colors)}</strong></div></div>
-  <section class="social-media-box" id="socialMediaBox" data-social-id="${socialEsc(row.id)}">
-    <div class="social-media-head"><div><h4>社群圖片</h4><p>放入已完成的商品圖，發布時按「複製圖片」後直接貼到 Instagram、Facebook 或 Threads。</p></div><div class="social-media-actions"><button class="social-square-btn primary" type="button" onclick="socialMediaOpenPicker('${socialEsc(row.id)}')">放入圖源</button><button class="social-square-btn" type="button" onclick="socialMediaPasteFromClipboard('${socialEsc(row.id)}')">貼上剪貼簿圖片</button></div></div>
-    <input id="socialMediaInput" type="file" accept="image/*" multiple hidden onchange="socialMediaHandleFiles('${socialEsc(row.id)}',this.files);this.value=''">
-    <div class="social-media-drop" id="socialMediaDrop" tabindex="0" onclick="socialMediaOpenPicker('${socialEsc(row.id)}')" ondragover="socialMediaDragOver(event)" ondragleave="socialMediaDragLeave(event)" ondrop="socialMediaDrop(event,'${socialEsc(row.id)}')">
-      <strong>拖曳圖片到這裡</strong><span>也可按「放入圖源」選擇多張圖片，或在此區按 Ctrl＋V 貼上圖片。</span>
-    </div>
-    <div class="social-media-grid" id="socialMediaGrid"><div class="social-media-empty">尚未放入社群圖片</div></div>
-    <div class="social-media-note">圖片只保存在目前瀏覽器，不會上傳到 Supabase。清除瀏覽器網站資料後會一併消失。</div>
+  <section class="social-product-images-box" id="socialProductImagesBox" data-social-id="${socialEsc(row.id)}">
+    <div class="social-product-images-head"><div><h4>商品原圖</h4><p>系統會從這筆排程的蝦皮商品網址取得商品 ID，並自動載入對應的主圖、商品附圖與顏色圖。發文時可直接複製或下載。</p></div><div class="social-product-images-actions"><button class="social-square-btn" type="button" onclick="socialProductImagesReload('${socialEsc(row.id)}')">重新讀取</button><button class="social-square-btn primary" type="button" onclick="socialProductImagesDownloadAll('${socialEsc(row.id)}')">下載全部</button></div></div>
+    <div class="social-product-images-status" id="socialProductImagesStatus">正在讀取商品圖片……</div>
+    <div class="social-product-images-filters" id="socialProductImagesFilters"></div>
+    <div class="social-product-images-grid" id="socialProductImagesGrid"><div class="social-product-images-empty">正在比對商品網址與圖源資料……</div></div>
+    <div class="social-product-images-note">圖片來源為同層的 image_source_seed.json。商品網址會優先以商品 ID 精準比對，找不到時才改用商品型號比對。</div>
   </section>
   <div class="social-two-col"><div class="social-field"><div class="social-field-head"><label>Instagram 貼文</label><div class="social-field-actions"><button class="social-mini-btn" type="button" onclick="socialCopyField('${socialEsc(row.id)}','ig')">複製 IG</button></div></div><textarea oninput="socialUpdateField('${socialEsc(row.id)}','ig',this.value)">${socialEsc(row.ig)}</textarea></div><div class="social-field"><div class="social-field-head"><label>Threads</label><div class="social-field-actions"><button class="social-mini-btn" type="button" onclick="socialCopyField('${socialEsc(row.id)}','threads')">複製 Threads</button></div></div><textarea oninput="socialUpdateField('${socialEsc(row.id)}','threads',this.value)">${socialEsc(row.threads)}</textarea></div></div>
   <div class="social-field"><div class="social-field-head"><label>Facebook</label><div class="social-field-actions"><button class="social-mini-btn" type="button" onclick="socialCopyField('${socialEsc(row.id)}','facebook')">複製 Facebook</button></div></div><textarea class="compact" oninput="socialUpdateField('${socialEsc(row.id)}','facebook',this.value)">${socialEsc(row.facebook)}</textarea></div>
   <div class="social-field"><div class="social-field-head"><label>IG 限時動態（3頁）</label><button class="social-mini-btn" type="button" onclick="socialCopyStories('${socialEsc(row.id)}')">複製限動</button></div><div class="social-story-grid">${stories.slice(0,3).map((text,i)=>`<div class="social-story-card"><div class="social-story-card-head"><label>第 ${i+1} 頁</label></div><textarea oninput="socialUpdateStory('${socialEsc(row.id)}',${i},this.value)">${socialEsc(text)}</textarea></div>`).join('')}</div></div>
   <div class="social-two-col"><div class="social-field"><div class="social-field-head"><label>Hashtag</label><button class="social-mini-btn" type="button" onclick="socialCopyField('${socialEsc(row.id)}','hashtags')">複製</button></div><textarea class="compact" oninput="socialUpdateField('${socialEsc(row.id)}','hashtags',this.value)">${socialEsc(row.hashtags)}</textarea></div><div class="social-field"><div class="social-field-head"><label>第一則留言</label><button class="social-mini-btn" type="button" onclick="socialCopyField('${socialEsc(row.id)}','firstComment')">複製</button></div><textarea class="compact" oninput="socialUpdateField('${socialEsc(row.id)}','firstComment',this.value)">${socialEsc(row.firstComment)}</textarea></div></div>
   <div class="social-publish-box"><div class="social-field"><label>貼文網址</label><input value="${socialEsc(row.postUrl||'')}" placeholder="發布後貼上網址" onchange="socialUpdateField('${socialEsc(row.id)}','postUrl',this.value)"></div><div class="social-field"><label>表現</label><select onchange="socialUpdateField('${socialEsc(row.id)}','performance',this.value)"><option ${row.performance==='未評估'?'selected':''}>未評估</option><option ${row.performance==='普通'?'selected':''}>普通</option><option ${row.performance==='不錯'?'selected':''}>不錯</option><option ${row.performance==='很好'?'selected':''}>很好</option></select></div><div class="social-field"><label>執行狀態</label><div style="display:flex;gap:7px"><button class="social-square-btn" type="button" onclick="socialSetStatus('${socialEsc(row.id)}','draft')">待製作</button><button class="social-square-btn lime" type="button" onclick="socialSetStatus('${socialEsc(row.id)}','ready')">已備妥</button><button class="social-square-btn primary" type="button" onclick="socialSetStatus('${socialEsc(row.id)}','published')">已發布</button></div></div></div>
-  <div class="social-guide"><strong>直接發布流程：</strong>把已完成的商品圖放入「社群圖片」→ 發布時按「複製圖片」→ 到社群平台直接貼上 → 再複製對應平台文案。系統不再進行 GPT 製圖。</div></div>`;
+  <div class="social-guide"><strong>直接發布流程：</strong>系統依商品網址自動載入原圖 → 選擇要用的圖片 → 按「複製圖片」或「下載」→ 到 Instagram、Facebook 或 Threads 發文 → 再複製對應平台文案。無須手動上傳圖源，也無須 GPT 製圖。</div></div>`;
 }
 function renderSocialOps(){
   socialInstallUI();socialLoad();const root=socialEl('socialOpsRoot');if(!root||socialState.rendering)return;socialState.rendering=true;
   try{
     const rows=socialScheduleForView();const selected=socialSelected();const summary=socialSummary();const start=socialToday(),end=socialAddDays(start,6);
-    root.innerHTML=`<section class="social-hero"><div class="social-hero-copy"><div class="social-eyebrow"><span class="social-live-dot"></span> CSMR SOCIAL OPERATIONS</div><h2>社群營運中心</h2><p>系統會依現貨、售罄狀態、近期銷售訊號、季節與過去曝光，自動安排未來 7 天商品。已完成的社群圖片可直接放入排程，發布時一鍵複製圖片與文案。</p></div><div class="social-hero-status"><div class="social-hero-stat"><span>排程區間</span><strong>${socialPad(start.getMonth()+1)}/${socialPad(start.getDate())}－${socialPad(end.getMonth()+1)}/${socialPad(end.getDate())}</strong></div><div class="social-hero-stat"><span>今日任務</span><strong class="accent">${rows.find(x=>x.date===socialDateKey(start))?.model||'尚未建立'}</strong></div><div class="social-hero-stat"><span>資料來源</span><strong>庫存＋銷量</strong></div><div class="social-hero-stat"><span>保存方式</span><strong>本機 V1</strong></div></div></section>
-    <section class="social-toolbar"><div class="social-toolbar-copy"><strong>每週建立一次，平日照表發布</strong><small>文案、狀態與社群圖片皆保存在目前瀏覽器，平日照排程直接發布。</small></div><div class="social-toolbar-actions"><button class="social-square-btn primary" type="button" onclick="socialGenerateWeek(false)">建立未來 7 天</button><button class="social-square-btn yellow" type="button" onclick="socialCopyWeeklyPrompt()">複製本週 AI 任務</button><button class="social-square-btn lime" type="button" onclick="socialOpenImport()">匯入 AI JSON</button><button class="social-square-btn" type="button" onclick="socialExport()">匯出排程</button></div></section>
+    root.innerHTML=`<section class="social-hero"><div class="social-hero-copy"><div class="social-eyebrow"><span class="social-live-dot"></span> CSMR SOCIAL OPERATIONS</div><h2>社群營運中心</h2><p>系統會依現貨、售罄狀態、近期銷售訊號、季節與過去曝光，自動安排未來 7 天商品。進入當日任務後，系統會依商品網址自動載入原圖，發布時可直接複製圖片與文案。</p></div><div class="social-hero-status"><div class="social-hero-stat"><span>排程區間</span><strong>${socialPad(start.getMonth()+1)}/${socialPad(start.getDate())}－${socialPad(end.getMonth()+1)}/${socialPad(end.getDate())}</strong></div><div class="social-hero-stat"><span>今日任務</span><strong class="accent">${rows.find(x=>x.date===socialDateKey(start))?.model||'尚未建立'}</strong></div><div class="social-hero-stat"><span>資料來源</span><strong>庫存＋銷量</strong></div><div class="social-hero-stat"><span>保存方式</span><strong>網址讀圖 V9</strong></div></div></section>
+    <section class="social-toolbar"><div class="social-toolbar-copy"><strong>每週建立一次，平日照表發布</strong><small>商品文案與狀態保存在目前瀏覽器；商品原圖則由商品網址自動比對媒體資料，平日照排程直接發布。</small></div><div class="social-toolbar-actions"><button class="social-square-btn primary" type="button" onclick="socialGenerateWeek(false)">建立未來 7 天</button><button class="social-square-btn yellow" type="button" onclick="socialCopyWeeklyPrompt()">複製本週 AI 任務</button><button class="social-square-btn lime" type="button" onclick="socialOpenImport()">匯入 AI JSON</button><button class="social-square-btn" type="button" onclick="socialExport()">匯出排程</button></div></section>
     <section class="social-summary-grid"><div class="social-summary-card"><span>本週任務</span><strong>${summary.total}</strong><small>未來 7 天排程</small></div><div class="social-summary-card attention"><span>待製作</span><strong>${summary.draft}</strong><small>需要確認或精修</small></div><div class="social-summary-card ready"><span>已備妥</span><strong>${summary.ready}</strong><small>可以直接發布</small></div><div class="social-summary-card published"><span>已發布</span><strong>${summary.published}</strong><small>已完成紀錄</small></div><div class="social-summary-card stock"><span>排程商品現貨</span><strong>${summary.stock}</strong><small>自動排除售罄與零庫存</small></div></section>
     <section class="social-workspace"><div class="social-panel"><div class="social-panel-head"><div><h3>未來 7 天</h3><small>點選日期查看完整內容</small></div></div><div class="social-schedule-list">${socialRenderSchedule(rows)}</div></div><div class="social-panel"><div class="social-panel-head"><div><h3>當日執行包</h3><small>文案可直接修改，離開欄位即保存</small></div></div>${socialRenderEditor(selected)}</div></section>`;
     // V4：社群頁完成後只更新一次圖源槽。
-    window.setTimeout(()=>window.socialMediaRender?.(selected?.id||''),0);
+    window.setTimeout(()=>window.socialProductImagesRender?.(selected?.id||''),0);
   }finally{socialState.rendering=false}
 }
 function socialFindRow(id){return socialLoad().schedules.find(x=>x.id===id)}
@@ -7922,6 +7920,97 @@ window.socialMediaDrop=function(e,scheduleId){e.preventDefault();e.currentTarget
 document.addEventListener('paste',e=>{const tag=String(document.activeElement?.tagName||'').toLowerCase();if(tag==='input'||tag==='textarea'||document.activeElement?.isContentEditable)return;const box=document.getElementById('socialMediaBox');if(!box)return;const files=smFiles(e.clipboardData?.files);if(!files.length)return;e.preventDefault();smAdd(box.dataset.socialId,files)});
 window.addEventListener('beforeunload',smClearObjectUrls);
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{const box=document.getElementById('socialMediaBox');if(box)smRender(box.dataset.socialId)});else{const box=document.getElementById('socialMediaBox');if(box)smRender(box.dataset.socialId)}
+})();
+</script>
+
+
+<style>
+.social-product-images-box{border:2px solid #111827;background:#f7f4ed;padding:14px;display:grid;gap:12px}
+.social-product-images-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.social-product-images-head h4{margin:0;font-size:17px;color:#111827}.social-product-images-head p{margin:5px 0 0;color:#64748b;font-size:12px;line-height:1.6;font-weight:800;max-width:850px}
+.social-product-images-actions{display:flex;gap:8px;flex-wrap:wrap}
+.social-product-images-status{border:1px solid #94a3b8;background:#fff;padding:9px 11px;color:#334155;font-size:11px;font-weight:900;line-height:1.55}
+.social-product-images-status.success{border-color:#16a34a;background:#f0fdf4;color:#166534}.social-product-images-status.error{border-color:#dc2626;background:#fef2f2;color:#991b1b}
+.social-product-images-filters{display:flex;gap:7px;flex-wrap:wrap}.social-product-images-filter{min-height:31px;padding:5px 10px;border:1px solid #64748b;background:#fff;color:#334155;font-size:10px!important;font-weight:1000}.social-product-images-filter.active{background:#3157ff;color:#fff;border-color:#111827}
+.social-product-images-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.social-product-image-card{border:2px solid #111827;background:#fff;overflow:hidden;min-width:0}
+.social-product-image-preview{aspect-ratio:1/1;background:#e2e8f0;cursor:pointer}.social-product-image-preview img{display:block;width:100%;height:100%;object-fit:cover}
+.social-product-image-meta{padding:8px;display:grid;gap:7px}.social-product-image-meta strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:#111827}.social-product-image-meta small{font-size:10px;color:#64748b;font-weight:800}
+.social-product-image-type{display:inline-flex;width:max-content;max-width:100%;padding:3px 7px;border:1px solid #94a3b8;background:#f8fafc;color:#334155;font-size:9px;font-weight:1000}
+.social-product-image-buttons{display:grid;grid-template-columns:1fr 1fr;gap:5px}.social-product-image-buttons button{min-height:31px;border:1px solid #64748b;background:#fff;color:#334155;font-size:10px!important;font-weight:1000}.social-product-image-buttons button.primary{background:#3157ff;color:#fff;border-color:#111827}
+.social-product-images-empty{grid-column:1/-1;padding:28px 16px;border:1px dashed #94a3b8;background:#fff;color:#64748b;text-align:center;font-size:12px;font-weight:900;line-height:1.7}
+.social-product-images-note{color:#64748b;font-size:10px;line-height:1.55;font-weight:800}
+body.dark-mode .social-product-images-box{background:#1e293b;border-color:#64748b}.dark-mode .social-product-images-head h4,.dark-mode .social-product-image-meta strong{color:#f8fafc}.dark-mode .social-product-images-head p,.dark-mode .social-product-image-meta small,.dark-mode .social-product-images-note{color:#94a3b8}.dark-mode .social-product-images-status,.dark-mode .social-product-image-card,.dark-mode .social-product-images-empty,.dark-mode .social-product-images-filter{background:#0f172a;border-color:#64748b;color:#e5e7eb}.dark-mode .social-product-images-status.success{background:#052e16;color:#bbf7d0;border-color:#16a34a}.dark-mode .social-product-images-status.error{background:#450a0a;color:#fecaca;border-color:#ef4444}.dark-mode .social-product-image-buttons button{background:#1e293b;color:#e5e7eb;border-color:#64748b}.dark-mode .social-product-image-buttons button.primary,.dark-mode .social-product-images-filter.active{background:#3157ff;color:#fff}.dark-mode .social-product-image-type{background:#1e293b;color:#cbd5e1;border-color:#64748b}
+@media(max-width:1100px){.social-product-images-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){.social-product-images-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.social-product-images-actions{width:100%}.social-product-images-actions .social-square-btn{flex:1}}
+</style>
+<script>
+(function(){
+'use strict';
+const SPG_SEED_URL='./image_source_seed.json';
+const spgState={products:null,promise:null,filterBySchedule:{},matchBySchedule:{}};
+function spgEsc(value){return String(value??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function spgToast(msg){if(typeof showCopyToast==='function')showCopyToast(msg);else console.log(msg)}
+function spgAlert(msg,title='提示',danger=false){if(typeof appAlert==='function')return appAlert(msg,title,danger?{danger:true}:undefined);alert(msg)}
+function spgParseProductId(value){
+  const raw=String(value||'').trim();let decoded=raw;try{decoded=decodeURIComponent(raw)}catch(e){}
+  const direct=decoded.match(/^\d{7,}$/);if(direct)return direct[0];
+  const patterns=[/i\.\d+\.(\d+)(?:[?/#]|$)/i,/\/portal\/product\/(\d+)(?:[?/#]|$)/i,/\/product\/\d+\/(\d+)(?:[?/#]|$)/i,/[?&](?:itemid|item_id)=(\d+)/i];
+  for(const re of patterns){const m=decoded.match(re);if(m)return m[1]}
+  try{const u=new URL(decoded);const nums=u.pathname.match(/\d{7,}/g)||[];if(nums.length)return nums[nums.length-1]}catch(e){}
+  return'';
+}
+function spgModel(value){return String(value||'').trim().toUpperCase().replace(/\s+/g,'')}
+async function spgLoadSeed(force=false){
+  if(force){spgState.products=null;spgState.promise=null}
+  if(Array.isArray(spgState.products))return spgState.products;
+  if(spgState.promise)return spgState.promise;
+  spgState.promise=fetch(new URL(SPG_SEED_URL,document.baseURI).href,{cache:force?'reload':'default'}).then(async res=>{if(!res.ok)throw new Error(`image_source_seed.json 讀取失敗（HTTP ${res.status}）`);const rows=await res.json();if(!Array.isArray(rows))throw new Error('image_source_seed.json 格式錯誤');spgState.products=rows;return rows}).finally(()=>{spgState.promise=null});
+  return spgState.promise;
+}
+function spgFindRow(id){return typeof socialFindRow==='function'?socialFindRow(id):null}
+function spgMatch(row,products){
+  const urls=Array.isArray(row?.shopeeUrls)?row.shopeeUrls.filter(Boolean):[];
+  const ids=[...new Set(urls.map(spgParseProductId).filter(Boolean))];
+  for(const id of ids){const p=products.find(x=>String(x.productId||'')===id);if(p)return{product:p,matchedBy:`商品網址 ID：${id}`,productId:id}}
+  const candidates=[row?.model,row?.productCode,row?.code].map(spgModel).filter(Boolean);
+  for(const model of candidates){const p=products.find(x=>spgModel(x.model)===model||spgModel(x.parentSku)===model);if(p)return{product:p,matchedBy:`商品型號：${model}`,productId:String(p.productId||'')}}
+  const name=String(row?.itemName||'').trim().toLowerCase();if(name){const p=products.find(x=>String(x.name||'').trim().toLowerCase()===name);if(p)return{product:p,matchedBy:'商品名稱完整比對',productId:String(p.productId||'')}}
+  return{product:null,matchedBy:ids.length?`網址商品 ID ${ids.join('、')} 未存在媒體資料`:'商品網址中找不到可比對的商品 ID',productId:ids[0]||''};
+}
+function spgImageType(x){return String(x?.baseType||x?.type||'商品附圖')}
+function spgImageLabel(x,i){return String(x?.label||`商品圖片 ${i+1}`)}
+function spgUniqueImages(product){const seen=new Set();return (product?.images||[]).filter(x=>x&&/^https?:\/\//i.test(String(x.url||''))&&!seen.has(x.url)&&(seen.add(x.url),true))}
+function spgTypes(images){const order=['全部','主圖','商品附圖','顏色圖'];const found=new Set(images.map(spgImageType));return order.filter(x=>x==='全部'||found.has(x)).concat([...found].filter(x=>!order.includes(x)))}
+function spgSetStatus(text,mode=''){const el=document.getElementById('socialProductImagesStatus');if(!el)return;el.className=`social-product-images-status ${mode}`.trim();el.textContent=text}
+function spgRenderFilters(scheduleId,images){const root=document.getElementById('socialProductImagesFilters');if(!root)return;const current=spgState.filterBySchedule[scheduleId]||'全部';root.innerHTML=spgTypes(images).map(type=>`<button class="social-product-images-filter ${current===type?'active':''}" type="button" onclick="socialProductImagesSetFilter('${spgEsc(scheduleId)}','${spgEsc(type)}')">${spgEsc(type)}</button>`).join('')}
+function spgRenderGrid(scheduleId,match){
+  const grid=document.getElementById('socialProductImagesGrid');if(!grid)return;
+  const product=match?.product;const all=spgUniqueImages(product);const filter=spgState.filterBySchedule[scheduleId]||'全部';const images=filter==='全部'?all:all.filter(x=>spgImageType(x)===filter);
+  spgRenderFilters(scheduleId,all);
+  if(!images.length){grid.innerHTML='<div class="social-product-images-empty">這個分類目前沒有商品圖片。</div>';return}
+  grid.innerHTML=images.map((x,i)=>{const url=spgEsc(x.url);const type=spgEsc(spgImageType(x));const label=spgEsc(spgImageLabel(x,i));const filename=spgEsc(`${product.model||product.productId||'商品'}_${String(i+1).padStart(2,'0')}_${spgImageType(x)}.png`);return `<article class="social-product-image-card"><div class="social-product-image-preview" onclick="socialProductImagesOpen('${url}')"><img loading="lazy" src="${url}" alt="${label}" onerror="this.style.opacity='.25';this.alt='圖片載入失敗'"></div><div class="social-product-image-meta"><span class="social-product-image-type">${type}</span><strong title="${label}">${i+1}. ${label}</strong><small>${spgEsc(product.model||product.productId||'')}｜商品 ID ${spgEsc(product.productId||'')}</small><div class="social-product-image-buttons"><button class="primary" type="button" onclick="socialProductImagesCopy('${url}')">複製圖片</button><button type="button" onclick="socialProductImagesDownload('${url}','${filename}')">下載</button><button type="button" onclick="socialProductImagesOpen('${url}')">開啟原圖</button><button type="button" onclick="socialProductImagesCopyUrl('${url}')">複製網址</button></div></div></article>`}).join('')
+}
+async function spgRender(scheduleId,force=false){
+  const box=document.getElementById('socialProductImagesBox');const grid=document.getElementById('socialProductImagesGrid');if(!box||!grid||box.dataset.socialId!==scheduleId)return;
+  spgSetStatus('正在從商品網址比對商品圖片……');grid.innerHTML='<div class="social-product-images-empty">正在讀取 image_source_seed.json……</div>';
+  try{const row=spgFindRow(scheduleId);if(!row)throw new Error('找不到目前排程資料');const products=await spgLoadSeed(force);const match=spgMatch(row,products);spgState.matchBySchedule[scheduleId]=match;if(!match.product){spgSetStatus(`找不到對應商品圖片：${match.matchedBy}`,'error');grid.innerHTML=`<div class="social-product-images-empty">目前商品網址無法在媒體資料中找到對應商品。<br>請確認這筆排程的蝦皮網址正確，並更新 image_source_seed.json。</div>`;const filters=document.getElementById('socialProductImagesFilters');if(filters)filters.innerHTML='';return}
+    const images=spgUniqueImages(match.product);spgSetStatus(`已載入 ${images.length} 張商品圖片｜${match.matchedBy}`,'success');spgRenderGrid(scheduleId,match);
+  }catch(err){console.error(err);spgSetStatus(err?.message||String(err),'error');grid.innerHTML='<div class="social-product-images-empty">商品圖片讀取失敗。請確認 index.html 與 image_source_seed.json 位於同一層，再按「重新讀取」。</div>'}
+}
+async function spgFetchBlob(url){const res=await fetch(url,{mode:'cors',cache:'force-cache'});if(!res.ok)throw new Error(`圖片讀取失敗（HTTP ${res.status}）`);return res.blob()}
+async function spgToPng(blob){if(blob.type==='image/png')return blob;const bmp=await createImageBitmap(blob);const canvas=document.createElement('canvas');canvas.width=bmp.width;canvas.height=bmp.height;const ctx=canvas.getContext('2d');ctx.drawImage(bmp,0,0);bmp.close?.();return new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('圖片轉換失敗')),'image/png'))}
+async function spgCopy(url){try{if(!navigator.clipboard?.write||typeof ClipboardItem==='undefined')throw new Error('瀏覽器不支援圖片剪貼簿');const blob=await spgFetchBlob(url);const png=await spgToPng(blob);await navigator.clipboard.write([new ClipboardItem({'image/png':png})]);spgToast('商品圖片已複製，可直接貼到社群平台')}catch(err){console.error(err);window.open(url,'_blank');spgAlert('圖片伺服器限制了直接複製，已替你開啟原圖。請在原圖上按右鍵「複製圖片」，或使用下載按鈕。','無法直接複製') }}
+async function spgDownload(url,filename='商品圖片.png'){try{const blob=await spgFetchBlob(url);const objectUrl=URL.createObjectURL(blob);const a=document.createElement('a');a.href=objectUrl;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(objectUrl),1500);spgToast('圖片已下載')}catch(err){console.error(err);window.open(url,'_blank');spgAlert('圖片伺服器限制了直接下載，已替你開啟原圖。請在原圖上按右鍵另存圖片。','無法直接下載')}}
+async function spgDownloadAll(scheduleId){const match=spgState.matchBySchedule[scheduleId];if(!match?.product)return spgAlert('尚未讀取到商品圖片。請先按「重新讀取」。','沒有圖片');const all=spgUniqueImages(match.product);const filter=spgState.filterBySchedule[scheduleId]||'全部';const images=filter==='全部'?all:all.filter(x=>spgImageType(x)===filter);if(!images.length)return spgAlert('目前分類沒有圖片。','沒有圖片');const ok=typeof appConfirm==='function'?await appConfirm(`將依序下載目前分類的 ${images.length} 張圖片。瀏覽器可能會詢問是否允許多檔下載。`,'下載全部',{confirmText:'開始下載',cancelText:'取消'}):confirm(`下載 ${images.length} 張圖片？`);if(!ok)return;for(let i=0;i<images.length;i++){const x=images[i];await spgDownload(x.url,`${match.product.model||match.product.productId||'商品'}_${String(i+1).padStart(2,'0')}_${spgImageType(x)}.png`);await new Promise(r=>setTimeout(r,280))}}
+window.socialProductImagesRender=spgRender;
+window.socialProductImagesReload=scheduleId=>spgRender(scheduleId,true);
+window.socialProductImagesSetFilter=function(scheduleId,type){spgState.filterBySchedule[scheduleId]=type;const match=spgState.matchBySchedule[scheduleId];if(match)spgRenderGrid(scheduleId,match)};
+window.socialProductImagesCopy=spgCopy;
+window.socialProductImagesDownload=spgDownload;
+window.socialProductImagesDownloadAll=spgDownloadAll;
+window.socialProductImagesOpen=url=>window.open(url,'_blank');
+window.socialProductImagesCopyUrl=async function(url){try{await navigator.clipboard.writeText(url);spgToast('圖片網址已複製')}catch(e){spgAlert(url,'圖片網址')}};
 })();
 </script>
 
