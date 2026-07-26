@@ -3033,6 +3033,7 @@
       outline:0;
       transition:background .12s ease,color .12s ease,box-shadow .12s ease;
     }
+    .item-image-preview-trigger[href]{cursor:pointer}
     .item-image-preview-trigger:hover,
     .item-image-preview-trigger:focus-visible{
       color:#1d4ed8;
@@ -3896,7 +3897,15 @@ function itemPreviewHtml(product,label){
   const text=String(label??product?.itemName??product?.name??'').trim();
   if(!text)return '';
   const code=normalizeCode(product?.code||'');
-  return `<span class="item-image-preview-trigger" data-item-image-preview="1" data-preview-code="${esc(code)}" data-preview-name="${esc(text)}" tabindex="0" title="滑鼠移入查看商品圖片">${esc(text)}</span>`;
+  const urls=parseMultiUrls(product?.shopeeUrl||product?.shopeeUrls||'');
+  const previewAttrs=`class="item-image-preview-trigger" data-item-image-preview="1" data-preview-code="${esc(code)}" data-preview-name="${esc(text)}" tabindex="0"`;
+  if(urls.length){
+    const title=urls.length>1
+      ? `滑鼠移入查看商品圖片；點擊開啟 ${urls.length} 個蝦皮商品後台`
+      : '滑鼠移入查看商品圖片；點擊開啟蝦皮商品後台';
+    return `<a ${previewAttrs} data-preview-shopee="${esc(urls.join('\n'))}" href="${esc(urls[0])}" target="_blank" rel="noopener" title="${esc(title)}" onclick="return openItemPreviewShopee('${esc(code)}',this,event)">${esc(text)}</a>`;
+  }
+  return `<span ${previewAttrs} title="滑鼠移入查看商品圖片">${esc(text)}</span>`;
 }
 
 function recordItemPreviewHtml(row){
@@ -4305,6 +4314,13 @@ function openShopeeLinksByCode(code,event){
   const p=findProduct(code);
   const urls=parseMultiUrls(p?.shopeeUrl||'');
   return openUrlList(urls,p?.itemName||normalizeCode(code));
+}
+function openItemPreviewShopee(code,element,event){
+  if(event){event.preventDefault();event.stopPropagation();}
+  const p=findProduct(code);
+  const fallback=element?.dataset?.previewShopee||element?.href||'';
+  const urls=parseMultiUrls(p?.shopeeUrl||fallback);
+  return openUrlList(urls,p?.itemName||element?.dataset?.previewName||normalizeCode(code));
 }
 function arrivalShopeeUrls(task){
   const p=task?findProduct(task.code):null;
