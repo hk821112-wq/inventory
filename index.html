@@ -87,7 +87,7 @@
     body.printing-labels .nextday-warning-float{display:none!important}
     @keyframes warningBlink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.94)}}
     .progress{width:160px;height:9px;border-radius:999px;overflow:hidden;background:#e5e7eb;display:inline-block;vertical-align:middle;margin-right:8px;position:relative}.progress.no-order{background:#e5e7eb}.progress.has-order{background:var(--red)}.progress span{display:block;height:100%;width:0;background:var(--green);transition:width .2s ease}
-    .purchase-cell{display:flex;align-items:center;gap:8px;min-width:220px}.purchase-progress-wrap{display:flex;flex-direction:column;gap:4px;min-width:160px}.purchase-date{font-size:12px;line-height:1.1;color:var(--muted);text-align:center;min-height:14px;font-weight:800}.purchase-date.has-date{color:#374151}
+    .purchase-cell{display:flex;align-items:center;gap:8px;min-width:220px}.purchase-progress-wrap{display:flex;flex-direction:column;gap:4px;min-width:160px}.purchase-date{font-size:12px;line-height:1.1;color:var(--muted);text-align:center;min-height:14px;font-weight:800}.purchase-sales60{display:inline-flex;align-items:center;justify-content:center;min-width:52px;padding:6px 10px;border-radius:999px;background:#e0f2fe;color:#075985;border:1px solid #7dd3fc;font-weight:1000}.purchase-date.has-date{color:#374151}
     .purchase-meta{display:flex;align-items:center;gap:6px;margin-top:2px;min-height:24px}
     .purchase-actions{display:flex;align-items:center;gap:5px;flex:0 0 auto}
     .purchase-actions .btn{min-height:22px;padding:2px 7px;font-size:11px;line-height:1;border-radius:7px}
@@ -584,6 +584,7 @@
 
     body.dark-mode .progress.no-order{background:#334155}
     body.dark-mode .progress.has-order{background:#7f1d1d}
+    body.dark-mode .purchase-sales60{background:#0c4a6e;color:#bae6fd;border-color:#0284c7}
 
     body.dark-mode .app-modal-backdrop{
       background:rgba(2,6,23,.72);
@@ -3664,7 +3665,7 @@ const DB_USAGE_LIMIT_MB=500;
 let dbUsageTimer=null;
 let currentUser=null;
 let sessionLoginPassword='';
-const state={products:[],sales:[],actions:[],previews:[],arrivalUpdates:[],arrivalUpdateFilter:'pending',settings:{feePlatform:.055,feeService:.02,feeExtra:.02,feeOther:0,shippingBase:60,lowStockThreshold:3,shipFailVolume:80},filters:{product:'',stock:'',purchase:'',stockNextDayOnly:false,purchaseNextDayOnly:false,purchasePendingOnly:false},actionFilters:{startDate:''},salesFilters:{actionMode:'all',dateRange:'today',customStart:'',customEnd:''}};
+const state={products:[],sales:[],sales60ByCode:{},actions:[],previews:[],arrivalUpdates:[],arrivalUpdateFilter:'pending',settings:{feePlatform:.055,feeService:.02,feeExtra:.02,feeOther:0,shippingBase:60,lowStockThreshold:3,shipFailVolume:80},filters:{product:'',stock:'',purchase:'',stockNextDayOnly:false,purchaseNextDayOnly:false,purchasePendingOnly:false},actionFilters:{startDate:''},salesFilters:{actionMode:'all',dateRange:'today',customStart:'',customEnd:''}};
 const shipQueue=[];
 let shipQueueRunning=false;
 let shipQueueSeq=0;
@@ -4652,8 +4653,13 @@ function upsertSaleRecord(record){
 }
 function handleRealtimeSaleLog(row){
   const record=mapSaleLogRow(row);
+  const recordId=record.id?String(record.id):'';
+  const recordKey=saleRecordKey(record);
+  const existedBefore=(recordId&&state.sales.some(x=>String(x.id||'')===recordId))||state.sales.some(x=>!x.id&&saleRecordKey(x)===recordKey);
   const changed=upsertSaleRecord(record);
   if(!changed)return;
+  // 其他分頁或其他裝置新增的出貨紀錄，也即時更新 60 天銷量；本機已先加入的紀錄避免重複計算。
+  if(!existedBefore)applySales60Delta(record.code,record.action);
   const tab=activeTabId();
   if(tab==='ship'){
     renderShipQueue();
@@ -4661,6 +4667,9 @@ function handleRealtimeSaleLog(row){
     keepShipCodeReady();
   }else if(tab==='records'){
     renderSales();
+  }else if(tab==='purchase'){
+    const p=findProduct(record.code);
+    if(p&&!updatePurchaseRow(p))renderPurchase();
   }
 }
 function setupRealtime(){
@@ -4989,7 +4998,13 @@ async function fetchPaged(makeQuery, pageSize = 1000) {
 async function fetchAllState() {
   requireLogin();
 
-  const [pr, br, sr, ar, se, tu] = await Promise.all([
+  // 進貨 / 到貨頁面需要完整的近 60 天銷量，不能只使用出貨紀錄頁的最近 500 筆。
+  const sales60Start = new Date();
+  sales60Start.setHours(0, 0, 0, 0);
+  sales60Start.setDate(sales60Start.getDate() - 59);
+  const sales60Since = sales60Start.toISOString();
+
+  const [pr, br, sr, s60, ar, se, tu] = await Promise.all([
     fetchPaged((from, to) =>
       db
         .from('products')
@@ -5012,6 +5027,15 @@ async function fetchAllState() {
       .order('created_at', { ascending: false })
       .limit(500),
 
+    fetchPaged((from, to) =>
+      db
+        .from('sales_logs')
+        .select('product_id,code,action,created_at')
+        .gte('created_at', sales60Since)
+        .order('created_at', { ascending: true })
+        .range(from, to)
+    ),
+
     db
       .from('stock_logs')
       .select('*')
@@ -5029,7 +5053,7 @@ async function fetchAllState() {
       .limit(500)
   ]);
 
-  [pr, br, sr, ar, se, tu].forEach(x => dbError(x.error));
+  [pr, br, sr, s60, ar, se, tu].forEach(x => dbError(x.error));
 
   const batchMap = {};
   (br.data || []).forEach(b => {
@@ -5057,6 +5081,19 @@ async function fetchAllState() {
 
   const sales = [...(sr.data || [])].reverse().map(r => mapSaleLogRow(r, productById, productByCode));
 
+  // 60 天銷售數採淨銷售：出貨 +1、退貨 -1、核銷不列入。
+  const sales60ByCode = {};
+  (s60.data || []).forEach(r => {
+    const code = normalizeCode(r.code || productById[r.product_id]?.code);
+    if (!code) return;
+    const delta = r.action === '出貨' ? 1 : (r.action === '退貨' ? -1 : 0);
+    if (!delta) return;
+    sales60ByCode[code] = toNum(sales60ByCode[code]) + delta;
+  });
+  Object.keys(sales60ByCode).forEach(code => {
+    sales60ByCode[code] = Math.max(0, Math.floor(toNum(sales60ByCode[code])));
+  });
+
   const actions = [...(ar.data || [])].reverse().map(r => {
     const p = productById[r.product_id] || productByCode[normalizeCode(r.code)] || null;
 
@@ -5081,6 +5118,7 @@ async function fetchAllState() {
   return {
     products,
     sales,
+    sales60ByCode,
     actions,
     previews,
     arrivalUpdates,
@@ -5937,6 +5975,18 @@ function searchProductRows(f='',sourceRows=state.products){
 }
 function productRows(f=''){return searchProductRows(f,state.products)}
 function stockRows(){let rows=searchProductRows(state.filters.stock,state.products);if(state.filters.stockNextDayOnly)rows=rows.filter(p=>isNextDayItem(p.itemName));return rows}
+function sales60Qty(code){
+  const key=normalizeCode(code);
+  return Math.max(0,Math.floor(toNum(state.sales60ByCode?.[key])));
+}
+function applySales60Delta(code,action){
+  const key=normalizeCode(code);
+  if(!key)return;
+  const delta=action==='出貨'?1:(action==='退貨'?-1:0);
+  if(!delta)return;
+  if(!state.sales60ByCode||typeof state.sales60ByCode!=='object')state.sales60ByCode={};
+  state.sales60ByCode[key]=Math.max(0,Math.floor(toNum(state.sales60ByCode[key])+delta));
+}
 function purchaseRows(){
   let rows=searchProductRows(state.filters.purchase,state.products);
   if(state.filters.purchaseNextDayOnly)rows=rows.filter(p=>isNextDayItem(p.itemName));
@@ -6111,7 +6161,7 @@ function purchaseRowHtml(p){
   const colorCell=colorWithWarning(p);
   const codeCell=`<button type="button" class="code code-btn" title="點擊補印標籤" onclick="printLabelsForCode('${esc(p.code)}',1)">${esc(p.code)}</button>`;
 
-  return `<tr class="purchase-product-row${rowClassFor(p)}" data-purchase-code="${esc(p.code)}"><td>${nextDayButton(p)}</td><td>${longStockButton(p)}</td><td>${statusFor(p)}</td><td>${itemCell}</td><td>${colorCell}</td><td>${codeCell}</td><td>${toNum(p.currentStock)}</td><td>${totalStock(p)}</td>${(p.batches||[]).map((b,i)=>{
+  return `<tr class="purchase-product-row${rowClassFor(p)}" data-purchase-code="${esc(p.code)}"><td>${nextDayButton(p)}</td><td>${longStockButton(p)}</td><td>${statusFor(p)}</td><td>${itemCell}</td><td>${colorCell}</td><td>${codeCell}</td><td>${toNum(p.currentStock)}</td><td>${totalStock(p)}</td><td data-purchase-sales60><span class="purchase-sales60" title="近 60 天淨銷售：出貨減退貨，核銷不計">${sales60Qty(p.code)}</span></td>${(p.batches||[]).map((b,i)=>{
     const ordered=toNum(b.ordered),arrived=Math.min(toNum(b.arrived),ordered),pct=ordered>0?Math.round(arrived/ordered*100):0,date=formatDateSlash(b.orderDate||'');
     return `<td><div class="purchase-cell"><div class="purchase-progress-wrap"><span class="progress ${ordered>0?'has-order':'no-order'}"><span style="width:${pct}%"></span></span><div class="purchase-meta"><div class="purchase-actions"><button type="button" class="btn small primary" onclick="quickAddPurchase('${esc(p.code)}',${i})">進貨</button><button type="button" class="btn small green" onclick="quickAddArrival('${esc(p.code)}',${i})">到貨</button></div><div class="purchase-date ${date?'has-date':''}">${date||'&nbsp;'}</div></div></div><span class="ratio-wrap"><span class="code">${arrived}/${ordered}</span><button type="button" class="delete-batch-btn" onclick="uiDeletePurchaseBatch('${esc(p.code)}',${i})">刪除</button></span></div></td>`;
   }).join('')}</tr>`;
@@ -6314,7 +6364,7 @@ function renderPurchase(){
     return;
   }
 
-  $('purchaseTable').innerHTML=`<div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>現貨</th><th>進貨</th>${batchNames.map(b=>`<th>${b}</th>`).join('')}</tr></thead><tbody>${rows.map(p=>purchaseRowHtml(p)).join('')}</tbody></table></div>`;
+  $('purchaseTable').innerHTML=`<div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>現貨</th><th>進貨</th><th title="近 60 天淨銷售：出貨減退貨，核銷不計">60天銷售數</th>${batchNames.map(b=>`<th>${b}</th>`).join('')}</tr></thead><tbody>${rows.map(p=>purchaseRowHtml(p)).join('')}</tbody></table></div>`;
 }
 
 function findPurchaseRowByCode(rawCode){
@@ -7115,6 +7165,7 @@ async function processShipQueue(){
         state.previews=state.previews.slice(0,100);
         state.sales.push({time:nowText,action:target.action,itemName:target.itemName,color:target.color,code:target.code,cost:saleCost,price:salePrice,profit:signedProfit(target.action,salePrice,saleCost),beforeStock:target.beforeStock,afterStock:target.afterStock,totalStock:saleTotalStock,status:'完成'});
         state.sales=state.sales.slice(-500);
+        applySales60Delta(target.code,target.action);
       }else{
         target.status='失敗';
         target.message=data?.message||'處理失敗';
