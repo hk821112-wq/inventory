@@ -2257,7 +2257,7 @@
        搜尋輸入框改成約 1/6 畫面寬度，不再吃滿整排
        ============================== */
     #stock .stock-sticky-header.stock-single-line-header{
-      grid-template-columns:auto auto auto auto auto!important;
+      grid-template-columns:auto auto auto auto auto auto auto!important;
       justify-content:start!important;
     }
 
@@ -3240,6 +3240,203 @@
     @media(max-width:560px){.ai-config-grid,.ai-summary-grid,.ai-order-grid{grid-template-columns:1fr}.ai-table-toolbar{grid-template-columns:1fr}.ai-order-total{grid-column:auto}.ai-hero{padding:18px;box-shadow:5px 5px 0 #c7ff3d}.ai-hero-status{grid-template-columns:1fr 1fr}.ai-reason-grid{grid-template-columns:1fr}.ai-modal-actions .ai-square-btn{flex:1}}
 
 </style>
+
+<style>
+/* 庫存資料新增篩選按鈕：寬度不足時自動換行 */
+@media(max-width:1500px){
+  #stock .stock-sticky-header.stock-single-line-header{
+    display:flex!important;
+    align-items:flex-end!important;
+    flex-wrap:wrap!important;
+  }
+}
+@media(max-width:760px){
+  #stock .stock-sticky-header.stock-single-line-header{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    align-items:stretch!important;
+  }
+  #stock .stock-sticky-header.stock-single-line-header .btn{width:100%!important;}
+}
+</style>
+
+
+  <!-- 2026/07/28 庫存資料工具卡不卡視角修正 -->
+  <style>
+    /*
+      N欄入庫掃描、手動校正現貨改回一般文件流。
+      向下捲動時會自然離開畫面，不再固定於分頁列下方遮住庫存表。
+    */
+    #stock .stock-tool-card,
+    #stock .stock-tool-card.compact,
+    #stock .stock-tool-card-final,
+    #stock .stock-tool-card-final2,
+    #stock .stock-scan-tool-card,
+    #stock .stock-adjust-tool-card{
+      position:relative!important;
+      top:auto!important;
+      z-index:1!important;
+    }
+
+    #stock .stock-tool-card::before,
+    #stock .stock-tool-card::after,
+    #stock .stock-tool-card-final::before,
+    #stock .stock-tool-card-final::after,
+    #stock .stock-tool-card-final2::before,
+    #stock .stock-tool-card-final2::after{
+      display:none!important;
+      content:none!important;
+    }
+
+    /* 庫存資料表仍維持自己的欄位標題固定，不受上方功能卡影響。 */
+    #stock .stock-table-card{
+      position:relative!important;
+      z-index:2!important;
+    }
+  </style>
+
+
+<style>
+/* =========================================================
+   2026/07/28 商品出貨工作台
+   大型掃碼、即時結果、今日統計與最近紀錄同畫面顯示
+   ========================================================= */
+#ship{padding-top:8px}
+.ship-console-page{display:grid;gap:16px}
+.ship-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.ship-kpi-card{position:relative;overflow:hidden;min-height:112px;padding:17px 19px;border:1px solid var(--line);border-radius:18px;background:var(--panel);box-shadow:0 8px 22px rgba(15,23,42,.05)}
+.ship-kpi-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--primary)}
+.ship-kpi-card.return::before{background:var(--red)}
+.ship-kpi-card.writeoff::before{background:#7c3aed}
+.ship-kpi-card.latest::before{background:#0891b2}
+.ship-kpi-card span{display:block;color:var(--muted);font-size:13px;font-weight:1000}
+.ship-kpi-card strong{display:inline-block;margin-top:10px;color:var(--primary);font-size:34px;line-height:1;font-weight:1000;letter-spacing:-.04em}
+.ship-kpi-card.return strong{color:var(--red)}
+.ship-kpi-card.writeoff strong{color:#7c3aed}
+.ship-kpi-card.latest strong{color:#0891b2;font-size:29px}
+.ship-kpi-card small{margin-left:6px;color:var(--muted);font-size:12px;font-weight:900}
+.ship-kpi-card.latest small{display:block;margin:7px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ship-workbench-grid{display:grid;grid-template-columns:minmax(350px,.9fr) minmax(350px,.9fr) minmax(430px,1.2fr);gap:14px;align-items:stretch}
+.ship-console-card{min-width:0;border:1px solid var(--line);border-radius:20px;background:var(--panel);box-shadow:0 10px 26px rgba(15,23,42,.06);padding:19px;overflow:hidden}
+.ship-console-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:15px}
+.ship-console-head h2{margin:4px 0 0;font-size:24px!important}
+.ship-console-eyebrow{display:block;color:var(--primary);font-size:10px;font-weight:1000;letter-spacing:.16em}
+.ship-focus-indicator,.ship-live-pill{display:inline-flex;align-items:center;gap:7px;min-height:30px;padding:5px 10px;border-radius:999px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:11px;font-weight:1000;white-space:nowrap}
+.ship-live-pill i{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 5px rgba(34,197,94,.13);animation:shipLivePulse 1.6s ease-in-out infinite}
+@keyframes shipLivePulse{50%{box-shadow:0 0 0 10px rgba(34,197,94,0)}}
+.ship-scan-card{position:relative;border-top:5px solid var(--green);transition:border-color .15s ease,box-shadow .15s ease}
+.ship-scan-card.mode-return{border-top-color:var(--red)}
+.ship-scan-card.mode-writeoff{border-top-color:#7c3aed}
+.ship-current-mode{display:flex;align-items:center;gap:11px;margin-bottom:13px;padding:11px 13px;border:1px solid #bbf7d0;border-radius:14px;background:#f0fdf4}
+.ship-current-mode-dot{width:12px;height:12px;flex:0 0 12px;border-radius:50%;background:var(--green);box-shadow:0 0 0 5px rgba(22,163,74,.12)}
+.ship-current-mode small{display:block;color:#4b5563;font-size:10px;font-weight:900}
+.ship-current-mode strong{display:block;margin-top:2px;color:#166534;font-size:16px;font-weight:1000}
+.ship-scan-card.mode-return .ship-current-mode{background:#fef2f2;border-color:#fecaca}
+.ship-scan-card.mode-return .ship-current-mode-dot{background:var(--red);box-shadow:0 0 0 5px rgba(220,38,38,.12)}
+.ship-scan-card.mode-return .ship-current-mode strong{color:#b91c1c}
+.ship-scan-card.mode-writeoff .ship-current-mode{background:#f5f3ff;border-color:#ddd6fe}
+.ship-scan-card.mode-writeoff .ship-current-mode-dot{background:#7c3aed;box-shadow:0 0 0 5px rgba(124,58,237,.12)}
+.ship-scan-card.mode-writeoff .ship-current-mode strong{color:#6d28d9}
+.ship-action-buttons-large{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:17px}
+.ship-action-buttons-large .ship-action-btn{min-width:0;min-height:52px;padding:8px 7px;border-radius:13px;font-size:13px!important}
+.ship-action-buttons-large .ship-action-btn span{font-size:17px}
+.ship-scan-label{margin-bottom:8px;font-size:15px!important}
+.ship-code-input-wrap{position:relative;display:flex;align-items:center}
+.ship-code-input-icon{position:absolute;left:17px;z-index:2;color:var(--primary);font-size:25px;font-weight:1000;pointer-events:none}
+.ship-scan-input{height:82px!important;min-height:82px!important;padding:12px 86px 12px 56px!important;border:3px solid #93c5fd!important;border-radius:18px!important;background:#f8fbff!important;color:#111827!important;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;font-size:31px!important;font-weight:1000!important;letter-spacing:.05em!important;box-shadow:inset 0 0 0 1px #fff,0 12px 26px rgba(37,99,235,.10)!important}
+.ship-scan-input:focus{border-color:var(--primary)!important;background:#fff!important;box-shadow:0 0 0 6px rgba(37,99,235,.16),0 16px 32px rgba(37,99,235,.15)!important}
+.ship-enter-hint{position:absolute;right:14px;display:inline-flex;align-items:center;justify-content:center;min-width:58px;height:34px;border-radius:9px;background:#111827;color:#fff;font-size:11px;font-weight:1000;pointer-events:none}
+.ship-scan-help{margin:8px 2px 14px;color:var(--muted);font-size:12px;font-weight:850;line-height:1.55}
+.ship-scan-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px}
+.ship-submit-btn{min-height:46px!important;font-size:15px!important}
+.ship-result-shell{display:flex;flex-direction:column}
+#shipPreview{display:flex;flex:1;min-height:365px}
+.ship-result-panel{position:relative;display:flex;flex:1;min-width:0;min-height:365px;flex-direction:column;align-items:center;justify-content:center;padding:24px 18px;border:2px solid #cbd5e1;border-radius:18px;background:linear-gradient(145deg,#f8fafc,#fff);text-align:center;overflow:hidden}
+.ship-result-panel::after{content:'';position:absolute;width:260px;height:260px;right:-130px;bottom:-150px;border-radius:50%;background:rgba(37,99,235,.05)}
+.ship-result-panel.success{border-color:#86efac;background:linear-gradient(145deg,#f0fdf4,#fff)}
+.ship-result-panel.fail{border-color:#fca5a5;background:linear-gradient(145deg,#fef2f2,#fff)}
+.ship-result-panel.processing{border-color:#93c5fd;background:linear-gradient(145deg,#eff6ff,#fff)}
+.ship-result-panel.ship-result-flash{animation:shipResultFlash .55s ease-out}
+@keyframes shipResultFlash{0%{transform:scale(.975);box-shadow:0 0 0 0 rgba(37,99,235,.22)}60%{transform:scale(1);box-shadow:0 0 0 13px rgba(37,99,235,0)}100%{box-shadow:none}}
+.ship-result-icon{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;width:82px;height:82px;margin-bottom:15px;border-radius:26px;background:#e2e8f0;color:#64748b;font-size:45px;font-weight:1000}
+.ship-result-panel.success .ship-result-icon{background:#16a34a;color:#fff;box-shadow:0 14px 28px rgba(22,163,74,.24)}
+.ship-result-panel.fail .ship-result-icon{background:#dc2626;color:#fff;box-shadow:0 14px 28px rgba(220,38,38,.24)}
+.ship-result-panel.processing .ship-result-icon{background:#2563eb;color:#fff;animation:shipProcessing 1s ease-in-out infinite}
+@keyframes shipProcessing{50%{transform:scale(.93);opacity:.76}}
+.ship-result-title{position:relative;z-index:1;margin:0;color:#111827;font-size:29px;font-weight:1000;letter-spacing:-.04em}
+.ship-result-panel.success .ship-result-title{color:#15803d}
+.ship-result-panel.fail .ship-result-title{color:#b91c1c}
+.ship-result-panel.processing .ship-result-title{color:#1d4ed8}
+.ship-result-product{position:relative;z-index:1;margin-top:16px;max-width:100%;font-size:19px;line-height:1.35;font-weight:1000;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ship-result-color{position:relative;z-index:1;margin-top:5px;color:#64748b;font-size:15px;font-weight:900}
+.ship-result-code{position:relative;z-index:1;display:inline-flex;align-items:center;justify-content:center;margin-top:13px;min-height:38px;padding:7px 15px;border-radius:11px;background:#111827;color:#fff;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:18px;font-weight:1000;letter-spacing:.05em}
+.ship-result-stock{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:13px;margin-top:18px}
+.ship-result-stock span{display:flex;flex-direction:column;gap:4px;min-width:72px;padding:9px 11px;border:1px solid #d1d5db;border-radius:12px;background:#fff;color:#64748b;font-size:10px;font-weight:900}
+.ship-result-stock strong{color:#111827;font-size:23px;line-height:1;font-weight:1000}
+.ship-result-stock b{color:#64748b;font-size:24px}
+.ship-result-time{position:relative;z-index:1;margin-top:15px;color:#64748b;font-size:12px;font-weight:900}
+.ship-result-message{position:relative;z-index:1;margin-top:8px;max-width:100%;color:#b91c1c;font-size:12px;line-height:1.5;font-weight:900}
+.ship-result-idle-text{position:relative;z-index:1;max-width:280px;color:#64748b;font-size:13px;line-height:1.7;font-weight:850}
+.ship-history-shell{display:flex;flex-direction:column}
+.ship-history-actions{display:flex;gap:6px;align-items:center}
+#shipQueueTable{min-height:365px;max-height:515px;overflow:auto;padding-right:3px}
+.ship-record-list{display:grid;gap:8px}
+.ship-record-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:11px;border:1px solid var(--line);border-left:5px solid #94a3b8;border-radius:13px;background:#fff;transition:background .12s ease,transform .12s ease}
+.ship-record-row:first-child{animation:shipRecordIn .28s ease-out}
+@keyframes shipRecordIn{from{transform:translateY(-6px);opacity:.45}to{transform:none;opacity:1}}
+.ship-record-row.done{border-left-color:#16a34a}
+.ship-record-row.fail{border-left-color:#dc2626;background:#fef2f2}
+.ship-record-row.processing{border-left-color:#2563eb;background:#eff6ff}
+.ship-record-row.wait{border-left-color:#f59e0b;background:#fffbeb}
+.ship-record-status{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:11px;background:#f1f5f9;color:#64748b;font-size:17px;font-weight:1000}
+.ship-record-row.done .ship-record-status{background:#dcfce7;color:#15803d}
+.ship-record-row.fail .ship-record-status{background:#fee2e2;color:#b91c1c}
+.ship-record-row.processing .ship-record-status{background:#dbeafe;color:#1d4ed8}
+.ship-record-row.wait .ship-record-status{background:#fef3c7;color:#b45309}
+.ship-record-main{min-width:0}
+.ship-record-top{display:flex;align-items:center;gap:7px;min-width:0}
+.ship-record-code{color:#111827;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;font-weight:1000}
+.ship-record-time{margin-left:auto;color:#94a3b8;font-size:10px;font-weight:900;white-space:nowrap}
+.ship-record-product{margin-top:5px;overflow:hidden;color:#334155;font-size:13px;font-weight:1000;text-overflow:ellipsis;white-space:nowrap}
+.ship-record-message{margin-top:3px;overflow:hidden;color:#64748b;font-size:10px;font-weight:850;text-overflow:ellipsis;white-space:nowrap}
+.ship-record-stock{display:flex;align-items:center;gap:5px;white-space:nowrap;color:#64748b;font-size:12px;font-weight:900}
+.ship-record-stock strong{color:#111827;font-size:17px}
+.ship-record-stock b{font-size:13px}
+.ship-record-empty{display:grid;place-items:center;min-height:330px;border:1px dashed #cbd5e1;border-radius:16px;color:#64748b;text-align:center;font-size:13px;font-weight:900}
+body.dark-mode .ship-kpi-card,body.dark-mode .ship-console-card{background:#111827;border-color:#243244}
+body.dark-mode .ship-current-mode{background:#052e1b;border-color:#166534}
+body.dark-mode .ship-current-mode small{color:#94a3b8}
+body.dark-mode .ship-current-mode strong{color:#bbf7d0}
+body.dark-mode .ship-scan-card.mode-return .ship-current-mode{background:#450a0a;border-color:#991b1b}
+body.dark-mode .ship-scan-card.mode-return .ship-current-mode strong{color:#fecaca}
+body.dark-mode .ship-scan-card.mode-writeoff .ship-current-mode{background:#2e1065;border-color:#6d28d9}
+body.dark-mode .ship-scan-card.mode-writeoff .ship-current-mode strong{color:#ddd6fe}
+body.dark-mode .ship-scan-input{background:#0b1220!important;color:#f8fafc!important;border-color:#1d4ed8!important;box-shadow:inset 0 0 0 1px #172554,0 12px 26px rgba(0,0,0,.25)!important}
+body.dark-mode .ship-scan-input:focus{background:#0f172a!important;border-color:#60a5fa!important}
+body.dark-mode .ship-result-panel{background:linear-gradient(145deg,#0f172a,#111827);border-color:#475569}
+body.dark-mode .ship-result-panel.success{background:linear-gradient(145deg,#052e1b,#111827);border-color:#166534}
+body.dark-mode .ship-result-panel.fail{background:linear-gradient(145deg,#450a0a,#111827);border-color:#991b1b}
+body.dark-mode .ship-result-panel.processing{background:linear-gradient(145deg,#172554,#111827);border-color:#1d4ed8}
+body.dark-mode .ship-result-title,body.dark-mode .ship-result-product{color:#f8fafc}
+body.dark-mode .ship-result-panel.success .ship-result-title{color:#bbf7d0}
+body.dark-mode .ship-result-panel.fail .ship-result-title{color:#fecaca}
+body.dark-mode .ship-result-panel.processing .ship-result-title{color:#bfdbfe}
+body.dark-mode .ship-result-stock span{background:#0f172a;border-color:#334155;color:#94a3b8}
+body.dark-mode .ship-result-stock strong{color:#f8fafc}
+body.dark-mode .ship-record-row{background:#0f172a;border-color:#334155}
+body.dark-mode .ship-record-row.fail{background:#300d0d}
+body.dark-mode .ship-record-row.processing{background:#172554}
+body.dark-mode .ship-record-row.wait{background:#422006}
+body.dark-mode .ship-record-code,body.dark-mode .ship-record-stock strong{color:#f8fafc}
+body.dark-mode .ship-record-product{color:#cbd5e1}
+body.dark-mode .ship-record-message{color:#94a3b8}
+body.dark-mode .ship-record-empty{border-color:#334155;color:#94a3b8}
+@media(max-width:1380px){.ship-workbench-grid{grid-template-columns:minmax(330px,.85fr) minmax(330px,.85fr) minmax(390px,1.1fr)}}
+@media(max-width:1120px){.ship-workbench-grid{grid-template-columns:1fr 1fr}.ship-history-shell{grid-column:1/-1}#shipQueueTable{min-height:260px;max-height:430px}.ship-record-list{grid-template-columns:1fr 1fr}}
+@media(max-width:780px){.ship-kpi-grid{grid-template-columns:1fr 1fr}.ship-workbench-grid{grid-template-columns:1fr}.ship-history-shell{grid-column:auto}.ship-record-list{grid-template-columns:1fr}.ship-scan-actions{grid-template-columns:1fr}.ship-action-buttons-large{grid-template-columns:1fr}.ship-action-buttons-large .ship-action-btn{min-height:44px}.ship-code-input-wrap .ship-enter-hint{display:none}.ship-scan-input{padding-right:18px!important}.ship-history-head{align-items:stretch;flex-direction:column}.ship-history-actions .btn{flex:1}}
+@media(max-width:480px){.ship-kpi-grid{grid-template-columns:1fr}.ship-result-stock{gap:7px}.ship-result-stock span{min-width:62px}.ship-console-card{padding:15px}.ship-scan-input{font-size:25px!important}}
+</style>
+
 </head>
 <body class="auth-checking">
 
@@ -3428,6 +3625,8 @@
             </div>
             <button class="btn primary" id="btnStockSearch" type="button">查詢</button>
             <button class="btn ghost" id="btnShowAllStock" type="button">顯示全部</button>
+            <button class="btn green" id="btnStockSortSales60" type="button">60天累積銷量 排序至頂</button>
+            <button class="btn purple" id="btnStockShowLongStockOnly" type="button">顯示已開長備貨</button>
             <button class="btn primary" id="btnStockShowNextDayOnly" type="button">顯示已開啟隔日配商品</button>
           </div>
           <div id="stockTable"></div>
@@ -3545,31 +3744,75 @@
     </section>
 
     <section class="tab" id="ship">
-      <div class="grid">
-        <article class="card span-5">
-          <h2>商品出貨</h2>
-          <div class="form-grid">
-            <div class="field full"><label>掃描 / 輸入商品編號</label><input id="shipCode" class="big-scan-input" placeholder="M00101" autocomplete="off"></div>
-            <div class="field full">
-              <label>動作</label>
-              <select id="shipAction" style="display:none"><option value="出貨">出貨：現貨 -1</option><option value="退貨">退貨：現貨 +1</option><option value="核銷">核銷：現貨 +1</option></select>
-              <div class="ship-action-buttons">
-                <button type="button" class="ship-action-btn active" data-action="出貨" onclick="setShipAction('出貨')">出貨：現貨 -1</button>
-                <button type="button" class="ship-action-btn" data-action="退貨" onclick="setShipAction('退貨')">退貨：現貨 +1</button>
-                <button type="button" class="ship-action-btn" data-action="核銷" onclick="setShipAction('核銷')">核銷：現貨 +1</button>
+      <div class="ship-console-page">
+        <section class="ship-kpi-grid" aria-label="今日出貨統計">
+          <div class="ship-kpi-card outbound"><span>今日出貨</span><strong id="shipTodayOutbound">0</strong><small>件</small></div>
+          <div class="ship-kpi-card return"><span>今日退貨</span><strong id="shipTodayReturn">0</strong><small>件</small></div>
+          <div class="ship-kpi-card writeoff"><span>今日核銷</span><strong id="shipTodayWriteoff">0</strong><small>件</small></div>
+          <div class="ship-kpi-card latest"><span>最近一筆</span><strong id="shipLastScan">--:--:--</strong><small id="shipLastScanText">尚未掃描</small></div>
+        </section>
+
+        <section class="ship-workbench-grid">
+          <article class="ship-console-card ship-scan-card mode-ship" id="shipScanCard">
+            <div class="ship-console-head">
+              <div>
+                <span class="ship-console-eyebrow">BARCODE SCANNER</span>
+                <h2>商品出貨掃碼</h2>
+              </div>
+              <span class="ship-focus-indicator">掃碼框自動待命</span>
+            </div>
+
+            <div class="ship-current-mode" id="shipCurrentMode">
+              <span class="ship-current-mode-dot"></span>
+              <div><small>目前操作模式</small><strong id="shipCurrentModeText">出貨：現貨 -1</strong></div>
+            </div>
+
+            <select id="shipAction" style="display:none"><option value="出貨">出貨：現貨 -1</option><option value="退貨">退貨：現貨 +1</option><option value="核銷">核銷：現貨 +1</option></select>
+            <div class="ship-action-buttons ship-action-buttons-large">
+              <button type="button" class="ship-action-btn active" data-action="出貨" onclick="setShipAction('出貨')"><span>📦</span>出貨 -1</button>
+              <button type="button" class="ship-action-btn" data-action="退貨" onclick="setShipAction('退貨')"><span>↩</span>退貨 +1</button>
+              <button type="button" class="ship-action-btn" data-action="核銷" onclick="setShipAction('核銷')"><span>✓</span>核銷 +1</button>
+            </div>
+
+            <label class="ship-scan-label" for="shipCode">掃描／輸入商品編號</label>
+            <div class="ship-code-input-wrap">
+              <span class="ship-code-input-icon">▥</span>
+              <input id="shipCode" class="ship-scan-input" placeholder="M00101" autocomplete="off" inputmode="text">
+              <span class="ship-enter-hint">ENTER</span>
+            </div>
+            <div class="ship-scan-help">刷條碼後按 Enter，系統會立即執行並重新回到掃碼框。</div>
+
+            <div class="ship-scan-actions">
+              <button class="btn primary ship-submit-btn" id="btnShip" type="button">立即送出</button>
+              <button class="btn ghost" id="btnClearQueue" type="button">清空掃碼框</button>
+            </div>
+          </article>
+
+          <article class="ship-console-card ship-result-shell">
+            <div class="ship-console-head">
+              <div>
+                <span class="ship-console-eyebrow">LIVE RESULT</span>
+                <h2>最近掃描結果</h2>
+              </div>
+              <span class="ship-live-pill"><i></i>即時</span>
+            </div>
+            <div id="shipPreview"></div>
+          </article>
+
+          <article class="ship-console-card ship-history-shell">
+            <div class="ship-console-head ship-history-head">
+              <div>
+                <span class="ship-console-eyebrow">RECENT ACTIVITY</span>
+                <h2>即時出貨紀錄</h2>
+              </div>
+              <div class="ship-history-actions">
+                <button class="btn small ghost" type="button" onclick="loadData()">同步最新</button>
+                <button class="btn small primary" type="button" onclick="switchTab('records')">完整紀錄</button>
               </div>
             </div>
-            <div class="field full">
-              <button class="btn primary" id="btnShip">確定送出</button>
-              <button class="btn ghost" id="btnClearQueue">清除紀錄</button>
-            </div>
-          </div>
-        </article>
-        <article class="card span-7">
-          <h2>出貨紀錄</h2>
-          <div id="shipQueueTable"></div>
-        </article>
-        <article class="card span-12"><h2>最近掃描狀態</h2><div id="shipPreview"></div></article>
+            <div id="shipQueueTable"></div>
+          </article>
+        </section>
       </div>
     </section>
 
@@ -3665,7 +3908,7 @@ const DB_USAGE_LIMIT_MB=500;
 let dbUsageTimer=null;
 let currentUser=null;
 let sessionLoginPassword='';
-const state={products:[],sales:[],sales60ByCode:{},actions:[],previews:[],arrivalUpdates:[],arrivalUpdateFilter:'pending',settings:{feePlatform:.055,feeService:.02,feeExtra:.02,feeOther:0,shippingBase:60,lowStockThreshold:3,shipFailVolume:80},filters:{product:'',stock:'',purchase:'',stockNextDayOnly:false,purchaseNextDayOnly:false,purchasePendingOnly:false},actionFilters:{startDate:''},salesFilters:{actionMode:'all',dateRange:'today',customStart:'',customEnd:''}};
+const state={products:[],sales:[],sales60ByCode:{},actions:[],previews:[],arrivalUpdates:[],arrivalUpdateFilter:'pending',settings:{feePlatform:.055,feeService:.02,feeExtra:.02,feeOther:0,shippingBase:60,lowStockThreshold:3,shipFailVolume:80},filters:{product:'',stock:'',purchase:'',stockNextDayOnly:false,stockLongStockOnly:false,stockSortSales60:false,purchaseNextDayOnly:false,purchasePendingOnly:false},actionFilters:{startDate:''},salesFilters:{actionMode:'all',dateRange:'today',customStart:'',customEnd:''}};
 const shipQueue=[];
 let shipQueueRunning=false;
 let shipQueueSeq=0;
@@ -4670,6 +4913,10 @@ function handleRealtimeSaleLog(row){
   }else if(tab==='purchase'){
     const p=findProduct(record.code);
     if(p&&!updatePurchaseRow(p))renderPurchase();
+  }else if(tab==='stock'){
+    const p=findProduct(record.code);
+    if(state.filters.stockSortSales60)renderStock();
+    else if(p&&!updateStockRow(p))renderStock();
   }
 }
 function setupRealtime(){
@@ -5939,7 +6186,7 @@ function renderCurrentTab(){
   else if(tab==='stock')renderStock();
   else if(tab==='purchase')renderPurchase();
   else if(tab==='arrivalUpdate')renderArrivalUpdates();
-  else if(tab==='ship'){renderShipPreview();renderShipQueue()}
+  else if(tab==='ship'){renderShipMode();renderShipPreview();renderShipQueue();keepShipCodeReady()}
   else if(tab==='records')renderSales();
   else if(tab==='actions')renderActions();
   else if(tab==='settings')renderSettings();
@@ -5974,7 +6221,15 @@ function searchProductRows(f='',sourceRows=state.products){
   return rows.filter(p=>textOf(p).includes(keyword));
 }
 function productRows(f=''){return searchProductRows(f,state.products)}
-function stockRows(){let rows=searchProductRows(state.filters.stock,state.products);if(state.filters.stockNextDayOnly)rows=rows.filter(p=>isNextDayItem(p.itemName));return rows}
+function stockRows(){
+  let rows=searchProductRows(state.filters.stock,state.products);
+  if(state.filters.stockNextDayOnly)rows=rows.filter(p=>isNextDayItem(p.itemName));
+  if(state.filters.stockLongStockOnly)rows=rows.filter(p=>isLongStockItem(p.itemName));
+  if(state.filters.stockSortSales60){
+    rows=[...rows].sort((a,b)=>sales60Qty(b.code)-sales60Qty(a.code)||String(a.code).localeCompare(String(b.code),'en',{numeric:true}));
+  }
+  return rows;
+}
 function sales60Qty(code){
   const key=normalizeCode(code);
   return Math.max(0,Math.floor(toNum(state.sales60ByCode?.[key])));
@@ -5999,6 +6254,16 @@ function updateNextDayFilterButtons(){
     stockBtn.textContent=state.filters.stockNextDayOnly?'顯示全部商品':'顯示已開啟隔日配商品';
   }
 
+  const stockLongBtn=$('btnStockShowLongStockOnly');
+  if(stockLongBtn){
+    stockLongBtn.textContent=state.filters.stockLongStockOnly?'顯示全部商品':'顯示已開長備貨';
+  }
+
+  const stockSortBtn=$('btnStockSortSales60');
+  if(stockSortBtn){
+    stockSortBtn.textContent=state.filters.stockSortSales60?'取消60天銷量排序':'60天累積銷量 排序至頂';
+  }
+
   const purchaseBtn=$('btnPurchaseShowNextDayOnly');
   if(purchaseBtn){
     purchaseBtn.textContent=state.filters.purchaseNextDayOnly?'顯示全部商品':'顯示已開啟隔日配商品';
@@ -6009,7 +6274,22 @@ function updateNextDayFilterButtons(){
     pendingBtn.textContent=state.filters.purchasePendingOnly?'顯示全部商品':'顯示進貨的商品';
   }
 }
-function toggleStockNextDayOnly(){state.filters.stockNextDayOnly=!state.filters.stockNextDayOnly;renderStock()}
+function toggleStockNextDayOnly(){
+  const enabled=!state.filters.stockNextDayOnly;
+  state.filters.stockNextDayOnly=enabled;
+  if(enabled)state.filters.stockLongStockOnly=false;
+  renderStock();
+}
+function toggleStockLongStockOnly(){
+  const enabled=!state.filters.stockLongStockOnly;
+  state.filters.stockLongStockOnly=enabled;
+  if(enabled)state.filters.stockNextDayOnly=false;
+  renderStock();
+}
+function toggleStockSales60Sort(){
+  state.filters.stockSortSales60=!state.filters.stockSortSales60;
+  renderStock();
+}
 function togglePurchaseNextDayOnly(){
   const enabled=!state.filters.purchaseNextDayOnly;
   state.filters.purchaseNextDayOnly=enabled;
@@ -6119,7 +6399,10 @@ function renderProducts(){const rows=productRows(state.filters.product);$('produ
 function renderStock(){
   updateNextDayFilterButtons();
   const rows=stockRows();
-  $('stockTable').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>條碼</th><th>現貨</th><th>進貨</th><th>未到貨</th><th>總成本</th><th>累積銷量</th><th>累積成本</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr data-stock-code="${esc(p.code)}" class="${rowClassFor(p).trim()}"><td data-stock-nextday>${nextDayButton(p)}</td><td data-stock-longstock>${longStockButton(p)}</td><td data-stock-status>${statusFor(p)}</td><td>${itemPreviewHtml(p,p.itemName)}</td><td data-stock-color>${colorWithWarning(p)}</td><td><span class="code stock-code-btn" title="點擊帶入手動校正現貨並複製編號" onclick="fillAdjustCode('${esc(p.code)}')">${esc(p.code)}</span></td><td><span class="stock-barcode stock-barcode-click" title="點擊列印標籤" onclick="printLabelsForCode('${esc(p.code)}',1)">*${esc(p.code)}*</span></td><td data-stock-current><span class="stock-edit" title="點擊直接修改現貨" onclick="quickAdjustStock('${esc(p.code)}')">${toNum(p.currentStock)}</span></td><td data-stock-total>${totalStock(p)}</td><td data-stock-pending>${pendingQty(p)}</td><td data-stock-total-cost>$${money(totalCost(p))}</td><td data-stock-sales>${toNum(p.totalSales)}</td><td data-stock-sales-cost>$${money(salesCost(p))}</td><td><div class="stock-actions"><button class="btn small primary" type="button" onclick="goToPurchaseFromWarning('${esc(p.code)}')">前往進貨</button><button class="btn small green" type="button" onclick="quickInbound('${esc(p.code)}')">+1庫存</button><button class="btn small orange" type="button" onclick="quickDecreaseStock('${esc(p.code)}')">-1庫存</button><button class="btn small red" type="button" onclick="zeroStock('${esc(p.code)}')">歸零庫存</button></div></td></tr>`).join('')}</tbody></table></div>`:`<div class="empty">${state.filters.stockNextDayOnly?'目前沒有已開啟隔日配的商品。':'查無庫存資料。'}</div>`;
+  const emptyText=state.filters.stockNextDayOnly
+    ?'目前沒有已開啟隔日配的商品。'
+    :(state.filters.stockLongStockOnly?'目前沒有已開長備貨的商品。':'查無庫存資料。');
+  $('stockTable').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>條碼</th><th>現貨</th><th>進貨</th><th>未到貨</th><th>單件成本</th><th>總成本</th><th title="近 60 天淨銷售：出貨減退貨，核銷不計">過去60天累積銷量</th><th>累積銷量</th><th>累積成本</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr data-stock-code="${esc(p.code)}" class="${rowClassFor(p).trim()}"><td data-stock-nextday>${nextDayButton(p)}</td><td data-stock-longstock>${longStockButton(p)}</td><td data-stock-status>${statusFor(p)}</td><td>${itemPreviewHtml(p,p.itemName)}</td><td data-stock-color>${colorWithWarning(p)}</td><td><span class="code stock-code-btn" title="點擊帶入手動校正現貨並複製編號" onclick="fillAdjustCode('${esc(p.code)}')">${esc(p.code)}</span></td><td><span class="stock-barcode stock-barcode-click" title="點擊列印標籤" onclick="printLabelsForCode('${esc(p.code)}',1)">*${esc(p.code)}*</span></td><td data-stock-current><span class="stock-edit" title="點擊直接修改現貨" onclick="quickAdjustStock('${esc(p.code)}')">${toNum(p.currentStock)}</span></td><td data-stock-total>${totalStock(p)}</td><td data-stock-pending>${pendingQty(p)}</td><td data-stock-unit-cost>$${money(p.cost)}</td><td data-stock-total-cost>$${money(totalCost(p))}</td><td data-stock-sales60><span class="purchase-sales60" title="近 60 天淨銷售：出貨減退貨，核銷不計">${sales60Qty(p.code)}</span></td><td data-stock-sales>${toNum(p.totalSales)}</td><td data-stock-sales-cost>$${money(salesCost(p))}</td><td><div class="stock-actions"><button class="btn small primary" type="button" onclick="goToPurchaseFromWarning('${esc(p.code)}')">前往進貨</button></div></td></tr>`).join('')}</tbody></table></div>`:`<div class="empty">${emptyText}</div>`;
 }
 function patchLocalProduct(product){
   if(!product||!product.code)return null;
@@ -6150,7 +6433,9 @@ function updateStockRow(product){
   set('[data-stock-current]',`<span class="stock-edit" title="點擊直接修改現貨" onclick="quickAdjustStock('${esc(p.code)}')">${toNum(p.currentStock)}</span>`);
   setText('[data-stock-total]',totalStock(p));
   setText('[data-stock-pending]',pendingQty(p));
+  setText('[data-stock-unit-cost]',`$${money(p.cost)}`);
   setText('[data-stock-total-cost]',`$${money(totalCost(p))}`);
+  set('[data-stock-sales60]',`<span class="purchase-sales60" title="近 60 天淨銷售：出貨減退貨，核銷不計">${sales60Qty(p.code)}</span>`);
   setText('[data-stock-sales]',toNum(p.totalSales));
   setText('[data-stock-sales-cost]',`$${money(salesCost(p))}`);
   return true;
@@ -6456,9 +6741,82 @@ function purchaseJumpToCode(){
   input.focus();
 }
 
+function shipTodayStats(){
+  const now=new Date();
+  const start=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const end=new Date(start);end.setDate(end.getDate()+1);
+  const rows=(state.sales||[]).filter(r=>{
+    const d=parseSalesDate(r.time);
+    return d&&d>=start&&d<end;
+  });
+  return{
+    outbound:rows.filter(r=>r.action==='出貨').length,
+    returned:rows.filter(r=>r.action==='退貨').length,
+    writeoff:rows.filter(r=>r.action==='核銷').length
+  };
+}
+function shortShipClock(value){
+  const d=parseSalesDate(value);
+  if(d&&!Number.isNaN(d.getTime()))return d.toLocaleTimeString('zh-TW',{hour12:false});
+  const text=String(value||'');
+  const m=text.match(/(\d{1,2}:\d{2}:\d{2})/);
+  return m?m[1]:'--:--:--';
+}
+function renderShipMode(){
+  const action=$('shipAction')?.value||'出貨';
+  const card=$('shipScanCard');
+  if(card){
+    card.classList.remove('mode-ship','mode-return','mode-writeoff');
+    card.classList.add(action==='退貨'?'mode-return':action==='核銷'?'mode-writeoff':'mode-ship');
+  }
+  const text=$('shipCurrentModeText');
+  if(text)text.textContent=action==='退貨'?'退貨：現貨 +1':action==='核銷'?'核銷：現貨 +1':'出貨：現貨 -1';
+}
+function renderShipStats(){
+  const stats=shipTodayStats();
+  if($('shipTodayOutbound'))$('shipTodayOutbound').textContent=stats.outbound;
+  if($('shipTodayReturn'))$('shipTodayReturn').textContent=stats.returned;
+  if($('shipTodayWriteoff'))$('shipTodayWriteoff').textContent=stats.writeoff;
+  const latest=(state.previews||[])[0];
+  if($('shipLastScan'))$('shipLastScan').textContent=latest?shortShipClock(latest.time):'--:--:--';
+  if($('shipLastScanText'))$('shipLastScanText').textContent=latest?`${latest.action||''}｜${latest.code||''}`:'尚未掃描';
+}
 function renderShipPreview(){
-  const rows=state.previews||[];
-  $('shipPreview').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>時間</th><th>動作</th><th>品項</th><th>顏色</th><th>編號</th><th>處理前</th><th>處理後</th><th>狀態</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.time)}</td><td>${shipActionBadge(r.action)}</td><td>${shipItemCell(r)}</td><td>${shipColorCell(r)}</td><td>${copyCodeCell(r.code)}</td><td>${esc(r.beforeStock)}</td><td>${esc(r.afterStock)}</td><td>${r.status==='完成'?'<span class="status ok">完成</span>':`<span class="status zero">${esc(r.status)}</span>`}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">尚無掃描紀錄。</div>';
+  const el=$('shipPreview');
+  if(!el)return;
+  renderShipMode();
+  renderShipStats();
+  const active=[...shipQueue].reverse().find(r=>r.status==='處理中'||r.status==='待處理');
+  const latest=active||(state.previews||[])[0];
+  if(!latest){
+    el.innerHTML=`<div class="ship-result-panel idle">
+      <div class="ship-result-icon">▥</div>
+      <h3 class="ship-result-title">等待掃描</h3>
+      <div class="ship-result-idle-text">將游標保持在左側掃碼框，刷入條碼後，商品、顏色與庫存變化會立即顯示在這裡。</div>
+    </div>`;
+    return;
+  }
+  const status=String(latest.status||'');
+  const isFail=status==='失敗';
+  const isProcessing=status==='處理中'||status==='待處理';
+  const panelClass=isFail?'fail':isProcessing?'processing':'success';
+  const action=latest.action||'出貨';
+  const title=isFail?'處理失敗':isProcessing?(status==='待處理'?'等待處理':'處理中'):`${action}成功`;
+  const icon=isFail?'!':isProcessing?'…':'✓';
+  const before=latest.beforeStock===''||latest.beforeStock===undefined?'--':latest.beforeStock;
+  const after=latest.afterStock===''||latest.afterStock===undefined?'--':latest.afterStock;
+  el.innerHTML=`<div class="ship-result-panel ${panelClass} ship-result-flash">
+    <div class="ship-result-icon">${icon}</div>
+    <h3 class="ship-result-title">${esc(title)}</h3>
+    <div class="ship-result-product">${esc(latest.itemName||'尚未取得商品資料')}</div>
+    <div class="ship-result-color">${esc(latest.color||'')}</div>
+    <div class="ship-result-code">${esc(latest.code||'')}</div>
+    <div class="ship-result-stock">
+      <span>處理前<strong>${esc(before)}</strong></span><b>→</b><span>處理後<strong>${esc(after)}</strong></span>
+    </div>
+    <div class="ship-result-time">${esc(shortShipClock(latest.time))}</div>
+    ${(latest.message&&latest.message!=='完成')?`<div class="ship-result-message">${esc(latest.message)}</div>`:''}
+  </div>`;
 }
 function parseSalesDate(value){
   const text=String(value||'').trim();
@@ -6934,6 +7292,7 @@ function keepShipCodeReady(){setTimeout(()=>{$('shipCode').focus();$('shipCode')
 function setShipAction(action){
   $('shipAction').value=action;
   document.querySelectorAll('.ship-action-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.action===action));
+  renderShipMode();
   keepShipCodeReady();
 }
 function shipActionBadge(action){
@@ -6946,9 +7305,9 @@ function renderShipQueue(){
   if(!el)return;
   const localRows=shipQueue
     .filter(q=>q.status==='待處理'||q.status==='處理中')
-    .slice(-5)
+    .slice(-6)
     .reverse();
-  const realtimeRows=(state.previews||[]).filter(r=>(r.status||'完成')==='完成').slice(0,6).map(r=>({
+  const realtimeRows=(state.previews||[]).slice(0,12).map(r=>({
     id:r.id||'',
     time:shortTimeText(r.time),
     code:r.code,
@@ -6958,32 +7317,30 @@ function renderShipQueue(){
     color:r.color,
     beforeStock:r.beforeStock,
     afterStock:r.afterStock,
-    message:r.message || (r.id?'同步完成':'本機完成')
+    message:r.message || (r.status==='失敗'?'處理失敗':'完成')
   }));
-  const rows=[...localRows,...realtimeRows].slice(0,6);
+  const rows=[...localRows,...realtimeRows].slice(0,12);
   if(!rows.length){
-    el.innerHTML='<div class="empty">尚無出貨紀錄。</div>';
+    el.innerHTML='<div class="ship-record-empty">尚無出貨紀錄<br><small>刷入第一筆條碼後會顯示在這裡</small></div>';
+    renderShipPreview();
     return;
   }
-  el.innerHTML=`<div class="ship-queue-actions">
-    <button class="btn small ghost" onclick="loadData()">同步最新資料</button>
-  </div>
-  <div class="table-wrap log-box"><table>
-    <thead><tr><th>狀態</th><th>時間</th><th>動作</th><th>編號</th><th>品項</th><th>顏色</th><th>處理前</th><th>處理後</th><th>訊息</th></tr></thead>
-    <tbody>${rows.map(q=>{
-      const cls=q.status==='完成'?'done':q.status==='失敗'?'fail':q.status==='處理中'?'processing':'wait';
-      return `<tr>
-        <td><span class="queue-status ${cls}">${esc(q.status)}</span></td>
-        <td>${esc(q.time)}</td>
-        <td>${shipActionBadge(q.action)}</td>
-        <td>${copyCodeCell(q.code)}</td>
-        <td>${shipItemCell(q)}</td>
-        <td>${shipColorCell(q)}</td>
-        <td>${esc(q.beforeStock??'')}</td>
-        <td>${esc(q.afterStock??'')}</td>
-        <td>${esc(q.message||'')}</td>
-      </tr>`;
-    }).join('')}</tbody></table></div>`;
+  el.innerHTML=`<div class="ship-record-list">${rows.map(q=>{
+    const cls=q.status==='完成'?'done':q.status==='失敗'?'fail':q.status==='處理中'?'processing':'wait';
+    const icon=cls==='done'?'✓':cls==='fail'?'!':cls==='processing'?'…':'·';
+    const before=q.beforeStock===''||q.beforeStock===undefined?'--':q.beforeStock;
+    const after=q.afterStock===''||q.afterStock===undefined?'--':q.afterStock;
+    return `<div class="ship-record-row ${cls}">
+      <div class="ship-record-status">${icon}</div>
+      <div class="ship-record-main">
+        <div class="ship-record-top">${shipActionBadge(q.action)}<span class="ship-record-code">${esc(q.code||'')}</span><span class="ship-record-time">${esc(q.time||'')}</span></div>
+        <div class="ship-record-product">${esc(q.itemName||'找不到商品')} ${q.color?`／${esc(q.color)}`:''}</div>
+        <div class="ship-record-message">${esc(q.message||q.status||'')}</div>
+      </div>
+      <div class="ship-record-stock"><strong>${esc(before)}</strong><b>→</b><strong>${esc(after)}</strong></div>
+    </div>`;
+  }).join('')}</div>`;
+  renderShipPreview();
 }
 function addShipQueue(){
   const code=normalizeCode($('shipCode').value);
@@ -7036,6 +7393,29 @@ function addShipQueue(){
   processShipQueue();
 }
 function handleShip(){addShipQueue()}
+function playShipSuccessSound(){
+  try{
+    const volume=Math.max(0,Math.min(toNum(state.settings.shipFailVolume===undefined?80:state.settings.shipFailVolume),100))/100;
+    if(volume<=0)return;
+    const AudioCtx=window.AudioContext||window.webkitAudioContext;
+    if(!AudioCtx)return;
+    const ctx=playShipSuccessSound.ctx||(playShipSuccessSound.ctx=new AudioCtx());
+    if(ctx.state==='suspended')ctx.resume();
+    const now=ctx.currentTime;
+    const peak=Math.max(0.001,0.11*volume);
+    [[0,660,.075],[.085,880,.105]].forEach(([offset,freq,duration])=>{
+      const osc=ctx.createOscillator();
+      const gain=ctx.createGain();
+      osc.type='sine';
+      osc.frequency.setValueAtTime(freq,now+offset);
+      gain.gain.setValueAtTime(.001,now+offset);
+      gain.gain.exponentialRampToValueAtTime(peak,now+offset+.008);
+      gain.gain.exponentialRampToValueAtTime(.001,now+offset+duration);
+      osc.connect(gain);gain.connect(ctx.destination);
+      osc.start(now+offset);osc.stop(now+offset+duration+.02);
+    });
+  }catch(err){console.warn('播放成功音效失敗：',err?.message||err)}
+}
 function playShipFailSound(){
   try{
     const volume=Math.max(0,Math.min(toNum(state.settings.shipFailVolume===undefined?80:state.settings.shipFailVolume),100))/100;
@@ -7121,6 +7501,7 @@ async function processShipQueue(){
     if(target){
       if(data&&data.ok){
         target.status='完成';
+        playShipSuccessSound();
         target.message=data.message||'完成';
         target.itemName=data.itemName||target.itemName;
         target.color=data.color||target.color;
@@ -7242,7 +7623,7 @@ function importAppendJson(file){
 
   r.readAsText(file, 'utf-8');
 }
-function exportInventoryCsv(){const h=['隔日配','狀態','品項','顏色','編號','條碼','現貨E','進貨F','未到貨','成本','售價','總成本H','累積銷量I','累積成本J','第一批','第二批','第三批','第四批','第五批'];const rows=state.products.map(p=>[isNextDayItem(p.itemName)?'ON':'',p.isSoldOut?'售罄':(toNum(p.currentStock)<=0?'缺貨':(toNum(p.currentStock)<=toNum(state.settings.lowStockThreshold)?'低庫存':'正常')),p.itemName,p.color,p.code,'*'+p.code+'*',p.currentStock,totalStock(p),pendingQty(p),p.cost,p.price,totalCost(p),p.totalSales,salesCost(p),...(p.batches||[]).map(b=>`${toNum(b.arrived)}/${toNum(b.ordered)}${b.orderDate?' '+b.orderDate:''}`)]);downloadText('\uFEFF'+[h,...rows].map(r=>r.map(csvEscape).join(',')).join('\n'),`庫存資料_${dateFileName()}.csv`,'text/csv;charset=utf-8')}
+function exportInventoryCsv(){const h=['隔日配','長備貨','狀態','品項','顏色','編號','條碼','現貨E','進貨F','未到貨','單件成本','售價','總成本H','過去60天累積銷量','累積銷量I','累積成本J','第一批','第二批','第三批','第四批','第五批'];const rows=state.products.map(p=>[isNextDayItem(p.itemName)?'ON':'',isLongStockItem(p.itemName)?'ON':'',p.isSoldOut?'售罄':(toNum(p.currentStock)<=0?'缺貨':(toNum(p.currentStock)<=toNum(state.settings.lowStockThreshold)?'低庫存':'正常')),p.itemName,p.color,p.code,'*'+p.code+'*',p.currentStock,totalStock(p),pendingQty(p),p.cost,p.price,totalCost(p),sales60Qty(p.code),p.totalSales,salesCost(p),...(p.batches||[]).map(b=>`${toNum(b.arrived)}/${toNum(b.ordered)}${b.orderDate?' '+b.orderDate:''}`)]);downloadText('\uFEFF'+[h,...rows].map(r=>r.map(csvEscape).join(',')).join('\n'),`庫存資料_${dateFileName()}.csv`,'text/csv;charset=utf-8')}
 
 function exportSalesCsv(){const h=['時間','動作','品項','顏色','編號','成本','售價','單件利潤','處理前','處理後','進貨庫存','狀態'];const rows=state.sales.map(r=>[r.time,r.action,r.itemName,r.color,r.code,r.cost,r.price,signedProfit(r.action,r.price,r.cost),r.beforeStock,r.afterStock,r.totalStock,r.status]);downloadText('\uFEFF'+[h,...rows].map(r=>r.map(csvEscape).join(',')).join('\n'),`出貨紀錄_${dateFileName()}.csv`,'text/csv;charset=utf-8')}
 function exportActionsCsv(){const h=['時間','來源','動作','品項','顏色','編號','舊值','新值','現貨','進貨','備註'];const rows=state.actions.map(r=>[r.time,r.source,r.action,r.itemName,r.color,r.code,r.oldValue,r.newValue,r.currentStock,r.totalStock,r.note]);downloadText('\uFEFF'+[h,...rows].map(r=>r.map(csvEscape).join(',')).join('\n'),`所有動作紀錄_${dateFileName()}.csv`,'text/csv;charset=utf-8')}
@@ -7383,9 +7764,13 @@ function bindEvents(){
     $('stockSearch').value='';
     state.filters.stock='';
     state.filters.stockNextDayOnly=false;
+    state.filters.stockLongStockOnly=false;
+    state.filters.stockSortSales60=false;
     renderStock();
   };
   if($('btnStockShowNextDayOnly'))$('btnStockShowNextDayOnly').onclick=toggleStockNextDayOnly;
+  if($('btnStockShowLongStockOnly'))$('btnStockShowLongStockOnly').onclick=toggleStockLongStockOnly;
+  if($('btnStockSortSales60'))$('btnStockSortSales60').onclick=toggleStockSales60Sort;
   if($('btnPurchaseShowNextDayOnly'))$('btnPurchaseShowNextDayOnly').onclick=togglePurchaseNextDayOnly;
   if($('btnPurchaseShowPendingOnly'))$('btnPurchaseShowPendingOnly').onclick=togglePurchasePendingOnly;
   $('btnSortProduct').onclick=()=>callApi('sortProducts',{});
@@ -7400,8 +7785,8 @@ function bindEvents(){
   $('adjustCode').onkeydown=e=>{if(e.key==='Enter'){$('adjustQty').focus();$('adjustQty').select();}};
   $('adjustQty').onkeydown=e=>{if(e.key==='Enter')adjustStock()};
   $('btnShip').onclick=handleShip;
-  $('btnClearQueue').onclick=clearFinishedQueue;
-  $('shipCode').onkeydown=e=>{if(e.key==='Enter')handleShip()};
+  $('btnClearQueue').onclick=()=>{$('shipCode').value='';keepShipCodeReady()};
+  $('shipCode').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();handleShip()}};
   $('shipCode').onfocus=e=>e.target.select();
   $('btnSaveSettings').onclick=saveSettings;
   $('btnQuickSearch').onclick=doQuickSearch;
@@ -8799,6 +9184,74 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 body.dark-mode .social-product-images-box{background:#1e293b;border-color:#64748b}.dark-mode .social-product-images-head h4,.dark-mode .social-product-image-meta strong{color:#f8fafc}.dark-mode .social-product-images-head p,.dark-mode .social-product-image-meta small,.dark-mode .social-product-images-note{color:#94a3b8}.dark-mode .social-product-images-status,.dark-mode .social-product-image-card,.dark-mode .social-product-images-empty,.dark-mode .social-product-images-filter{background:#0f172a;border-color:#64748b;color:#e5e7eb}.dark-mode .social-product-images-status.success{background:#052e16;color:#bbf7d0;border-color:#16a34a}.dark-mode .social-product-images-status.error{background:#450a0a;color:#fecaca;border-color:#ef4444}.dark-mode .social-product-image-buttons button{background:#1e293b;color:#e5e7eb;border-color:#64748b}.dark-mode .social-product-image-buttons button.primary,.dark-mode .social-product-images-filter.active{background:#3157ff;color:#fff}.dark-mode .social-product-image-type{background:#1e293b;color:#cbd5e1;border-color:#64748b}
 @media(max-width:1100px){.social-product-images-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.social-product-images-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.social-product-images-actions{width:100%}.social-product-images-actions .social-square-btn{flex:1}}
+
+/* === 商品出貨｜遠距顯眼版 === */
+.ship-action-badge{min-width:64px;padding:7px 14px;font-size:18px;font-weight:1000;letter-spacing:.02em}
+.ship-kpi-card{min-height:132px;padding:22px}
+.ship-kpi-card span{font-size:17px}
+.ship-kpi-card strong{margin-top:12px;font-size:46px}
+.ship-kpi-card.latest strong{font-size:36px}
+.ship-kpi-card small{font-size:16px}
+.ship-workbench-grid{grid-template-columns:minmax(390px,.96fr) minmax(430px,1.08fr) minmax(460px,1.24fr);gap:16px}
+.ship-console-card{border-radius:22px;padding:22px}
+.ship-console-head{margin-bottom:18px}
+.ship-console-head h2{font-size:30px!important;line-height:1.15}
+.ship-console-eyebrow{font-size:13px;letter-spacing:.14em}
+.ship-focus-indicator,.ship-live-pill{min-height:38px;padding:7px 14px;font-size:14px}
+.ship-live-pill i{width:10px;height:10px}
+.ship-current-mode{gap:14px;margin-bottom:16px;padding:14px 16px;border-radius:16px}
+.ship-current-mode-dot{width:15px;height:15px;flex:0 0 15px}
+.ship-current-mode small{font-size:14px}
+.ship-current-mode strong{margin-top:3px;font-size:28px;line-height:1.15}
+.ship-action-buttons-large{gap:10px;margin-bottom:19px}
+.ship-action-buttons-large .ship-action-btn{min-height:66px;padding:10px 8px;border-radius:16px;font-size:24px!important;line-height:1.1}
+.ship-action-buttons-large .ship-action-btn span{margin-right:3px;font-size:26px}
+.ship-scan-label{margin-bottom:10px;font-size:22px!important;font-weight:1000!important}
+.ship-code-input-icon{left:20px;font-size:31px}
+.ship-scan-input{height:98px!important;min-height:98px!important;padding:14px 112px 14px 66px!important;border-width:4px!important;border-radius:22px!important;font-size:42px!important;letter-spacing:.06em!important}
+.ship-enter-hint{right:18px;min-width:82px;height:42px;border-radius:12px;font-size:17px}
+.ship-scan-help{margin:10px 2px 16px;font-size:17px;line-height:1.5}
+.ship-scan-actions{gap:12px}
+.ship-submit-btn,.ship-scan-actions .btn{min-height:58px!important;font-size:26px!important;font-weight:1000!important;border-radius:16px!important}
+.ship-result-shell{display:flex;flex-direction:column}
+#shipPreview{min-height:470px}
+.ship-result-panel{min-height:470px;padding:28px 22px;border-width:3px;border-radius:22px}
+.ship-result-panel::after{width:320px;height:320px;right:-140px;bottom:-190px}
+.ship-result-icon{width:110px;height:110px;margin-bottom:18px;border-radius:32px;font-size:62px}
+.ship-result-title{font-size:54px;line-height:1.05;letter-spacing:-.05em}
+.ship-result-product{margin-top:18px;font-size:36px;line-height:1.18;white-space:normal;overflow:visible;text-overflow:clip}
+.ship-result-color{margin-top:7px;font-size:30px;line-height:1.2}
+.ship-result-code{margin-top:16px;min-height:56px;padding:10px 22px;border-radius:14px;font-size:30px;letter-spacing:.08em}
+.ship-result-stock{gap:18px;margin-top:24px}
+.ship-result-stock span{gap:6px;min-width:116px;padding:13px 15px;border-radius:15px;font-size:16px}
+.ship-result-stock strong{font-size:48px}
+.ship-result-stock b{font-size:42px}
+.ship-result-time{margin-top:18px;font-size:28px;line-height:1.1}
+.ship-result-message{margin-top:10px;font-size:24px;line-height:1.45}
+.ship-result-idle-text{max-width:360px;font-size:22px;line-height:1.55}
+.ship-history-actions{gap:8px}
+.ship-history-actions .btn{font-size:15px!important}
+#shipQueueTable{min-height:470px;max-height:640px;padding-right:4px}
+.ship-record-list{gap:10px}
+.ship-record-row{gap:14px;padding:14px 15px;border-left-width:6px;border-radius:16px}
+.ship-record-status{width:52px;height:52px;border-radius:16px;font-size:28px}
+.ship-record-top{gap:9px}
+.ship-record-code{font-size:22px;line-height:1.1}
+.ship-record-time{font-size:17px}
+.ship-record-product{margin-top:6px;font-size:24px;line-height:1.15}
+.ship-record-message{margin-top:5px;font-size:17px;line-height:1.2}
+.ship-record-stock{gap:7px;font-size:18px}
+.ship-record-stock strong{font-size:34px;line-height:1}
+.ship-record-stock b{font-size:24px}
+.ship-record-empty{min-height:420px;font-size:20px;line-height:1.55}
+.ship-record-empty small{font-size:16px}
+body.dark-mode .ship-result-message{color:#fecaca}
+@media(max-width:1560px){.ship-workbench-grid{grid-template-columns:minmax(360px,.95fr) minmax(390px,1fr) minmax(420px,1.15fr)}.ship-result-title{font-size:48px}.ship-result-product{font-size:32px}.ship-record-code{font-size:20px}.ship-record-product{font-size:21px}}
+@media(max-width:1280px){.ship-kpi-card strong{font-size:38px}.ship-kpi-card.latest strong{font-size:31px}.ship-console-head h2{font-size:26px!important}.ship-current-mode strong{font-size:24px}.ship-action-buttons-large .ship-action-btn{font-size:21px!important;min-height:60px}.ship-scan-label{font-size:19px!important}.ship-scan-input{height:88px!important;min-height:88px!important;font-size:34px!important}.ship-enter-hint{min-width:72px;height:38px;font-size:15px}.ship-scan-help{font-size:14px}.ship-submit-btn,.ship-scan-actions .btn{min-height:52px!important;font-size:21px!important}.ship-result-panel,#shipPreview{min-height:410px}.ship-result-icon{width:96px;height:96px;font-size:54px}.ship-result-title{font-size:42px}.ship-result-product{font-size:28px}.ship-result-color{font-size:24px}.ship-result-code{font-size:24px}.ship-result-stock strong{font-size:40px}.ship-result-stock b{font-size:34px}.ship-result-time{font-size:22px}.ship-result-message{font-size:20px}.ship-result-idle-text{font-size:18px}.ship-record-status{width:44px;height:44px;font-size:24px}.ship-record-code{font-size:18px}.ship-record-time{font-size:14px}.ship-record-product{font-size:18px}.ship-record-message{font-size:14px}.ship-record-stock strong{font-size:28px}.ship-record-stock b{font-size:20px}.ship-action-badge{font-size:15px}}
+@media(max-width:1120px){.ship-workbench-grid{grid-template-columns:1fr 1fr}.ship-history-shell{grid-column:1/-1}.ship-record-list{grid-template-columns:1fr 1fr}.ship-result-panel,#shipPreview,#shipQueueTable{min-height:360px}}
+@media(max-width:780px){.ship-kpi-grid{grid-template-columns:1fr 1fr}.ship-workbench-grid{grid-template-columns:1fr}.ship-history-shell{grid-column:auto}.ship-record-list{grid-template-columns:1fr}.ship-scan-actions{grid-template-columns:1fr}.ship-action-buttons-large{grid-template-columns:1fr}.ship-action-buttons-large .ship-action-btn{min-height:54px;font-size:18px!important}.ship-code-input-wrap .ship-enter-hint{display:none}.ship-scan-input{padding-right:18px!important;font-size:29px!important}.ship-history-head{align-items:stretch;flex-direction:column}.ship-history-actions .btn{flex:1}.ship-result-title{font-size:34px}.ship-result-product{font-size:23px}.ship-result-color{font-size:20px}.ship-result-stock strong{font-size:32px}.ship-result-time{font-size:18px}.ship-record-product{font-size:17px}.ship-record-stock strong{font-size:24px}}
+@media(max-width:480px){.ship-kpi-grid{grid-template-columns:1fr}.ship-console-card{padding:16px}.ship-scan-input{font-size:25px!important;height:78px!important;min-height:78px!important}.ship-result-stock{gap:8px}.ship-result-stock span{min-width:66px;padding:8px 9px}.ship-result-title{font-size:30px}.ship-result-product{font-size:20px}.ship-result-color{font-size:18px}.ship-result-code{font-size:20px}.ship-result-stock strong{font-size:26px}.ship-result-time{font-size:16px}.ship-record-code{font-size:16px}.ship-record-time,.ship-record-message{font-size:12px}.ship-record-product{font-size:16px}.ship-record-stock strong{font-size:22px}}
+
 </style>
 <script>
 (function(){
