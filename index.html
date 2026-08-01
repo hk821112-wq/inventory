@@ -222,11 +222,31 @@
     @media(max-width:1280px){#product .span-3,#product .span-9{grid-column:span 12}}@media(max-width:980px){.topbar{grid-template-columns:1fr}.summary{grid-template-columns:repeat(2,1fr)}.span-9,.span-8,.span-7,.span-6,.span-5,.span-4,.span-3{grid-column:span 12}.field,.field.third{grid-column:span 12}.search-row{grid-template-columns:1fr}.stock-inline-row{flex-wrap:wrap}.stock-inline-row .field.full,.stock-inline-row .field.half,.stock-inline-row .field.qty{flex:1 1 100%}.stock-inline-row .btn{width:100%}.stock-sticky-header{position:relative;top:auto;margin:-20px -20px 16px}.stock-title-row{align-items:stretch}.stock-title-row .btn{width:100%}.inbound-status-panel{width:100%;justify-content:flex-start;margin-left:0;flex-wrap:wrap}}
     @page{size:35mm 25mm;margin:0}
     @media print{
-      html,body{width:35mm;height:25mm;margin:0!important;padding:0!important;background:#fff!important;overflow:visible!important}
-      body.printing-labels .app{display:none!important}
-      body.printing-labels .nextday-warning-float{display:none!important}
-      .nextday-warning-float{display:none!important}
-      body.printing-labels .print-area{display:block!important;width:35mm;margin:0!important;padding:0!important;background:#fff!important}
+      /*
+        列印只保留條碼區，避免主畫面或其他浮動元件被 Chrome 算入頁數。
+        html/body 不再鎖死為整張標籤尺寸，避免毫米換算後的 0.x 像素溢出，
+        造成 1 張標籤被切成 4 張紙（其餘為空白頁）。
+      */
+      html,body{
+        width:auto!important;
+        height:auto!important;
+        min-width:0!important;
+        min-height:0!important;
+        margin:0!important;
+        padding:0!important;
+        background:#fff!important;
+        overflow:visible!important;
+      }
+      body.printing-labels > *:not(#printArea){display:none!important}
+      body.printing-labels #printArea{
+        display:block!important;
+        width:34.5mm!important;
+        height:auto!important;
+        margin:0!important;
+        padding:0!important;
+        background:#fff!important;
+        overflow:visible!important;
+      }
 
       /*
         ==============================
@@ -273,15 +293,23 @@
         --code-font-size:12pt;     /* 編號大小 */
         --code-top:19.2mm;         /* 編號高低 */
 
-        width:35mm;
-        height:25mm;
+        /*
+          故意各縮 0.5mm，保留 Chrome 與標籤機驅動的尺寸換算容差。
+          35mm x 25mm 紙張仍維持不變，只有內容盒略小，避免產生空白分頁。
+        */
+        width:34.5mm;
+        height:24.5mm;
+        min-width:0;
+        min-height:0;
         margin:0;
         padding:0;
         border:0;
         position:relative;
         overflow:hidden;
+        box-sizing:border-box;
         break-after:page;
         page-break-after:always;
+        break-inside:avoid;
         page-break-inside:avoid;
         background:#fff;
         color:#000;
@@ -7722,16 +7750,29 @@ function printLabels(p,qty){
     </div>
   `).join('');
 
+  const printArea=$('printArea');
+  let cleaned=false;
+  const cleanupPrint=()=>{
+    if(cleaned)return;
+    cleaned=true;
+    document.body.classList.remove('printing-labels');
+    printArea.innerHTML='';
+  };
   const doPrint=()=>{
     document.body.classList.add('printing-labels');
-    setTimeout(()=>{
-      window.print();
-      setTimeout(()=>document.body.classList.remove('printing-labels'),300);
-    },120);
+
+    /*
+      不再用固定 300ms 移除列印模式。Chrome 預覽尚未完成時提早移除，
+      可能重新把整個頁面納入分頁。改由 afterprint 在預覽關閉後再清理。
+    */
+    window.addEventListener('afterprint',cleanupPrint,{once:true});
+    requestAnimationFrame(()=>{
+      requestAnimationFrame(()=>window.print());
+    });
   };
 
   if(document.fonts&&document.fonts.load){
-    document.fonts.load('31pt "Libre Barcode 39"', barcode)
+    document.fonts.load('22pt "Libre Barcode 39"', barcode)
       .then(()=>document.fonts.ready)
       .then(()=>setTimeout(doPrint,120))
       .catch(()=>doPrint());
