@@ -3386,6 +3386,20 @@ body.dark-mode .ship-record-empty{border-color:#334155;color:#94a3b8}
 .stock-pending-qty{display:inline-flex;align-items:center;justify-content:center;min-width:34px;padding:4px 8px;border-radius:9px;font-weight:1000}
 .stock-pending-qty.has-pending{background:#fee2e2;color:#dc2626;border:1px solid #fecaca;box-shadow:0 6px 14px rgba(220,38,38,.10)}
 body.dark-mode .stock-pending-qty.has-pending{background:#450a0a;color:#fecaca;border-color:#991b1b}
+
+/* 隔日配缺貨警告：未到貨批次漂浮明細 */
+.pending-batch-hover{cursor:help;outline:none}
+.pending-batch-hover:hover,.pending-batch-hover:focus{box-shadow:0 0 0 3px rgba(220,38,38,.16),0 8px 18px rgba(220,38,38,.14)}
+.pending-batch-float{position:fixed;left:0;top:0;z-index:2200;display:none;width:max-content;min-width:250px;max-width:min(380px,calc(100vw - 24px));padding:12px 14px;border-radius:14px;background:#111827;color:#fff;border:1px solid #334155;box-shadow:0 18px 45px rgba(15,23,42,.34);pointer-events:none;transform:translate(12px,12px)}
+.pending-batch-float.show{display:block}
+.pending-batch-float-title{font-size:14px;font-weight:1000;color:#fff;margin-bottom:8px}
+.pending-batch-float-row{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:7px 0;border-top:1px solid rgba(148,163,184,.22);font-size:13px;line-height:1.35}
+.pending-batch-float-row:first-of-type{border-top:0}
+.pending-batch-float-batch{font-weight:1000;color:#fde68a;white-space:nowrap}
+.pending-batch-float-date{color:#cbd5e1;white-space:nowrap}
+.pending-batch-float-qty{font-weight:1000;color:#fca5a5;white-space:nowrap}
+body.dark-mode .pending-batch-float{background:#020617;border-color:#475569;box-shadow:0 20px 50px rgba(0,0,0,.58)}
+@media(max-width:560px){.pending-batch-float{min-width:220px;max-width:calc(100vw - 20px)}.pending-batch-float-row{grid-template-columns:auto 1fr}.pending-batch-float-qty{grid-column:1/-1}}
 </style>
 
 </head>
@@ -4501,6 +4515,66 @@ function parseColorList(t){return String(t||'').trim().split(/[\s,，、/／|｜
 function nextSequentialCode(base,offset){const code=normalizeCode(base),m=code.match(/^(.*?)(\d+)$/);if(!m)return offset===0?code:`${code}_${String(offset+1).padStart(2,'0')}`;return m[1]+String(Number(m[2])+offset).padStart(m[2].length,'0')}
 function nextCodeForCopy(baseCode){const code=normalizeCode(baseCode),m=code.match(/^(.*?)(\d+)$/);if(!m)return code;const prefix=m[1],digits=m[2];if(digits.length>=3){const familyPrefix=prefix+digits.slice(0,-2);let max=-1;state.products.forEach(p=>{const c=normalizeCode(p.code);if(c.startsWith(familyPrefix)){const tail=c.slice(familyPrefix.length);if(/^\d{2}$/.test(tail))max=Math.max(max,Number(tail));}});if(max>=0)return familyPrefix+String(max+1).padStart(2,'0');}let max=Number(digits);state.products.forEach(p=>{const mm=normalizeCode(p.code).match(/^(.*?)(\d+)$/);if(mm&&mm[1]===prefix&&mm[2].length===digits.length)max=Math.max(max,Number(mm[2]));});return prefix+String(max+1).padStart(digits.length,'0')}
 function pendingQty(p){return (p.batches||[]).reduce((s,b)=>s+Math.max(toNum(b.ordered)-toNum(b.arrived),0),0)}
+function pendingBatchDetails(p){
+  return (p?.batches||[]).map((b,index)=>{
+    const ordered=Math.max(toNum(b?.ordered),0);
+    const arrived=Math.min(Math.max(toNum(b?.arrived),0),ordered);
+    const pending=Math.max(ordered-arrived,0);
+    if(pending<=0)return null;
+    return{
+      batchNo:index+1,
+      orderDate:formatDateSlash(b?.orderDate||'')||'未填日期',
+      ordered,
+      arrived,
+      pending
+    };
+  }).filter(Boolean);
+}
+function ensurePendingBatchTooltip(){
+  let el=$('pendingBatchTooltip');
+  if(el)return el;
+  el=document.createElement('div');
+  el.id='pendingBatchTooltip';
+  el.className='pending-batch-float';
+  el.setAttribute('role','tooltip');
+  document.body.appendChild(el);
+  return el;
+}
+function positionPendingBatchTooltip(event){
+  const el=$('pendingBatchTooltip');
+  if(!el||!el.classList.contains('show'))return;
+  const gap=14;
+  const rect=el.getBoundingClientRect();
+  let left=(event?.clientX||0)+gap;
+  let top=(event?.clientY||0)+gap;
+  if(left+rect.width>window.innerWidth-8)left=Math.max(8,(event?.clientX||0)-rect.width-gap);
+  if(top+rect.height>window.innerHeight-8)top=Math.max(8,(event?.clientY||0)-rect.height-gap);
+  el.style.left=left+'px';
+  el.style.top=top+'px';
+}
+function showPendingBatchTooltip(event,code){
+  const p=findProduct(code);
+  const rows=pendingBatchDetails(p);
+  if(!p||!rows.length)return;
+  const el=ensurePendingBatchTooltip();
+  el.innerHTML=`<div class="pending-batch-float-title">${esc(p.itemName)}／${esc(p.color)}｜未到貨 ${pendingQty(p)}</div>${rows.map(row=>`<div class="pending-batch-float-row"><span class="pending-batch-float-batch">第 ${row.batchNo} 批</span><span class="pending-batch-float-date">${esc(row.orderDate)}</span><span class="pending-batch-float-qty">未到 ${row.pending}（${row.arrived}/${row.ordered}）</span></div>`).join('')}`;
+  el.classList.add('show');
+  positionPendingBatchTooltip(event);
+}
+function movePendingBatchTooltip(event){positionPendingBatchTooltip(event)}
+function hidePendingBatchTooltip(){
+  const el=$('pendingBatchTooltip');
+  if(el)el.classList.remove('show');
+}
+function pendingBatchHoverHtml(product){
+  const qty=pendingQty(product);
+  if(qty<=0)return '<span class="stock-pending-qty">0</span>';
+  const code=normalizeCode(product?.code||'');
+  return `<span class="stock-pending-qty has-pending pending-batch-hover" tabindex="0" title="移入查看未到貨批次與進貨日期" onmouseenter="showPendingBatchTooltip(event,'${esc(code)}')" onmousemove="movePendingBatchTooltip(event)" onmouseleave="hidePendingBatchTooltip()" onfocus="showPendingBatchTooltip(event,'${esc(code)}')" onblur="hidePendingBatchTooltip()">${qty}</span>`;
+}
+window.showPendingBatchTooltip=showPendingBatchTooltip;
+window.movePendingBatchTooltip=movePendingBatchTooltip;
+window.hidePendingBatchTooltip=hidePendingBatchTooltip;
 function totalStock(p){return toNum(p.currentStock)+pendingQty(p)}
 function profitFromValues(priceValue,costValue){const s=state.settings,price=toNum(priceValue),cost=toNum(costValue);return (price-cost)-(price*toNum(s.feePlatform))-(price*toNum(s.feeService))-(price*toNum(s.feeExtra))-((cost+toNum(s.shippingBase))*toNum(s.feeExtra))-(price*toNum(s.feeOther))}
 function formatProfitPreviewValue(value){const v=toNum(value);return v<0?`-$${money(Math.abs(v))}`:`$${money(v)}`}
@@ -6367,34 +6441,40 @@ function updateNextDayFilterButtons(){
   }
 }
 function toggleStockNextDayOnly(){
+  resetHeavyTablePage('stock');
   const enabled=!state.filters.stockNextDayOnly;
   state.filters.stockNextDayOnly=enabled;
   if(enabled)state.filters.stockLongStockOnly=false;
   renderStock();
 }
 function toggleStockLongStockOnly(){
+  resetHeavyTablePage('stock');
   const enabled=!state.filters.stockLongStockOnly;
   state.filters.stockLongStockOnly=enabled;
   if(enabled)state.filters.stockNextDayOnly=false;
   renderStock();
 }
 function toggleStockPendingSort(){
+  resetHeavyTablePage('stock');
   state.filters.stockSortPending=!state.filters.stockSortPending;
   if(state.filters.stockSortPending)state.filters.stockSortSales60=false;
   renderStock();
 }
 function toggleStockSales60Sort(){
+  resetHeavyTablePage('stock');
   state.filters.stockSortSales60=!state.filters.stockSortSales60;
   if(state.filters.stockSortSales60)state.filters.stockSortPending=false;
   renderStock();
 }
 function togglePurchaseNextDayOnly(){
+  resetHeavyTablePage('purchase');
   const enabled=!state.filters.purchaseNextDayOnly;
   state.filters.purchaseNextDayOnly=enabled;
   if(enabled)state.filters.purchasePendingOnly=false;
   renderPurchase();
 }
 function togglePurchasePendingOnly(){
+  resetHeavyTablePage('purchase');
   const enabled=!state.filters.purchasePendingOnly;
   state.filters.purchasePendingOnly=enabled;
   if(enabled)state.filters.purchaseNextDayOnly=false;
@@ -6457,9 +6537,10 @@ function goToReturnStockUpdates(){
   setTimeout(()=>renderArrivalUpdates(),30);
 }
 function renderDashboard(){
+  hidePendingBatchTooltip();
   renderReturnStockWarnings();
   const rows=nextDayStockWarnings();
-  $('lowStockList').innerHTML=rows.length?`<div class="notice danger"><strong>隔日配缺貨警告：</strong>有 ${rows.length} 個顏色已開啟隔日配但現貨為 0，請補貨、前往進貨或按「警告排除」。</div><div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>現貨</th><th>進貨庫存</th><th>未到貨</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr class="nextday-row"><td>${nextDayButton(p)}</td><td>${longStockButton(p)}</td><td>${statusFor(p)}</td><td>${itemPreviewHtml(p,p.itemName)}</td><td>${colorWithWarning(p)}</td><td><span class="code">${esc(p.code)}</span></td><td>${toNum(p.currentStock)}</td><td>${totalStock(p)}</td><td>${pendingQty(p)}</td><td><div class="action-buttons"><button class="btn small primary" type="button" onclick="goToPurchaseFromWarning('${esc(p.code)}')">前往進貨</button><button class="btn small green" type="button" onclick="quickInbound('${esc(p.code)}')">+1庫存</button></div></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">目前沒有隔日配缺貨警告。</div>'
+  $('lowStockList').innerHTML=rows.length?`<div class="notice danger"><strong>隔日配缺貨警告：</strong>有 ${rows.length} 個顏色已開啟隔日配但現貨為 0，請補貨、前往進貨或按「警告排除」。</div><div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>現貨</th><th>進貨庫存</th><th>未到貨</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr class="nextday-row"><td>${nextDayButton(p)}</td><td>${longStockButton(p)}</td><td>${statusFor(p)}</td><td>${itemPreviewHtml(p,p.itemName)}</td><td>${colorWithWarning(p)}</td><td>${copyCodeCell(p.code)}</td><td>${toNum(p.currentStock)}</td><td>${totalStock(p)}</td><td>${pendingBatchHoverHtml(p)}</td><td><div class="action-buttons"><button class="btn small primary" type="button" onclick="goToPurchaseFromWarning('${esc(p.code)}')">前往進貨</button><button class="btn small green" type="button" onclick="quickInbound('${esc(p.code)}')">+1庫存</button></div></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">目前沒有隔日配缺貨警告。</div>'
 }
 
 function goToPurchaseFromWarning(code){
@@ -6470,6 +6551,7 @@ function goToPurchaseFromWarning(code){
   // 例：M13301 / M13302 / M13399 → 只搜尋 M133，方便一次看到同品項全部顏色。
   const target=fullCode.slice(0,4);
 
+  resetHeavyTablePage('purchase');
   state.filters.purchase=target;
   state.filters.purchaseNextDayOnly=false;
   state.filters.purchasePendingOnly=false;
@@ -6494,14 +6576,82 @@ function goToPurchaseFromWarning(code){
   },120);
 }
 function renderProducts(){const rows=productRows(state.filters.product);$('productTable').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>品項</th><th>顏色</th><th>編號</th><th>蝦皮</th><th>進貨</th><th>成本</th><th>售價</th><th>利潤</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr><td>${itemPreviewHtml(p,p.itemName)}</td><td>${esc(p.color)}</td><td><span class="code">${esc(p.code)}</span></td><td>${shopeeLinkHtml(p,'開啟','-')}</td><td>${p.purchaseUrl?`<a href="${esc(p.purchaseUrl)}" target="_blank">開啟</a>`:'-'}</td><td>$${money(p.cost)}</td><td>$${money(p.price)}</td><td>$${money(profit(p))}</td><td><div class="action-buttons"><button class="btn small green" onclick="editProduct('${esc(p.code)}')">編輯</button><button class="btn small primary" onclick="copyProduct('${esc(p.code)}')">複製</button><button class="btn small red" onclick="deleteProduct('${esc(p.code)}')">刪除</button></div></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">尚無商品。</div>'}
+
+/*
+  庫存資料與進貨/到貨屬於大型表格：
+  不再一次建立全部 DOM，改成分頁，只渲染目前頁面。
+  庫存資料與進貨/到貨皆改為每頁 200 筆。
+*/
+const heavyTablePaging={
+  stock:{page:1,pageSize:200},
+  purchase:{page:1,pageSize:200}
+};
+function resetHeavyTablePage(name){
+  if(heavyTablePaging[name])heavyTablePaging[name].page=1;
+}
+function heavyTablePageData(name,rows){
+  const config=heavyTablePaging[name]||{page:1,pageSize:100};
+  const total=Array.isArray(rows)?rows.length:0;
+  const pageSize=Math.max(1,Math.floor(toNum(config.pageSize)||100));
+  const totalPages=Math.max(1,Math.ceil(total/pageSize));
+  const page=Math.min(Math.max(1,Math.floor(toNum(config.page)||1)),totalPages);
+  config.page=page;
+  const start=(page-1)*pageSize;
+  const end=Math.min(start+pageSize,total);
+  return{name,total,page,pageSize,totalPages,start,end,rows:rows.slice(start,end)};
+}
+function heavyTablePagerHtml(info,position='top'){
+  if(!info||info.total<=0)return '';
+  const from=info.start+1;
+  const to=info.end;
+  const disabledFirst=info.page<=1?' disabled':'';
+  const disabledLast=info.page>=info.totalPages?' disabled':'';
+  return `<div class="heavy-table-pager ${position==='bottom'?'bottom':''}">
+    <div class="heavy-table-pager-info">目前顯示 <strong>${from}–${to}</strong>／共 <strong>${info.total}</strong> 筆・每頁 ${info.pageSize} 筆</div>
+    <div class="heavy-table-pager-actions">
+      <button class="btn small ghost" type="button"${disabledFirst} onclick="setHeavyTablePage('${info.name}',1)">第一頁</button>
+      <button class="btn small ghost" type="button"${disabledFirst} onclick="setHeavyTablePage('${info.name}',${info.page-1})">上一頁</button>
+      <span class="heavy-table-page-number">${info.page} / ${info.totalPages}</span>
+      <button class="btn small ghost" type="button"${disabledLast} onclick="setHeavyTablePage('${info.name}',${info.page+1})">下一頁</button>
+      <button class="btn small ghost" type="button"${disabledLast} onclick="setHeavyTablePage('${info.name}',${info.totalPages})">最後頁</button>
+    </div>
+  </div>`;
+}
+function setHeavyTablePage(name,page){
+  const config=heavyTablePaging[name];
+  if(!config)return;
+  config.page=Math.max(1,Math.floor(toNum(page)||1));
+  hidePendingBatchTooltip();
+  if(name==='stock')renderStock();
+  else if(name==='purchase')renderPurchase();
+  requestAnimationFrame(()=>{
+    const root=$(name==='stock'?'stockTable':'purchaseTable');
+    const wrap=root?.querySelector('.table-wrap');
+    if(wrap){wrap.scrollTop=0;wrap.scrollLeft=0;}
+  });
+}
+window.setHeavyTablePage=setHeavyTablePage;
+
+function stockRowHtml(p){
+  return `<tr data-stock-code="${esc(p.code)}" class="${rowClassFor(p).trim()}"><td data-stock-nextday>${nextDayButton(p)}</td><td data-stock-longstock>${longStockButton(p)}</td><td data-stock-status>${statusFor(p)}</td><td>${itemPreviewHtml(p,p.itemName)}</td><td data-stock-color>${colorWithWarning(p)}</td><td><span class="code stock-code-btn" title="點擊帶入手動校正現貨並複製編號" onclick="fillAdjustCode('${esc(p.code)}')">${esc(p.code)}</span></td><td><span class="stock-barcode stock-barcode-click" title="點擊列印標籤" onclick="printLabelsForCode('${esc(p.code)}',1)">*${esc(p.code)}*</span></td><td data-stock-current><span class="stock-edit" title="點擊直接修改現貨" onclick="quickAdjustStock('${esc(p.code)}')">${toNum(p.currentStock)}</span></td><td data-stock-total>${totalStock(p)}</td><td data-stock-pending>${stockPendingQtyHtml(p)}</td><td data-stock-unit-cost>$${money(p.cost)}</td><td data-stock-total-cost>$${money(totalCost(p))}</td><td data-stock-sales60><span class="purchase-sales60" title="近 60 天淨銷售：出貨減退貨，核銷不計">${sales60Qty(p.code)}</span></td><td data-stock-sales>${toNum(p.totalSales)}</td><td data-stock-sales-cost>$${money(salesCost(p))}</td><td><div class="stock-actions"><button class="btn small primary" type="button" onclick="goToPurchaseFromWarning('${esc(p.code)}')">前往進貨</button></div></td></tr>`;
+}
 function renderStock(){
+  hidePendingBatchTooltip();
   updateNextDayFilterButtons();
-  const rows=stockRows();
+  const allRows=stockRows();
   const emptyText=state.filters.stockNextDayOnly
     ?'目前沒有已開啟隔日配的商品。'
     :(state.filters.stockLongStockOnly?'目前沒有已開長備貨的商品。':'查無庫存資料。');
-  $('stockTable').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>條碼</th><th>現貨</th><th>進貨</th><th>未到貨</th><th>單件成本</th><th>總成本</th><th title="近 60 天淨銷售：出貨減退貨，核銷不計">過去60天累積銷量</th><th>累積銷量</th><th>累積成本</th><th>操作</th></tr></thead><tbody>${rows.map(p=>`<tr data-stock-code="${esc(p.code)}" class="${rowClassFor(p).trim()}"><td data-stock-nextday>${nextDayButton(p)}</td><td data-stock-longstock>${longStockButton(p)}</td><td data-stock-status>${statusFor(p)}</td><td>${itemPreviewHtml(p,p.itemName)}</td><td data-stock-color>${colorWithWarning(p)}</td><td><span class="code stock-code-btn" title="點擊帶入手動校正現貨並複製編號" onclick="fillAdjustCode('${esc(p.code)}')">${esc(p.code)}</span></td><td><span class="stock-barcode stock-barcode-click" title="點擊列印標籤" onclick="printLabelsForCode('${esc(p.code)}',1)">*${esc(p.code)}*</span></td><td data-stock-current><span class="stock-edit" title="點擊直接修改現貨" onclick="quickAdjustStock('${esc(p.code)}')">${toNum(p.currentStock)}</span></td><td data-stock-total>${totalStock(p)}</td><td data-stock-pending>${stockPendingQtyHtml(p)}</td><td data-stock-unit-cost>$${money(p.cost)}</td><td data-stock-total-cost>$${money(totalCost(p))}</td><td data-stock-sales60><span class="purchase-sales60" title="近 60 天淨銷售：出貨減退貨，核銷不計">${sales60Qty(p.code)}</span></td><td data-stock-sales>${toNum(p.totalSales)}</td><td data-stock-sales-cost>$${money(salesCost(p))}</td><td><div class="stock-actions"><button class="btn small primary" type="button" onclick="goToPurchaseFromWarning('${esc(p.code)}')">前往進貨</button></div></td></tr>`).join('')}</tbody></table></div>`:`<div class="empty">${emptyText}</div>`;
+  if(!allRows.length){
+    $('stockTable').innerHTML=`<div class="empty">${emptyText}</div>`;
+    return;
+  }
+  const page=heavyTablePageData('stock',allRows);
+  const pagerTop=heavyTablePagerHtml(page,'top');
+  const pagerBottom=page.totalPages>1?heavyTablePagerHtml(page,'bottom'):'';
+  $('stockTable').innerHTML=`${pagerTop}<div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>條碼</th><th>現貨</th><th>進貨</th><th>未到貨</th><th>單件成本</th><th>總成本</th><th title="近 60 天淨銷售：出貨減退貨，核銷不計">過去60天累積銷量</th><th>累積銷量</th><th>累積成本</th><th>操作</th></tr></thead><tbody>${page.rows.map(stockRowHtml).join('')}</tbody></table></div>${pagerBottom}`;
 }
+
 function patchLocalProduct(product){
   if(!product||!product.code)return null;
   const code=normalizeCode(product.code);
@@ -6717,7 +6867,8 @@ function renderArrivalUpdates(){
     const urlCell=arrivalShopeeLinkHtml(r,'開啟',`<span class="arrival-update-url-missing">缺少網址</span>`,'btn small primary');
     const doneBtn=status==='done'?`<button class="btn small ghost" type="button" onclick="setArrivalUpdateStatus('${esc(r.id)}','pending')">改回待更新</button>`:`<button class="btn small green" type="button" onclick="setArrivalUpdateStatus('${esc(r.id)}','done')">完成</button>`;
     const ignoreBtn=status==='ignored'?`<button class="btn small ghost" type="button" onclick="setArrivalUpdateStatus('${esc(r.id)}','pending')">取消忽略</button>`:`<button class="btn small red" type="button" onclick="setArrivalUpdateStatus('${esc(r.id)}','ignored')">忽略</button>`;
-    return `<tr><td><span class="status ${arrivalStatusClass(status)}">${arrivalStatusText(status)}</span></td><td><span class="arrival-source-pill">${esc(arrivalSourceText(r.source))}</span></td><td>${esc(r.time)}</td><td>${itemCell}</td><td>${colorCell}</td><td>${copyCodeCell(r.code)}</td><td>${toNum(r.arrivalQty)}</td><td>${toNum(r.beforeStock)}</td><td><strong>${toNum(r.targetStock)}</strong></td><td>${r.batchNo?`第 ${esc(r.batchNo)} 批`:'-'}</td><td>${urlCell}</td><td><div class="arrival-update-actions">${doneBtn}${ignoreBtn}</div></td></tr>`;
+    const stockModeButtons=p?`<span data-arrival-nextday>${nextDayButton(p)}</span><span data-arrival-longstock>${longStockButton(p)}</span>`:'';
+    return `<tr data-arrival-code="${esc(r.code)}"><td><span class="status ${arrivalStatusClass(status)}">${arrivalStatusText(status)}</span></td><td><span class="arrival-source-pill">${esc(arrivalSourceText(r.source))}</span></td><td>${esc(r.time)}</td><td>${itemCell}</td><td>${colorCell}</td><td>${copyCodeCell(r.code)}</td><td>${toNum(r.arrivalQty)}</td><td>${toNum(r.beforeStock)}</td><td><strong>${toNum(r.targetStock)}</strong></td><td>${r.batchNo?`第 ${esc(r.batchNo)} 批`:'-'}</td><td>${urlCell}</td><td><div class="arrival-update-actions">${stockModeButtons}${doneBtn}${ignoreBtn}</div></td></tr>`;
   }).join('')}</tbody></table></div>`;
 }
 function setArrivalUpdateFilter(mode){
@@ -6735,9 +6886,10 @@ function exportArrivalUpdatesCsv(){
   downloadText('\uFEFF'+[h,...rows].map(r=>r.map(csvEscape).join(',')).join('\n'),`到貨更新_${dateFileName()}.csv`,'text/csv;charset=utf-8');
 }
 function renderPurchase(){
+  hidePendingBatchTooltip();
   updateNextDayFilterButtons();
-  const rows=purchaseRows();
-  if(!rows.length){
+  const allRows=purchaseRows();
+  if(!allRows.length){
     const hasSearch=String(state.filters.purchase||'').trim();
     let emptyText='尚無商品資料。';
     if(hasSearch)emptyText='查無符合的進貨 / 到貨商品。';
@@ -6747,7 +6899,10 @@ function renderPurchase(){
     return;
   }
 
-  $('purchaseTable').innerHTML=`<div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>現貨</th><th>進貨</th><th title="近 60 天淨銷售：出貨減退貨，核銷不計">60天銷售數</th>${batchNames.map(b=>`<th>${b}</th>`).join('')}</tr></thead><tbody>${rows.map(p=>purchaseRowHtml(p)).join('')}</tbody></table></div>`;
+  const page=heavyTablePageData('purchase',allRows);
+  const pagerTop=heavyTablePagerHtml(page,'top');
+  const pagerBottom=page.totalPages>1?heavyTablePagerHtml(page,'bottom'):'';
+  $('purchaseTable').innerHTML=`${pagerTop}<div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>現貨</th><th>進貨</th><th title="近 60 天淨銷售：出貨減退貨，核銷不計">60天銷售數</th>${batchNames.map(b=>`<th>${b}</th>`).join('')}</tr></thead><tbody>${page.rows.map(p=>purchaseRowHtml(p)).join('')}</tbody></table></div>${pagerBottom}`;
 }
 
 function findPurchaseRowByCode(rawCode){
@@ -6823,6 +6978,7 @@ function purchaseJumpToCode(){
   if(!input)return;
 
   const rawText=String(input.value||'').trim();
+  resetHeavyTablePage('purchase');
   state.filters.purchase=rawText;
   renderPurchase();
 
@@ -7085,6 +7241,15 @@ function patchNextDayDeliveryUi(itemName){
     if(row.children[1])row.children[1].innerHTML=longStockButton(p);
     if(row.children[2])row.children[2].innerHTML=statusFor(p);
     if(row.children[4])row.children[4].innerHTML=colorWithWarning(p);
+  });
+
+  document.querySelectorAll('#arrivalUpdateTable [data-arrival-code]').forEach(row=>{
+    const p=findProduct(row.dataset.arrivalCode);
+    if(!p||nextDayKey(p.itemName)!==key)return;
+    const nextday=row.querySelector('[data-arrival-nextday]');
+    const longstock=row.querySelector('[data-arrival-longstock]');
+    if(nextday)nextday.innerHTML=nextDayButton(p);
+    if(longstock)longstock.innerHTML=longStockButton(p);
   });
 
   renderNextDayWarningFloat();
@@ -7862,22 +8027,26 @@ function bindEvents(){
   $('stockSearch').onkeydown=e=>{
     if(e.key==='Enter'){
       e.preventDefault();
+      resetHeavyTablePage('stock');
       state.filters.stock=$('stockSearch').value.trim();
       renderStock();
     }
   };
 
   $('btnStockSearch').onclick=()=>{
+    resetHeavyTablePage('stock');
     state.filters.stock=$('stockSearch').value.trim();
     renderStock();
   };
 
   $('btnShowAllStock').onclick=()=>{
+    resetHeavyTablePage('stock');
     $('stockSearch').value='';
     state.filters.stock='';
     state.filters.stockNextDayOnly=false;
     state.filters.stockLongStockOnly=false;
     state.filters.stockSortSales60=false;
+    state.filters.stockSortPending=false;
     renderStock();
   };
   if($('btnStockShowNextDayOnly'))$('btnStockShowNextDayOnly').onclick=toggleStockNextDayOnly;
@@ -7916,7 +8085,7 @@ function bindEvents(){
   if($('btnActionDateClear'))$('btnActionDateClear').onclick=()=>{$('actionStartDate').value='';state.actionFilters.startDate='';renderActions()};
   if($('actionStartDate'))$('actionStartDate').onkeydown=e=>{if(e.key==='Enter'){state.actionFilters.startDate=$('actionStartDate').value;renderActions()}};
   if($('btnPurchaseJump'))$('btnPurchaseJump').onclick=purchaseJumpToCode;
-  if($('btnShowAllPurchase'))$('btnShowAllPurchase').onclick=()=>{$('purchaseJumpCode').value='';state.filters.purchase='';state.filters.purchaseNextDayOnly=false;state.filters.purchasePendingOnly=false;renderPurchase()};
+  if($('btnShowAllPurchase'))$('btnShowAllPurchase').onclick=()=>{resetHeavyTablePage('purchase');$('purchaseJumpCode').value='';state.filters.purchase='';state.filters.purchaseNextDayOnly=false;state.filters.purchasePendingOnly=false;renderPurchase()};
   if($('purchaseJumpCode')){
     $('purchaseJumpCode').oninput=null;
     $('purchaseJumpCode').onfocus=e=>e.target.select();
@@ -8901,6 +9070,71 @@ body.dark-mode .ship-result-message{color:#fecaca}
 @media(max-width:1120px){.ship-workbench-grid{grid-template-columns:1fr 1fr}.ship-history-shell{grid-column:1/-1}.ship-record-list{grid-template-columns:1fr 1fr}.ship-result-panel,#shipPreview,#shipQueueTable{min-height:360px}}
 @media(max-width:780px){.ship-kpi-grid{grid-template-columns:1fr 1fr}.ship-workbench-grid{grid-template-columns:1fr}.ship-history-shell{grid-column:auto}.ship-record-list{grid-template-columns:1fr}.ship-scan-actions{grid-template-columns:1fr}.ship-action-buttons-large{grid-template-columns:1fr}.ship-action-buttons-large .ship-action-btn{min-height:54px;font-size:18px!important}.ship-code-input-wrap .ship-enter-hint{display:none}.ship-scan-input{padding-right:18px!important;font-size:29px!important}.ship-history-head{align-items:stretch;flex-direction:column}.ship-history-actions .btn{flex:1}.ship-result-title{font-size:34px}.ship-result-product{font-size:23px}.ship-result-color{font-size:20px}.ship-result-stock strong{font-size:32px}.ship-result-time{font-size:18px}.ship-record-product{font-size:17px}.ship-record-stock strong{font-size:24px}}
 @media(max-width:480px){.ship-kpi-grid{grid-template-columns:1fr}.ship-console-card{padding:16px}.ship-scan-input{font-size:25px!important;height:78px!important;min-height:78px!important}.ship-result-stock{gap:8px}.ship-result-stock span{min-width:66px;padding:8px 9px}.ship-result-title{font-size:30px}.ship-result-product{font-size:20px}.ship-result-color{font-size:18px}.ship-result-code{font-size:20px}.ship-result-stock strong{font-size:26px}.ship-result-time{font-size:16px}.ship-record-code{font-size:16px}.ship-record-time,.ship-record-message{font-size:12px}.ship-record-product{font-size:16px}.ship-record-stock strong{font-size:22px}}
+
+
+
+/* === 2026/08/02 掃碼輸入大字＋大量資料分頁效能優化 === */
+/*
+  原本 body:not(.printing-labels) input 的全域 !important 規則權重較高，
+  會把 shipCode 原先設定的 42px 壓回小字；這裡用 ID 提高權重，確保生效。
+*/
+body:not(.printing-labels) input#shipCode.ship-scan-input{
+  height:112px!important;
+  min-height:112px!important;
+  padding:16px 122px 16px 72px!important;
+  border-width:5px!important;
+  border-radius:24px!important;
+  font-size:52px!important;
+  line-height:1!important;
+  font-weight:1000!important;
+  letter-spacing:.075em!important;
+  font-variant-numeric:tabular-nums;
+}
+body:not(.printing-labels) input#shipCode.ship-scan-input::placeholder{
+  font-size:40px!important;
+  font-weight:900!important;
+  letter-spacing:.045em!important;
+  opacity:.55;
+}
+
+.heavy-table-pager{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  margin:0 0 12px;
+  padding:10px 12px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#f8fafc;
+}
+.heavy-table-pager.bottom{margin:12px 0 0}
+.heavy-table-pager-info{font-size:13px;font-weight:1000;color:#374151;white-space:nowrap}
+.heavy-table-pager-info strong{color:var(--primary);font-size:15px}
+.heavy-table-pager-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.heavy-table-pager .btn{min-height:34px;padding:6px 11px;border-radius:10px}
+.heavy-table-page-number{display:inline-flex;align-items:center;justify-content:center;min-width:84px;min-height:34px;padding:5px 10px;border-radius:10px;background:#fff;border:1px solid #d1d5db;font-size:13px;font-weight:1000;color:#111827}
+body.dark-mode .heavy-table-pager{background:#0f172a;border-color:#334155}
+body.dark-mode .heavy-table-pager-info{color:#cbd5e1}
+body.dark-mode .heavy-table-page-number{background:#111827;border-color:#475569;color:#f8fafc}
+
+@media(max-width:1280px){
+  body:not(.printing-labels) input#shipCode.ship-scan-input{height:102px!important;min-height:102px!important;font-size:46px!important}
+  body:not(.printing-labels) input#shipCode.ship-scan-input::placeholder{font-size:35px!important}
+}
+@media(max-width:780px){
+  body:not(.printing-labels) input#shipCode.ship-scan-input{height:92px!important;min-height:92px!important;padding-left:58px!important;padding-right:18px!important;font-size:38px!important}
+  body:not(.printing-labels) input#shipCode.ship-scan-input::placeholder{font-size:30px!important}
+  .heavy-table-pager{align-items:stretch}
+  .heavy-table-pager-info{width:100%}
+  .heavy-table-pager-actions{width:100%;display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
+  .heavy-table-page-number{min-width:0}
+}
+@media(max-width:480px){
+  body:not(.printing-labels) input#shipCode.ship-scan-input{height:82px!important;min-height:82px!important;font-size:31px!important}
+  body:not(.printing-labels) input#shipCode.ship-scan-input::placeholder{font-size:26px!important}
+}
 
 </style>
 <script>
