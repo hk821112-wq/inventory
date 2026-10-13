@@ -3400,6 +3400,19 @@ body.dark-mode .stock-pending-qty.has-pending{background:#450a0a;color:#fecaca;b
 .pending-batch-float-qty{font-weight:1000;color:#fca5a5;white-space:nowrap}
 body.dark-mode .pending-batch-float{background:#020617;border-color:#475569;box-shadow:0 20px 50px rgba(0,0,0,.58)}
 @media(max-width:560px){.pending-batch-float{min-width:220px;max-width:calc(100vw - 20px)}.pending-batch-float-row{grid-template-columns:auto 1fr}.pending-batch-float-qty{grid-column:1/-1}}
+/* 庫存資料：累積銷量天數切換 */
+.stock-sales-window-btn{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px dashed #93c5fd;border-radius:10px;background:transparent;color:inherit;font-weight:1000;cursor:pointer;white-space:nowrap}
+.stock-sales-window-btn:hover{background:#eff6ff;border-style:solid;color:var(--primary)}
+.stock-sales-window-menu{position:fixed;z-index:3000;display:none;min-width:190px;padding:6px;border-radius:14px;background:#fff;border:1px solid #d1d5db;box-shadow:0 18px 40px rgba(15,23,42,.22)}
+.stock-sales-window-menu.show{display:block}
+.stock-sales-window-menu button{display:flex;width:100%;align-items:center;justify-content:space-between;padding:9px 12px;border:0;border-radius:10px;background:transparent;color:#111827;font-weight:900;text-align:left;cursor:pointer}
+.stock-sales-window-menu button:hover{background:#eff6ff;color:#1d4ed8}
+.stock-sales-window-menu button.active{background:#2563eb;color:#fff}
+body.dark-mode .stock-sales-window-btn:hover{background:#172554;color:#93c5fd}
+body.dark-mode .stock-sales-window-menu{background:#111827;border-color:#334155}
+body.dark-mode .stock-sales-window-menu button{color:#e5e7eb}
+body.dark-mode .stock-sales-window-menu button:hover{background:#172554;color:#93c5fd}
+body.dark-mode .stock-sales-window-menu button.active{background:#2563eb;color:#fff}
 </style>
 
 </head>
@@ -3806,7 +3819,7 @@ const DB_USAGE_LIMIT_MB=500;
 let dbUsageTimer=null;
 let currentUser=null;
 let sessionLoginPassword='';
-const state={products:[],sales:[],sales60ByCode:{},actions:[],previews:[],arrivalUpdates:[],arrivalUpdateFilter:'pending',settings:{feePlatform:.055,feeService:.02,feeExtra:.02,feeOther:0,shippingBase:60,lowStockThreshold:3,shipFailVolume:80},filters:{product:'',stock:'',purchase:'',stockNextDayOnly:false,stockLongStockOnly:false,stockSortSales60:false,stockSortPending:false,purchaseNextDayOnly:false,purchasePendingOnly:false},actionFilters:{startDate:''},salesFilters:{actionMode:'all',dateRange:'today',customStart:'',customEnd:''}};
+const state={products:[],sales:[],sales60ByCode:{},salesWindowEvents:[],actions:[],previews:[],arrivalUpdates:[],arrivalUpdateFilter:'pending',settings:{feePlatform:.055,feeService:.02,feeExtra:.02,feeOther:0,shippingBase:60,lowStockThreshold:3,shipFailVolume:80},filters:{product:'',stock:'',purchase:'',stockNextDayOnly:false,stockLongStockOnly:false,stockSortSales60:false,stockSortPending:false,purchaseNextDayOnly:false,purchasePendingOnly:false},actionFilters:{startDate:''},salesFilters:{actionMode:'all',dateRange:'today',customStart:'',customEnd:''}};
 const shipQueue=[];
 let shipQueueRunning=false;
 let shipQueueSeq=0;
@@ -5289,12 +5302,15 @@ async function fetchAllState() {
 
   // 60 天銷售數採淨銷售：出貨 +1、退貨 -1、核銷不列入。
   const sales60ByCode = {};
+  const salesWindowEvents = [];
   (s60.data || []).forEach(r => {
     const code = normalizeCode(r.code || productById[r.product_id]?.code);
     if (!code) return;
     const delta = r.action === '出貨' ? 1 : (r.action === '退貨' ? -1 : 0);
     if (!delta) return;
     sales60ByCode[code] = toNum(sales60ByCode[code]) + delta;
+    const t = new Date(r.created_at).getTime();
+    if (Number.isFinite(t)) salesWindowEvents.push({ code, delta, t });
   });
   Object.keys(sales60ByCode).forEach(code => {
     sales60ByCode[code] = Math.max(0, Math.floor(toNum(sales60ByCode[code])));
@@ -5330,6 +5346,7 @@ async function fetchAllState() {
     products,
     sales,
     sales60ByCode,
+    salesWindowEvents,
     actions,
     previews,
     arrivalUpdates,
@@ -6383,7 +6400,7 @@ function stockRows(){
   if(state.filters.stockSortPending){
     rows=[...rows].sort((a,b)=>pendingQty(b)-pendingQty(a)||String(a.code).localeCompare(String(b.code),'en',{numeric:true}));
   }else if(state.filters.stockSortSales60){
-    rows=[...rows].sort((a,b)=>sales60Qty(b.code)-sales60Qty(a.code)||String(a.code).localeCompare(String(b.code),'en',{numeric:true}));
+    rows=[...rows].sort((a,b)=>stockSalesWindowQty(b.code)-stockSalesWindowQty(a.code)||String(a.code).localeCompare(String(b.code),'en',{numeric:true}));
   }
   return rows;
 }
@@ -6402,7 +6419,67 @@ function applySales60Delta(code,action){
   if(!delta)return;
   if(!state.sales60ByCode||typeof state.sales60ByCode!=='object')state.sales60ByCode={};
   state.sales60ByCode[key]=Math.max(0,Math.floor(toNum(state.sales60ByCode[key])+delta));
+  if(!Array.isArray(state.salesWindowEvents))state.salesWindowEvents=[];
+  state.salesWindowEvents.push({code:key,delta,t:Date.now()});
 }
+const STOCK_SALES_WINDOW_OPTIONS=[3,5,7,15,30,60];
+let stockSalesWindowDays=(()=>{try{const v=Number(localStorage.getItem('inventoryStockSalesWindow'));return STOCK_SALES_WINDOW_OPTIONS.includes(v)?v:60}catch(e){return 60}})();
+let stockSalesWindowCache={events:null,len:-1,days:0,start:0,map:{}};
+function stockSalesWindowStart(days){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-(days-1));return d.getTime()}
+function stockSalesWindowMap(){
+  const events=state.salesWindowEvents||[];
+  const days=stockSalesWindowDays;
+  const start=stockSalesWindowStart(days);
+  const c=stockSalesWindowCache;
+  if(c.events===events&&c.len===events.length&&c.days===days&&c.start===start)return c.map;
+  const map={};
+  events.forEach(e=>{if(e.t>=start)map[e.code]=(map[e.code]||0)+e.delta});
+  stockSalesWindowCache={events,len:events.length,days,start,map};
+  return map;
+}
+function stockSalesWindowQty(code){
+  if(stockSalesWindowDays===60)return sales60Qty(code);
+  return Math.max(0,Math.floor(toNum(stockSalesWindowMap()[normalizeCode(code)])));
+}
+function stockSalesWindowTitle(){return `近 ${stockSalesWindowDays} 天淨銷售：出貨減退貨，核銷不計`}
+function stockSalesWindowCellHtml(code){
+  return `<span class="purchase-sales60" title="${stockSalesWindowTitle()}">${stockSalesWindowQty(code)}</span>`;
+}
+function closeStockSalesWindowMenu(){const m=$('stockSalesWindowMenu');if(m)m.classList.remove('show')}
+function openStockSalesWindowMenu(event){
+  event.stopPropagation();
+  let menu=$('stockSalesWindowMenu');
+  if(!menu){
+    menu=document.createElement('div');
+    menu.id='stockSalesWindowMenu';
+    menu.className='stock-sales-window-menu';
+    menu.addEventListener('click',e=>e.stopPropagation());
+    document.body.appendChild(menu);
+    document.addEventListener('click',closeStockSalesWindowMenu);
+    document.addEventListener('keydown',e=>{if(e.key==='Escape')closeStockSalesWindowMenu()});
+    window.addEventListener('scroll',closeStockSalesWindowMenu,true);
+  }
+  if(menu.classList.contains('show')){closeStockSalesWindowMenu();return}
+  menu.innerHTML=STOCK_SALES_WINDOW_OPTIONS.map(d=>`<button type="button" class="${d===stockSalesWindowDays?'active':''}" onclick="setStockSalesWindow(${d})"><span>過去${d}天累積銷量</span>${d===stockSalesWindowDays?'<span>✓</span>':''}</button>`).join('');
+  const rect=event.currentTarget.getBoundingClientRect();
+  menu.classList.add('show');
+  const w=menu.offsetWidth,h=menu.offsetHeight;
+  const left=Math.min(rect.left,window.innerWidth-w-8);
+  let top=rect.bottom+6;
+  if(top+h>window.innerHeight-8)top=Math.max(8,rect.top-h-6);
+  menu.style.left=Math.max(8,left)+'px';
+  menu.style.top=top+'px';
+}
+function setStockSalesWindow(days){
+  if(!STOCK_SALES_WINDOW_OPTIONS.includes(days))return;
+  stockSalesWindowDays=days;
+  try{localStorage.setItem('inventoryStockSalesWindow',String(days))}catch(e){}
+  closeStockSalesWindowMenu();
+  renderStock();
+  if(typeof updateNextDayFilterButtons==='function')updateNextDayFilterButtons();
+}
+window.openStockSalesWindowMenu=openStockSalesWindowMenu;
+window.setStockSalesWindow=setStockSalesWindow;
 function purchaseRows(){
   let rows=searchProductRows(state.filters.purchase,state.products);
   if(state.filters.purchaseNextDayOnly)rows=rows.filter(p=>isNextDayItem(p.itemName));
@@ -6427,7 +6504,7 @@ function updateNextDayFilterButtons(){
 
   const stockSortBtn=$('btnStockSortSales60');
   if(stockSortBtn){
-    stockSortBtn.textContent=state.filters.stockSortSales60?'取消60天銷量排序':'60天累積銷量 排序至頂';
+    stockSortBtn.textContent=state.filters.stockSortSales60?`取消${stockSalesWindowDays}天銷量排序`:`${stockSalesWindowDays}天累積銷量 排序至頂`;
   }
 
   const purchaseBtn=$('btnPurchaseShowNextDayOnly');
@@ -6633,7 +6710,7 @@ function setHeavyTablePage(name,page){
 window.setHeavyTablePage=setHeavyTablePage;
 
 function stockRowHtml(p){
-  return `<tr data-stock-code="${esc(p.code)}" class="${rowClassFor(p).trim()}"><td data-stock-nextday>${nextDayButton(p)}</td><td data-stock-longstock>${longStockButton(p)}</td><td data-stock-status>${statusFor(p)}</td><td>${itemPreviewHtml(p,p.itemName)}</td><td data-stock-color>${colorWithWarning(p)}</td><td><span class="code stock-code-btn" title="點擊帶入手動校正現貨並複製編號" onclick="fillAdjustCode('${esc(p.code)}')">${esc(p.code)}</span></td><td><span class="stock-barcode stock-barcode-click" title="點擊列印標籤" onclick="printLabelsForCode('${esc(p.code)}',1)">*${esc(p.code)}*</span></td><td data-stock-current><span class="stock-edit" title="點擊直接修改現貨" onclick="quickAdjustStock('${esc(p.code)}')">${toNum(p.currentStock)}</span></td><td data-stock-total>${totalStock(p)}</td><td data-stock-pending>${stockPendingQtyHtml(p)}</td><td data-stock-unit-cost>$${money(p.cost)}</td><td data-stock-total-cost>$${money(totalCost(p))}</td><td data-stock-sales60><span class="purchase-sales60" title="近 60 天淨銷售：出貨減退貨，核銷不計">${sales60Qty(p.code)}</span></td><td data-stock-sales>${toNum(p.totalSales)}</td><td data-stock-sales-cost>$${money(salesCost(p))}</td><td><div class="stock-actions"><button class="btn small primary" type="button" onclick="goToPurchaseFromWarning('${esc(p.code)}')">前往進貨</button></div></td></tr>`;
+  return `<tr data-stock-code="${esc(p.code)}" class="${rowClassFor(p).trim()}"><td data-stock-nextday>${nextDayButton(p)}</td><td data-stock-longstock>${longStockButton(p)}</td><td data-stock-status>${statusFor(p)}</td><td>${itemPreviewHtml(p,p.itemName)}</td><td data-stock-color>${colorWithWarning(p)}</td><td><span class="code stock-code-btn" title="點擊帶入手動校正現貨並複製編號" onclick="fillAdjustCode('${esc(p.code)}')">${esc(p.code)}</span></td><td><span class="stock-barcode stock-barcode-click" title="點擊列印標籤" onclick="printLabelsForCode('${esc(p.code)}',1)">*${esc(p.code)}*</span></td><td data-stock-current><span class="stock-edit" title="點擊直接修改現貨" onclick="quickAdjustStock('${esc(p.code)}')">${toNum(p.currentStock)}</span></td><td data-stock-total>${totalStock(p)}</td><td data-stock-pending>${stockPendingQtyHtml(p)}</td><td data-stock-unit-cost>$${money(p.cost)}</td><td data-stock-total-cost>$${money(totalCost(p))}</td><td data-stock-sales60>${stockSalesWindowCellHtml(p.code)}</td><td data-stock-sales>${toNum(p.totalSales)}</td><td data-stock-sales-cost>$${money(salesCost(p))}</td><td><div class="stock-actions"><button class="btn small primary" type="button" onclick="goToPurchaseFromWarning('${esc(p.code)}')">前往進貨</button></div></td></tr>`;
 }
 function renderStock(){
   hidePendingBatchTooltip();
@@ -6649,7 +6726,7 @@ function renderStock(){
   const page=heavyTablePageData('stock',allRows);
   const pagerTop=heavyTablePagerHtml(page,'top');
   const pagerBottom=page.totalPages>1?heavyTablePagerHtml(page,'bottom'):'';
-  $('stockTable').innerHTML=`${pagerTop}<div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>條碼</th><th>現貨</th><th>進貨</th><th>未到貨</th><th>單件成本</th><th>總成本</th><th title="近 60 天淨銷售：出貨減退貨，核銷不計">過去60天累積銷量</th><th>累積銷量</th><th>累積成本</th><th>操作</th></tr></thead><tbody>${page.rows.map(stockRowHtml).join('')}</tbody></table></div>${pagerBottom}`;
+  $('stockTable').innerHTML=`${pagerTop}<div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>條碼</th><th>現貨</th><th>進貨</th><th>未到貨</th><th>單件成本</th><th>總成本</th><th><button type="button" class="stock-sales-window-btn" title="點擊切換統計天數" onclick="openStockSalesWindowMenu(event)">過去${stockSalesWindowDays}天累積銷量 ▾</button></th><th>累積銷量</th><th>累積成本</th><th>操作</th></tr></thead><tbody>${page.rows.map(stockRowHtml).join('')}</tbody></table></div>${pagerBottom}`;
 }
 
 function patchLocalProduct(product){
@@ -6683,7 +6760,7 @@ function updateStockRow(product){
   set('[data-stock-pending]',stockPendingQtyHtml(p));
   setText('[data-stock-unit-cost]',`$${money(p.cost)}`);
   setText('[data-stock-total-cost]',`$${money(totalCost(p))}`);
-  set('[data-stock-sales60]',`<span class="purchase-sales60" title="近 60 天淨銷售：出貨減退貨，核銷不計">${sales60Qty(p.code)}</span>`);
+  set('[data-stock-sales60]',stockSalesWindowCellHtml(p.code));
   setText('[data-stock-sales]',toNum(p.totalSales));
   setText('[data-stock-sales-cost]',`$${money(salesCost(p))}`);
   return true;
