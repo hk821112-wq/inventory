@@ -3748,6 +3748,8 @@ body.dark-mode .stock-sales-window-menu button.active{background:#2563eb;color:#
               <button type="button" class="records-filter-btn" data-record-date="beforeYesterday">前天</button>
               <button type="button" class="records-filter-btn" data-record-date="7">過去七天</button>
               <button type="button" class="records-filter-btn" data-record-date="30">過去三十天</button>
+              <button type="button" class="records-filter-btn" data-record-date="60">過去六十天</button>
+              <button type="button" class="records-filter-btn" data-record-date="90">過去九十天</button>
               <button type="button" class="records-filter-btn" data-record-date="all">全部</button>
               <button type="button" class="records-filter-btn" data-record-date="custom">自訂</button>
               <span class="records-custom-date-text" id="salesCustomDateText"></span>
@@ -5144,6 +5146,7 @@ async function logout(){
     sessionLoginPassword='';
     state.products=[];
     state.sales=[];
+    resetSalesHistory();
     state.actions=[];
     state.previews=[];
     state.arrivalUpdates=[];
@@ -6348,7 +6351,7 @@ async function clearAll(){
 }
 async function sortProducts(){state.products.sort((a,b)=>String(a.code).localeCompare(String(b.code),'en',{numeric:true}));return{message:'已依編號排序'}}
 async function apiSupabase(action,payload){payload=payload||{};requireLogin();let result={};if(action==='getAllData')return{ok:true,state:await fetchAllState(),result:{}};if(action==='createProducts')result=await createProducts(payload);else if(action==='updateProduct')result=await updateProduct(payload);else if(action==='deleteProduct')result=await dbDeleteProduct(payload);else if(action==='toggleNextDayDelivery')result=await toggleNextDayDelivery(payload);else if(action==='toggleLongStock')result=await toggleLongStock(payload);else if(action==='addPurchase')result=await addPurchase(payload);else if(action==='addArrival')result=await dbAddArrival(payload);else if(action==='deletePurchaseBatch')result=await dbDeletePurchaseBatch(payload);else if(action==='inboundStock')result=await changeStock(payload,'inbound');else if(action==='decreaseStock')result=await changeStock(payload,'decrease');else if(action==='adjustStock')result=await changeStock(payload,'adjust');else if(action==='updateSettings')result=await updateSettings(payload);else if(action==='updateArrivalTaskStatus')result=await updateArrivalTaskStatus(payload);else if(action==='sortProducts')result=await sortProducts(payload);else if(action==='replaceAllData')result=await replaceAllData(payload);else if(action==='appendImportData')result=await appendImportData(payload);else if(action==='clearAll')result=await clearAll(payload);else throw new Error('未知 API 動作：'+action);return{ok:true,state:await fetchAllState(),result}}
-async function callApi(action,payload,cb){setLoading(true);try{const res=await apiSupabase(action,payload||{});if(!res||!res.ok){await appAlert(res?.message||'操作失敗','操作失敗',{danger:true});return null}if(res.state)Object.assign(state,res.state);renderAll();if(action!=='getAllData')scheduleDatabaseUsageRefresh(1200);if(cb)cb(res.result||{});return res}catch(err){const msg=friendlyErrorMessage(err);const isDup=msg.includes('編號重複');await appAlert(msg,isDup?'編號重複':'系統錯誤',{danger:!isDup,icon:isDup?'!':undefined});return null}finally{setLoading(false)}}
+async function callApi(action,payload,cb){setLoading(true);try{const res=await apiSupabase(action,payload||{});if(!res||!res.ok){await appAlert(res?.message||'操作失敗','操作失敗',{danger:true});return null}if(res.state){Object.assign(state,res.state);resetSalesHistory()}renderAll();if(action!=='getAllData')scheduleDatabaseUsageRefresh(1200);if(cb)cb(res.result||{});return res}catch(err){const msg=friendlyErrorMessage(err);const isDup=msg.includes('編號重複');await appAlert(msg,isDup?'編號重複':'系統錯誤',{danger:!isDup,icon:isDup?'!':undefined});return null}finally{setLoading(false)}}
 function loadData(){return callApi('getAllData',{},()=>{})}
 function activeTabId(){const el=document.querySelector('.tab.active');return el?el.id:'dashboard'}
 function renderCurrentTab(){
@@ -7185,6 +7188,8 @@ function salesDateBounds(){
   }
   if(range==='7')start.setDate(start.getDate()-6);
   if(range==='30')start.setDate(start.getDate()-29);
+  if(range==='60')start.setDate(start.getDate()-59);
+  if(range==='90')start.setDate(start.getDate()-89);
   if(range==='custom'){
     const customStart=startOfLocalDate(state.salesFilters.customStart);
     const customEnd=startOfLocalDate(state.salesFilters.customEnd||state.salesFilters.customStart);
@@ -7213,7 +7218,51 @@ function salesRowMatchesFilter(r){
   if(bounds.end&&d>=bounds.end)return false;
   return true;
 }
-function getFilteredSalesRows(){return [...(state.sales||[])].reverse().filter(salesRowMatchesFilter)}
+/*
+  出貨紀錄完整歷史：
+  開啟系統時只載入最近 500 筆；選「全部」或日期範圍超出這 500 筆時，
+  才向資料庫分頁讀取完整出貨紀錄，並合併之後新增的即時紀錄。
+*/
+let salesHistoryRows=null;
+let salesHistoryLoading=null;
+function resetSalesHistory(){salesHistoryRows=null}
+function salesNeedsFullHistory(){
+  if((state.salesFilters.dateRange||'today')==='all')return true;
+  const rows=state.sales||[];
+  if(rows.length<500)return false;
+  const {start}=salesDateBounds();
+  if(!start)return true;
+  const oldest=parseSalesDate(rows[0]?.time);
+  return !oldest||oldest>start;
+}
+function loadSalesHistory(){
+  if(salesHistoryLoading)return salesHistoryLoading;
+  salesHistoryLoading=(async()=>{
+    requireLogin();
+    const res=await fetchPaged((from,to)=>db
+      .from('sales_logs')
+      .select('*')
+      .order('created_at',{ascending:true})
+      .order('id',{ascending:true})
+      .range(from,to));
+    const maps=productLookupMaps();
+    salesHistoryRows=(res.data||[]).map(r=>mapSaleLogRow(r,maps.byId,maps.byCode));
+    return salesHistoryRows;
+  })().finally(()=>{salesHistoryLoading=null});
+  return salesHistoryLoading;
+}
+function salesSourceRows(){
+  if(!salesNeedsFullHistory()||!salesHistoryRows)return state.sales||[];
+  const ids=new Set(salesHistoryRows.map(r=>String(r.id||'')).filter(Boolean));
+  const last=salesHistoryRows.length?parseSalesDate(salesHistoryRows[salesHistoryRows.length-1].time):null;
+  const extra=(state.sales||[]).filter(r=>{
+    if(r.id)return !ids.has(String(r.id));
+    const d=parseSalesDate(r.time);
+    return !last||(d&&d>last);
+  });
+  return [...salesHistoryRows,...extra];
+}
+function getFilteredSalesRows(){return [...salesSourceRows()].reverse().filter(salesRowMatchesFilter)}
 function renderSalesFilterUI(){
   document.querySelectorAll('[data-record-action]').forEach(btn=>{
     btn.classList.toggle('active',btn.dataset.recordAction===(state.salesFilters.actionMode||'all'));
@@ -7246,7 +7295,23 @@ function renderSalesSummary(rows){
     <div class="records-summary-card"><div class="label">總單件利潤</div><div class="value ${totalProfit<0?'negative':''}">${moneyText(totalProfit)}</div></div>
     <div class="records-summary-card"><div class="label">總累積銷量</div><div class="value ${totalQty<0?'negative':''}">${totalQty}</div></div>`;
 }
-function renderSales(){const rows=getFilteredSalesRows();renderSalesFilterUI();renderSalesSummary(rows);$('salesTable').innerHTML=rows.length?`<div class="table-wrap log-box"><table><thead><tr><th>時間</th><th>動作</th><th>品項</th><th>顏色</th><th>編號</th><th>成本</th><th>售價</th><th>單件利潤</th><th>處理前</th><th>處理後</th><th>進貨庫存</th><th>狀態</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.time)}</td><td>${shipActionBadge(r.action)}</td><td>${shipItemCell(r)}</td><td>${shipColorCell(r)}</td><td>${copyCodeCell(r.code)}</td><td>${salesSignedCost(r.action,r.cost)<0?`-$${money(Math.abs(salesSignedCost(r.action,r.cost)))}`:`$${money(r.cost)}`}</td><td>$${money(r.price)}</td><td>${profitCurrency(r.action,r.price,r.cost)}</td><td>${esc(r.beforeStock)}</td><td>${esc(r.afterStock)}</td><td>${esc(r.totalStock)}</td><td><span class="status ok">${esc(r.status)}</span></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">查無符合條件的出貨紀錄。</div>'}
+function renderSales(){
+  if(salesNeedsFullHistory()&&!salesHistoryRows){
+    renderSalesFilterUI();
+    $('salesSummary').innerHTML='';
+    $('salesTable').innerHTML='<div class="empty">正在載入完整出貨紀錄…</div>';
+    loadSalesHistory()
+      .then(()=>{if(activeTabId()==='records')renderSales()})
+      .catch(err=>{$('salesTable').innerHTML=`<div class="empty">完整出貨紀錄載入失敗：${esc(friendlyErrorMessage(err))}</div>`});
+    return;
+  }
+  const rows=getFilteredSalesRows();renderSalesFilterUI();renderSalesSummary(rows);
+  // 「全部」只顯示總計，不列出明細，避免一次產生大量表格。
+  if((state.salesFilters.dateRange||'today')==='all'){
+    $('salesTable').innerHTML='';
+    return;
+  }
+  $('salesTable').innerHTML=rows.length?`<div class="table-wrap log-box"><table><thead><tr><th>時間</th><th>動作</th><th>品項</th><th>顏色</th><th>編號</th><th>成本</th><th>售價</th><th>單件利潤</th><th>處理前</th><th>處理後</th><th>進貨庫存</th><th>狀態</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.time)}</td><td>${shipActionBadge(r.action)}</td><td>${shipItemCell(r)}</td><td>${shipColorCell(r)}</td><td>${copyCodeCell(r.code)}</td><td>${salesSignedCost(r.action,r.cost)<0?`-$${money(Math.abs(salesSignedCost(r.action,r.cost)))}`:`$${money(r.cost)}`}</td><td>$${money(r.price)}</td><td>${profitCurrency(r.action,r.price,r.cost)}</td><td>${esc(r.beforeStock)}</td><td>${esc(r.afterStock)}</td><td>${esc(r.totalStock)}</td><td><span class="status ok">${esc(r.status)}</span></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">查無符合條件的出貨紀錄。</div>'}
 function setSalesActionFilter(mode){state.salesFilters.actionMode=mode;renderSales()}
 async function setSalesDateFilter(range){
   if(range==='custom'){
