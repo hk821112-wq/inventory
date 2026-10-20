@@ -6713,7 +6713,7 @@ function setHeavyTablePage(name,page){
 window.setHeavyTablePage=setHeavyTablePage;
 
 function stockRowHtml(p){
-  return `<tr data-stock-code="${esc(p.code)}" class="${rowClassFor(p).trim()}"><td data-stock-nextday>${nextDayButton(p)}</td><td data-stock-longstock>${longStockButton(p)}</td><td data-stock-status>${statusFor(p)}</td><td>${itemPreviewHtml(p,p.itemName)}</td><td data-stock-color>${colorWithWarning(p)}</td><td><span class="code stock-code-btn" title="點擊帶入手動校正現貨並複製編號" onclick="fillAdjustCode('${esc(p.code)}')">${esc(p.code)}</span></td><td><span class="stock-barcode stock-barcode-click" title="點擊列印標籤" onclick="printLabelsForCode('${esc(p.code)}',1)">*${esc(p.code)}*</span></td><td data-stock-current><span class="stock-edit" title="點擊直接修改現貨" onclick="quickAdjustStock('${esc(p.code)}')">${toNum(p.currentStock)}</span></td><td data-stock-total>${totalStock(p)}</td><td data-stock-pending>${stockPendingQtyHtml(p)}</td><td data-stock-unit-cost>$${money(p.cost)}</td><td data-stock-total-cost>$${money(totalCost(p))}</td><td data-stock-sales60>${stockSalesWindowCellHtml(p.code)}</td><td data-stock-sales>${toNum(p.totalSales)}</td><td data-stock-sales-cost>$${money(salesCost(p))}</td><td><div class="stock-actions"><button class="btn small primary" type="button" onclick="goToPurchaseFromWarning('${esc(p.code)}')">前往進貨</button></div></td></tr>`;
+  return `<tr data-stock-code="${esc(p.code)}" class="${rowClassFor(p).trim()}"><td data-stock-nextday>${nextDayButton(p)}</td><td data-stock-longstock>${longStockButton(p)}</td><td data-stock-status>${statusFor(p)}</td><td>${itemPreviewHtml(p,p.itemName)}</td><td data-stock-color>${colorWithWarning(p)}</td><td data-stock-price>$${money(p.price)}</td><td><span class="code stock-code-btn" title="點擊帶入手動校正現貨並複製編號" onclick="fillAdjustCode('${esc(p.code)}')">${esc(p.code)}</span></td><td><span class="stock-barcode stock-barcode-click" title="點擊列印標籤" onclick="printLabelsForCode('${esc(p.code)}',1)">*${esc(p.code)}*</span></td><td data-stock-current><span class="stock-edit" title="點擊直接修改現貨" onclick="quickAdjustStock('${esc(p.code)}')">${toNum(p.currentStock)}</span></td><td data-stock-total>${totalStock(p)}</td><td data-stock-pending>${stockPendingQtyHtml(p)}</td><td data-stock-unit-cost>$${money(p.cost)}</td><td data-stock-total-cost>$${money(totalCost(p))}</td><td data-stock-sales60>${stockSalesWindowCellHtml(p.code)}</td><td data-stock-sales>${toNum(p.totalSales)}</td><td data-stock-sales-cost>$${money(salesCost(p))}</td><td><div class="stock-actions"><button class="btn small primary" type="button" onclick="goToPurchaseFromWarning('${esc(p.code)}')">前往進貨</button></div></td></tr>`;
 }
 function renderStock(){
   hidePendingBatchTooltip();
@@ -6729,7 +6729,7 @@ function renderStock(){
   const page=heavyTablePageData('stock',allRows);
   const pagerTop=heavyTablePagerHtml(page,'top');
   const pagerBottom=page.totalPages>1?heavyTablePagerHtml(page,'bottom'):'';
-  $('stockTable').innerHTML=`${pagerTop}<div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>編號</th><th>條碼</th><th>現貨</th><th>進貨</th><th>未到貨</th><th>單件成本</th><th>總成本</th><th><button type="button" class="stock-sales-window-btn" title="點擊切換統計天數" onclick="openStockSalesWindowMenu(event)">過去${stockSalesWindowDays}天累積銷量 ▾</button></th><th>累積銷量</th><th>累積成本</th><th>操作</th></tr></thead><tbody>${page.rows.map(stockRowHtml).join('')}</tbody></table></div>${pagerBottom}`;
+  $('stockTable').innerHTML=`${pagerTop}<div class="table-wrap"><table><thead><tr><th>隔日配</th><th>長備貨</th><th>狀態</th><th>品項</th><th>顏色</th><th>售價</th><th>編號</th><th>條碼</th><th>現貨</th><th>進貨</th><th>未到貨</th><th>單件成本</th><th>總成本</th><th><button type="button" class="stock-sales-window-btn" title="點擊切換統計天數" onclick="openStockSalesWindowMenu(event)">過去${stockSalesWindowDays}天累積銷量 ▾</button></th><th>累積銷量</th><th>累積成本</th><th>操作</th></tr></thead><tbody>${page.rows.map(stockRowHtml).join('')}</tbody></table></div>${pagerBottom}`;
 }
 
 function patchLocalProduct(product){
@@ -6761,6 +6761,7 @@ function updateStockRow(product){
   set('[data-stock-current]',`<span class="stock-edit" title="點擊直接修改現貨" onclick="quickAdjustStock('${esc(p.code)}')">${toNum(p.currentStock)}</span>`);
   setText('[data-stock-total]',totalStock(p));
   set('[data-stock-pending]',stockPendingQtyHtml(p));
+  setText('[data-stock-price]',`$${money(p.price)}`);
   setText('[data-stock-unit-cost]',`$${money(p.cost)}`);
   setText('[data-stock-total-cost]',`$${money(totalCost(p))}`);
   set('[data-stock-sales60]',stockSalesWindowCellHtml(p.code));
@@ -7311,7 +7312,7 @@ function renderSales(){
     $('salesTable').innerHTML='';
     return;
   }
-  $('salesTable').innerHTML=rows.length?`<div class="table-wrap log-box"><table><thead><tr><th>時間</th><th>動作</th><th>品項</th><th>顏色</th><th>編號</th><th>成本</th><th>售價</th><th>單件利潤</th><th>處理前</th><th>處理後</th><th>進貨庫存</th><th>狀態</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.time)}</td><td>${shipActionBadge(r.action)}</td><td>${shipItemCell(r)}</td><td>${shipColorCell(r)}</td><td>${copyCodeCell(r.code)}</td><td>${salesSignedCost(r.action,r.cost)<0?`-$${money(Math.abs(salesSignedCost(r.action,r.cost)))}`:`$${money(r.cost)}`}</td><td>$${money(r.price)}</td><td>${profitCurrency(r.action,r.price,r.cost)}</td><td>${esc(r.beforeStock)}</td><td>${esc(r.afterStock)}</td><td>${esc(r.totalStock)}</td><td><span class="status ok">${esc(r.status)}</span></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">查無符合條件的出貨紀錄。</div>'}
+  $('salesTable').innerHTML=rows.length?`<div class="table-wrap log-box"><table><thead><tr><th>時間</th><th>動作</th><th>品項</th><th>顏色</th><th>編號</th><th>成本</th><th>售價</th><th>單件利潤</th><th>處理前</th><th>處理後</th><th>進貨庫存</th><th>狀態</th><th>操作</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.time)}</td><td>${shipActionBadge(r.action)}</td><td>${shipItemCell(r)}</td><td>${shipColorCell(r)}</td><td>${copyCodeCell(r.code)}</td><td>${salesSignedCost(r.action,r.cost)<0?`-$${money(Math.abs(salesSignedCost(r.action,r.cost)))}`:`$${money(r.cost)}`}</td><td>$${money(r.price)}</td><td>${profitCurrency(r.action,r.price,r.cost)}</td><td>${esc(r.beforeStock)}</td><td>${esc(r.afterStock)}</td><td>${esc(r.totalStock)}</td><td><span class="status ok">${esc(r.status)}</span></td><td>${r.code?`<button class="btn small primary" type="button" onclick="goToPurchaseFromWarning('${esc(r.code)}')">前往進貨</button>`:''}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">查無符合條件的出貨紀錄。</div>'}
 function setSalesActionFilter(mode){state.salesFilters.actionMode=mode;renderSales()}
 async function setSalesDateFilter(range){
   if(range==='custom'){
@@ -7722,6 +7723,7 @@ function renderShipQueue(){
     color:r.color,
     beforeStock:r.beforeStock,
     afterStock:r.afterStock,
+    price:r.price,
     message:r.message || (r.status==='失敗'?'處理失敗':'完成')
   }));
   const rows=[...localRows,...realtimeRows].slice(0,12);
@@ -7735,14 +7737,18 @@ function renderShipQueue(){
     const icon=cls==='done'?'✓':cls==='fail'?'!':cls==='processing'?'…':'·';
     const before=q.beforeStock===''||q.beforeStock===undefined?'--':q.beforeStock;
     const after=q.afterStock===''||q.afterStock===undefined?'--':q.afterStock;
+    // 售價優先用出貨當下記錄的售價，沒有時用商品目前售價；未到貨數量以商品目前進貨批次計算。
+    const product=findProduct(q.code);
+    const price=q.price!==undefined&&q.price!==null&&q.price!==''?toNum(q.price):(product?toNum(product.price):null);
+    const pending=product?pendingQty(product):0;
     return `<div class="ship-record-row ${cls}">
       <div class="ship-record-status">${icon}</div>
       <div class="ship-record-main">
-        <div class="ship-record-top">${shipActionBadge(q.action)}<span class="ship-record-code">${esc(q.code||'')}</span><span class="ship-record-time">${esc(q.time||'')}</span></div>
+        <div class="ship-record-top">${shipActionBadge(q.action)}<span class="ship-record-code">${esc(q.code||'')}</span>${price!==null?`<span class="ship-record-price">$${money(price)}</span>`:''}<span class="ship-record-time">${esc(q.time||'')}</span></div>
         <div class="ship-record-product">${esc(q.itemName||'找不到商品')} ${q.color?`／${esc(q.color)}`:''}</div>
         <div class="ship-record-message">${esc(q.message||q.status||'')}</div>
       </div>
-      <div class="ship-record-stock"><strong>${esc(before)}</strong><b>→</b><strong>${esc(after)}</strong></div>
+      <div class="ship-record-stock"><strong>${esc(before)}</strong><b>→</b><strong>${esc(after)}</strong>${pending>0?`<span class="ship-record-pending" title="尚未到貨的進貨數量">進貨 +${pending}</span>`:''}</div>
     </div>`;
   }).join('')}</div>`;
   renderShipPreview();
@@ -9204,6 +9210,10 @@ body.dark-mode .social-product-images-box{background:#1e293b;border-color:#64748
 .ship-record-stock{gap:7px;font-size:18px}
 .ship-record-stock strong{font-size:34px;line-height:1}
 .ship-record-stock b{font-size:24px}
+.ship-record-price{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;font-size:17px;font-weight:1000;white-space:nowrap}
+.ship-record-pending{display:inline-flex;align-items:center;margin-left:6px;padding:4px 10px;border-radius:999px;background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;font-size:16px;font-weight:1000;white-space:nowrap}
+body.dark-mode .ship-record-price{background:#422006;color:#fde68a;border-color:#b45309}
+body.dark-mode .ship-record-pending{background:#450a0a;color:#fecaca;border-color:#991b1b}
 .ship-record-empty{min-height:420px;font-size:20px;line-height:1.55}
 .ship-record-empty small{font-size:16px}
 body.dark-mode .ship-result-message{color:#fecaca}
