@@ -9698,7 +9698,7 @@ function airItemHtml(item,i){
       <td>${Number.isFinite(r.daysLeft)?Math.floor(r.daysLeft)+' 天':'—'}</td>
       <td><span class="air-qty">${r.need}</span></td>
       <td class="reason">${esc(r.reason)}</td>
-      <td><div class="air-actions"><button class="btn small green" type="button" onclick="airAddPurchase('${esc(r.code)}',${r.need})">帶入進貨</button>${airIgnoreButtons(r.code)}</div></td>
+      <td><div class="air-actions"><button class="btn small primary" type="button" onclick="airGoPurchase('${esc(r.code)}')">前往進貨</button>${airIgnoreButtons(r.code)}</div></td>
     </tr>`).join('')}
     </tbody></table></div>
   </article>`;
@@ -9803,6 +9803,20 @@ async function airAddItemPurchase(i){
   showCopyToast(`已帶入 ${ok.length} 個顏色的進貨`);
 }
 
+function airGoPurchase(code){
+  const c=normalizeCode(code);
+  airClose();
+  goToPurchaseFromWarning(c);
+  // 前往進貨會以前四碼篩選同品項；再把畫面定位並標示到這個顏色
+  setTimeout(()=>{
+    const row=findPurchaseRowByCode(c);
+    if(row&&normalizeCode(row.dataset.purchaseCode)===c){
+      scrollPurchaseRowToCenter(row);
+      highlightPurchaseRow(row);
+    }
+  },260);
+}
+
 /* ---------- 匯出 ---------- */
 function airCopyList(){
   const items=air.result?.items||[];
@@ -9850,6 +9864,7 @@ window.airSaveParams=airSaveParams;
 window.airSetIgnore=airSetIgnore;
 window.airToggleIgnoreMenu=airToggleIgnoreMenu;
 window.airAddPurchase=airAddPurchase;
+window.airGoPurchase=airGoPurchase;
 window.airAddItemPurchase=airAddItemPurchase;
 window.airCopyList=airCopyList;
 window.airExportCsv=airExportCsv;
