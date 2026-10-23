@@ -9418,5 +9418,447 @@ window.socialProductImagesCopyUrl=async function(url){try{await navigator.clipbo
 })();
 </script>
 
+<!-- =========================================================
+     2026/10/23 AI 進貨推薦 V1
+     貼在 </body> 正上方（所有既有 <script> 之後）
+     需要先在 Supabase 執行：
+     alter table public.products add column if not exists restock_ignore_until timestamptz;
+     ========================================================= -->
+<style>
+.air-open-btn{background:#7c3aed!important;color:#fff!important;border-color:#7c3aed!important;box-shadow:0 10px 20px rgba(124,58,237,.22)}
+.air-overlay{position:fixed;inset:0;z-index:1500;display:none;align-items:flex-start;justify-content:center;padding:24px;background:rgba(15,23,42,.55);backdrop-filter:blur(4px);overflow:auto}
+.air-overlay.show{display:flex}
+.air-card{width:min(1560px,100%);background:var(--panel);border:1px solid var(--line);border-radius:22px;box-shadow:0 30px 80px rgba(15,23,42,.35);overflow:hidden}
+.air-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:20px 22px;border-bottom:1px solid var(--line)}
+.air-head h2{margin:0}
+.air-head p{margin:6px 0 0;color:var(--muted);font-weight:800;font-size:13px;line-height:1.6}
+.air-body{padding:18px 22px 24px;display:grid;gap:16px}
+.air-params{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#f9fafb}
+.air-params .f{display:grid;gap:4px}
+.air-params label{margin:0}
+.air-params input{width:110px;min-height:36px;padding:6px 10px}
+.air-params .rule{margin-left:auto;max-width:560px;color:var(--muted);font-size:12px;font-weight:800;line-height:1.6}
+.air-summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.air-sum{border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--panel)}
+.air-sum span{display:block;font-size:12px;font-weight:1000;color:var(--muted)}
+.air-sum strong{display:block;margin-top:6px;font-size:24px;font-weight:1000;color:var(--text)}
+.air-sum.urgent strong{color:#dc2626}.air-sum.rec strong{color:#ea580c}.air-sum.normal strong{color:var(--primary)}
+.air-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.air-section-title{margin:8px 0 0;font-size:19px}
+.air-item{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--panel)}
+.air-item-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;background:#f9fafb;border-bottom:1px solid var(--line)}
+.air-item-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-weight:1000;font-size:15px}
+.air-item-meta{margin-top:4px;color:var(--muted);font-size:12px;font-weight:850}
+.air-level{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:1000;border:1px solid;white-space:nowrap}
+.air-level.urgent{background:#fee2e2;color:#b91c1c;border-color:#fecaca}
+.air-level.rec{background:#ffedd5;color:#c2410c;border-color:#fdba74}
+.air-level.normal{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+.air-level.watch{background:#f3f4f6;color:#4b5563;border-color:#d1d5db}
+.air-tag{display:inline-flex;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:1000;background:#dcfce7;color:#15803d;border:1px solid #86efac}
+.air-trend{font-weight:1000}
+.air-trend.up{color:#16a34a}.air-trend.down{color:#dc2626}.air-trend.flat{color:var(--muted)}
+.air-table-wrap{overflow:auto}
+.air-table{width:100%;min-width:0!important;border-collapse:collapse}
+.air-table th{position:static!important;background:transparent!important;font-size:12px!important;color:var(--muted)!important}
+.air-table th,.air-table td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle;white-space:nowrap}
+.air-table th:last-child,.air-table td:last-child{min-width:0!important}
+.air-table tr:last-child td{border-bottom:0}
+.air-table td.reason{white-space:normal;min-width:280px;color:#374151;line-height:1.55;font-size:12px!important;font-weight:800}
+.air-qty{display:inline-flex;min-width:48px;justify-content:center;padding:4px 10px;border-radius:10px;background:#16a34a;color:#fff;font-weight:1000;font-size:15px}
+.air-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.air-ignore-menu{display:inline-flex;gap:4px;flex-wrap:wrap}
+.air-ignore-menu .btn{background:#f3f4f6}
+.air-empty{padding:22px;text-align:center;color:var(--muted);font-weight:900;border:1px dashed #d1d5db;border-radius:14px}
+body.dark-mode .air-params,body.dark-mode .air-item-head{background:#0f172a;border-color:#334155}
+body.dark-mode .air-table td.reason{color:#cbd5e1}
+body.dark-mode .air-level.urgent{background:#450a0a;color:#fecaca;border-color:#991b1b}
+body.dark-mode .air-level.rec{background:#431407;color:#fed7aa;border-color:#ea580c}
+body.dark-mode .air-level.normal{background:#172554;color:#bfdbfe;border-color:#1d4ed8}
+body.dark-mode .air-level.watch{background:#374151;color:#d1d5db;border-color:#4b5563}
+body.dark-mode .air-tag{background:#052e1b;color:#bbf7d0;border-color:#166534}
+body.dark-mode .air-empty{border-color:#334155}
+body.dark-mode .air-ignore-menu .btn{background:#1f2937}
+@media(max-width:980px){.air-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.air-params .rule{margin-left:0}.air-overlay{padding:10px}}
+</style>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- 固定門檻（依討論結果） ---------- */
+const AIR_MIN_NET30=3;        // 品項近30天淨銷量至少 3 件
+const AIR_MIN_DAYS30=4;       // 品項近30天至少 4 天有銷售
+const AIR_SPIKE_SHARE=0.5;    // 單日銷量占比超過 50% 視為單日爆量
+const AIR_LOW_VOLUME=10;      // 近30天少於 10 件，改用 30 天平均，避免近期波動
+const AIR_PERMANENT='9999-12-31T00:00:00.000Z';
+const DAY=86400000;
+const LEVEL_RANK={urgent:0,rec:1,normal:2};
+const LEVEL_TEXT={urgent:'急需補貨',rec:'建議補貨',normal:'一般補貨'};
+
+const air={ignoreMap:{},ignoreError:'',openIgnore:'',result:null};
+
+/* ---------- 參數 ---------- */
+function airParams(){
+  const s=state.settings||{};
+  const n=(v,d)=>{const x=Number(v);return Number.isFinite(x)&&x>=0?x:d};
+  return{lead:n(s.aiRestockLead,10),safety:n(s.aiRestockSafety,7),target:n(s.aiRestockTarget,30)};
+}
+async function airSaveParams(){
+  const lead=Math.max(0,Math.floor(toNum(document.getElementById('airLead')?.value)));
+  const safety=Math.max(0,Math.floor(toNum(document.getElementById('airSafety')?.value)));
+  const target=Math.max(1,Math.floor(toNum(document.getElementById('airTarget')?.value)));
+  setLoading(true);
+  try{
+    await updateSettings({settings:{aiRestockLead:lead,aiRestockSafety:safety,aiRestockTarget:target}});
+    state.settings.aiRestockLead=lead;state.settings.aiRestockSafety=safety;state.settings.aiRestockTarget=target;
+    airRender();showCopyToast('參數已儲存並重新計算');
+  }catch(err){appAlert(friendlyErrorMessage(err),'儲存失敗',{danger:true})}
+  finally{setLoading(false)}
+}
+
+/* ---------- 忽略紀錄（存資料庫） ---------- */
+function airIsIgnored(code){
+  const until=air.ignoreMap[normalizeCode(code)];
+  return !!until&&new Date(until).getTime()>Date.now();
+}
+async function airLoadIgnores(){
+  try{
+    const res=await fetchPaged((from,to)=>db.from('products').select('code,restock_ignore_until').not('restock_ignore_until','is',null).range(from,to));
+    air.ignoreMap={};
+    (res.data||[]).forEach(r=>{air.ignoreMap[normalizeCode(r.code)]=r.restock_ignore_until});
+    air.ignoreError='';
+  }catch(err){
+    air.ignoreMap={};
+    air.ignoreError=String(err?.message||err);
+  }
+}
+async function airSetIgnore(code,mode){
+  if(air.ignoreError)return appAlert('尚未在 Supabase 新增忽略欄位，無法使用忽略功能。請先執行面板上方提示的 SQL。','無法忽略',{danger:true});
+  const p=findProduct(code);
+  if(!p)return;
+  let until=null;
+  if(mode==='7'||mode==='30'){const d=new Date();d.setDate(d.getDate()+Number(mode));until=d.toISOString()}
+  else if(mode==='forever')until=AIR_PERMANENT;
+  setLoading(true);
+  try{
+    const {error}=await db.from('products').update({restock_ignore_until:until}).eq('id',p.id);
+    dbError(error);
+    const key=normalizeCode(code);
+    if(until)air.ignoreMap[key]=until;else delete air.ignoreMap[key];
+    air.openIgnore='';
+    airRender();
+    showCopyToast(until?`已忽略 ${p.color}（${mode==='forever'?'永久':mode+' 天'}）`:`已恢復推薦 ${p.color}`);
+  }catch(err){appAlert(friendlyErrorMessage(err),'忽略設定失敗',{danger:true})}
+  finally{setLoading(false)}
+}
+function airToggleIgnoreMenu(code){air.openIgnore=air.openIgnore===code?'':code;airRender()}
+function airUntilText(until){
+  if(!until)return '';
+  const d=new Date(until);
+  if(d.getFullYear()>=9999)return '永久';
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} 到期`;
+}
+
+/* ---------- 核心計算 ---------- */
+function airTodayStart(){const d=new Date();d.setHours(0,0,0,0);return d.getTime()}
+function airDayIndex(t,today){const d=new Date(t);d.setHours(0,0,0,0);return Math.round((today-d.getTime())/DAY)}
+function airSum(arr,a,b){let s=0;for(let i=a;i<b;i++)s+=arr[i]||0;return s}
+function airTrend(net7,prev7){
+  if(net7>prev7*1.2&&net7-prev7>=2)return{cls:'up',text:'↑ 上升'};
+  if(net7<prev7*0.8&&prev7-net7>=2)return{cls:'down',text:'↓ 下滑'};
+  return{cls:'flat',text:'→ 持平'};
+}
+function airCompute(){
+  const P=airParams();
+  const cover=P.lead+P.safety+P.target;
+  const today=airTodayStart();
+
+  // 每個編號近30天的每日淨銷量（index 0 = 今天）
+  const byCode={};
+  (state.salesWindowEvents||[]).forEach(e=>{
+    const idx=airDayIndex(e.t,today);
+    if(idx<0||idx>29)return;
+    const c=normalizeCode(e.code);
+    (byCode[c]||(byCode[c]=new Array(30).fill(0)))[idx]+=toNum(e.delta);
+  });
+
+  // 依品項分組
+  const groups=new Map();
+  (state.products||[]).forEach(p=>{
+    const k=String(p.itemName||'').trim();
+    if(!k)return;
+    if(!groups.has(k))groups.set(k,[]);
+    groups.get(k).push(p);
+  });
+
+  const items=[],watch=[];
+  groups.forEach((prods,name)=>{
+    if(prods.every(p=>p.isSoldOut))return;
+    const day=new Array(30).fill(0);
+    prods.forEach(p=>{const arr=byCode[normalizeCode(p.code)];if(arr)arr.forEach((v,i)=>{day[i]+=v})});
+    const net30=airSum(day,0,30),net14=airSum(day,0,14),net7=airSum(day,0,7),prev7=airSum(day,7,14);
+    if(net30<=0&&net14<=0)return;
+    const days30=day.filter(v=>v>0).length;
+    const maxDay=Math.max(0,...day);
+    const spike=net30>0&&maxDay/net30>AIR_SPIKE_SHARE;
+    const trend=airTrend(net7,prev7);
+    const base={name,prods,net30,net14,net7,prev7,days30,maxDay,trend,nextDay:isNextDayItem(name)};
+
+    const passes=net30>=AIR_MIN_NET30&&days30>=AIR_MIN_DAYS30&&net14>0&&!spike;
+    if(!passes){
+      // 觀察名單：近14天有動靜，但未達持續銷售標準
+      if(net14>0&&net30>0){
+        let why='';
+        if(net30<AIR_MIN_NET30)why=`近30天僅賣 ${net30} 件`;
+        else if(days30<AIR_MIN_DAYS30)why=`僅 ${days30} 天有銷售`;
+        else if(spike)why=`單日爆量（單日占 ${Math.round(maxDay/net30*100)}%）`;
+        watch.push({...base,why});
+      }
+      return;
+    }
+
+    // 品項日均：低銷量用 30 天平均，銷量足夠才加重近期
+    const flatAvg=net30/30;
+    const avg=net30<AIR_LOW_VOLUME?flatAvg:Math.max(0.5*net7/7+0.3*net14/14+0.2*net30/30,flatAvg*0.5);
+
+    // 顏色依銷售占比分配
+    const colorStats=prods.map(p=>{
+      const arr=byCode[normalizeCode(p.code)]||new Array(30).fill(0);
+      return{p,c30:airSum(arr,0,30),c14:airSum(arr,0,14),c7:airSum(arr,0,7)};
+    });
+    const posTotal=colorStats.reduce((s,x)=>s+Math.max(x.c30,0),0)||1;
+
+    const rows=[];
+    colorStats.forEach(x=>{
+      const p=x.p;
+      if(p.isSoldOut||x.c30<=0)return;
+      const share=x.c30/posTotal;
+      const cAvg=avg*share;
+      const cur=toNum(p.currentStock),pend=pendingQty(p),avail=cur+pend;
+      const daysLeft=cAvg>0?avail/cAvg:Infinity;
+      const need=Math.ceil(cAvg*cover-avail);
+      if(need<=0)return;
+      let level='normal';
+      if(daysLeft<P.lead||(cur<=0&&pend<=0))level='urgent';
+      else if(daysLeft<P.lead+P.safety)level='rec';
+      const daysText=Number.isFinite(daysLeft)?Math.floor(daysLeft):'—';
+      let reason=`近30天賣 ${x.c30} 件（占品項 ${Math.round(share*100)}%），日均約 ${cAvg.toFixed(2)} 件；現貨 ${cur}、未到貨 ${pend}，約可賣 ${daysText} 天，到貨需 ${P.lead} 天。`;
+      if(cur<=0)reason+=' ⚠ 目前缺貨，實際需求可能更高，可自行加量。';
+      rows.push({p,code:normalizeCode(p.code),color:p.color,c30:x.c30,c14:x.c14,c7:x.c7,cAvg,cur,pend,daysLeft,need,level,reason,ignored:airIsIgnored(p.code),cost:toNum(p.cost)});
+    });
+
+    const active=rows.filter(r=>!r.ignored);
+    if(!active.length)return;
+    active.sort((a,b)=>LEVEL_RANK[a.level]-LEVEL_RANK[b.level]||a.daysLeft-b.daysLeft);
+    const level=active[0].level;
+    items.push({...base,avg,rows:active,level,minDays:active[0].daysLeft});
+  });
+
+  items.sort((a,b)=>LEVEL_RANK[a.level]-LEVEL_RANK[b.level]||(b.nextDay-a.nextDay)||a.minDays-b.minDays||b.net30-a.net30);
+  watch.sort((a,b)=>b.net30-a.net30||b.net14-a.net14);
+  return{P,cover,items,watch:watch.slice(0,50)};
+}
+
+/* ---------- 畫面 ---------- */
+function airEnsureOverlay(){
+  let el=document.getElementById('airOverlay');
+  if(el)return el;
+  el=document.createElement('div');
+  el.id='airOverlay';
+  el.className='air-overlay';
+  el.innerHTML='<div class="air-card" id="airCard"></div>';
+  el.addEventListener('click',e=>{if(e.target===el)airClose()});
+  document.body.appendChild(el);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&el.classList.contains('show')&&!document.getElementById('appModal')?.classList.contains('show'))airClose()});
+  return el;
+}
+function airIgnoreButtons(code){
+  if(air.openIgnore!==code)return `<button class="btn small ghost" type="button" onclick="airToggleIgnoreMenu('${esc(code)}')">忽略 ▾</button>`;
+  return `<span class="air-ignore-menu"><button class="btn small" type="button" onclick="airSetIgnore('${esc(code)}','7')">7 天</button><button class="btn small" type="button" onclick="airSetIgnore('${esc(code)}','30')">30 天</button><button class="btn small red" type="button" onclick="airSetIgnore('${esc(code)}','forever')">永久</button><button class="btn small ghost" type="button" onclick="airToggleIgnoreMenu('${esc(code)}')">取消</button></span>`;
+}
+function airItemHtml(item,i){
+  const total=item.rows.reduce((s,r)=>s+r.need,0);
+  return `<article class="air-item">
+    <div class="air-item-head">
+      <div>
+        <div class="air-item-title"><span class="air-level ${item.level}">${LEVEL_TEXT[item.level]}</span>${itemPreviewHtml(item.prods[0],item.name)}${item.nextDay?'<span class="air-tag">隔日配</span>':''}</div>
+        <div class="air-item-meta">品項近30天淨銷 ${item.net30} 件｜${item.days30} 天有銷售｜近7天 ${item.net7} 件（前7天 ${item.prev7}）<span class="air-trend ${item.trend.cls}"> ${item.trend.text}</span>｜品項日均 ${item.avg.toFixed(2)} 件</div>
+      </div>
+      <div class="air-actions"><span class="air-item-meta">本品項建議共 <strong>${total}</strong> 件</span><button class="btn small primary" type="button" onclick="airAddItemPurchase(${i})">全部帶入進貨</button></div>
+    </div>
+    <div class="air-table-wrap"><table class="air-table"><thead><tr><th>等級</th><th>顏色</th><th>編號</th><th>現貨</th><th>未到貨</th><th>近7/14/30天</th><th>日均</th><th>可售天數</th><th>建議進貨</th><th>推薦理由</th><th>操作</th></tr></thead><tbody>
+    ${item.rows.map(r=>`<tr>
+      <td><span class="air-level ${r.level}">${LEVEL_TEXT[r.level]}</span></td>
+      <td>${esc(r.color)}</td>
+      <td>${copyCodeCell(r.code)}</td>
+      <td>${r.cur}</td>
+      <td>${r.pend}</td>
+      <td>${r.c7} / ${r.c14} / ${r.c30}</td>
+      <td>${r.cAvg.toFixed(2)}</td>
+      <td>${Number.isFinite(r.daysLeft)?Math.floor(r.daysLeft)+' 天':'—'}</td>
+      <td><span class="air-qty">${r.need}</span></td>
+      <td class="reason">${esc(r.reason)}</td>
+      <td><div class="air-actions"><button class="btn small green" type="button" onclick="airAddPurchase('${esc(r.code)}',${r.need})">帶入進貨</button>${airIgnoreButtons(r.code)}</div></td>
+    </tr>`).join('')}
+    </tbody></table></div>
+  </article>`;
+}
+function airWatchHtml(watch){
+  if(!watch.length)return '<div class="air-empty">目前沒有觀察中的商品。</div>';
+  return `<div class="air-item"><div class="air-table-wrap"><table class="air-table"><thead><tr><th>狀態</th><th>品項</th><th>近30天</th><th>有銷售天數</th><th>近14天</th><th>未推薦原因</th></tr></thead><tbody>
+  ${watch.map(w=>`<tr><td><span class="air-level watch">觀察中</span></td><td>${itemPreviewHtml(w.prods[0],w.name)}</td><td>${w.net30}</td><td>${w.days30}</td><td>${w.net14}</td><td>${esc(w.why)}</td></tr>`).join('')}
+  </tbody></table></div></div>`;
+}
+function airIgnoredHtml(){
+  const rows=Object.entries(air.ignoreMap).filter(([code])=>airIsIgnored(code)).map(([code,until])=>({code,until,p:findProduct(code)})).filter(x=>x.p);
+  if(!rows.length)return '<div class="air-empty">目前沒有忽略中的商品。</div>';
+  rows.sort((a,b)=>String(a.p.itemName).localeCompare(String(b.p.itemName),'zh-Hant',{numeric:true}));
+  return `<div class="air-item"><div class="air-table-wrap"><table class="air-table"><thead><tr><th>品項</th><th>顏色</th><th>編號</th><th>忽略期限</th><th>操作</th></tr></thead><tbody>
+  ${rows.map(x=>`<tr><td>${itemPreviewHtml(x.p,x.p.itemName)}</td><td>${esc(x.p.color)}</td><td>${copyCodeCell(x.code)}</td><td>${esc(airUntilText(x.until))}</td><td><button class="btn small primary" type="button" onclick="airSetIgnore('${esc(x.code)}','restore')">恢復推薦</button></td></tr>`).join('')}
+  </tbody></table></div></div>`;
+}
+function airRender(){
+  const card=document.getElementById('airCard');
+  if(!card)return;
+  const res=airCompute();
+  air.result=res;
+  const allRows=res.items.flatMap(it=>it.rows);
+  const cnt=lv=>allRows.filter(r=>r.level===lv).length;
+  const totalQty=allRows.reduce((s,r)=>s+r.need,0);
+  const totalCost=allRows.reduce((s,r)=>s+r.need*r.cost,0);
+  const ignoredCount=Object.keys(air.ignoreMap).filter(airIsIgnored).length;
+
+  card.innerHTML=`
+  <div class="air-head">
+    <div><h2>🤖 AI 進貨推薦</h2><p>只推薦近期持續有銷售的商品。依品項判斷銷售穩定度，再按各顏色銷售占比分配建議數量；可用庫存已扣除未到貨數量，不會重複下單。</p></div>
+    <button class="btn ghost" type="button" onclick="airClose()">關閉</button>
+  </div>
+  <div class="air-body">
+    ${air.ignoreError?`<div class="notice danger"><strong>忽略功能尚未啟用：</strong>請到 Supabase SQL Editor 執行以下指令後，重新開啟此面板。<br><span class="code">alter table public.products add column if not exists restock_ignore_until timestamptz;</span></div>`:''}
+    <div class="air-params">
+      <div class="f"><label for="airLead">到貨前置天數</label><input id="airLead" type="number" min="0" value="${res.P.lead}"></div>
+      <div class="f"><label for="airSafety">安全天數</label><input id="airSafety" type="number" min="0" value="${res.P.safety}"></div>
+      <div class="f"><label for="airTarget">目標備貨天數</label><input id="airTarget" type="number" min="1" value="${res.P.target}"></div>
+      <button class="btn primary" type="button" onclick="airSaveParams()">儲存並重算</button>
+      <div class="rule">推薦門檻：品項近30天淨銷 ≥ ${AIR_MIN_NET30} 件、≥ ${AIR_MIN_DAYS30} 天有銷售、近14天仍有賣出、單日銷量不超過總量 ${AIR_SPIKE_SHARE*100}%。<br>建議量 = 日均 ×（${res.P.lead}＋${res.P.safety}＋${res.P.target} 天）− 現貨 − 未到貨。</div>
+    </div>
+    <div class="air-summary">
+      <div class="air-sum urgent"><span>急需補貨（顏色）</span><strong>${cnt('urgent')}</strong></div>
+      <div class="air-sum rec"><span>建議補貨（顏色）</span><strong>${cnt('rec')}</strong></div>
+      <div class="air-sum normal"><span>一般補貨（顏色）</span><strong>${cnt('normal')}</strong></div>
+      <div class="air-sum"><span>預估進貨件數</span><strong>${totalQty}</strong></div>
+      <div class="air-sum"><span>預估進貨成本</span><strong>$${money(totalCost)}</strong></div>
+    </div>
+    <div class="air-toolbar">
+      <button class="btn ghost" type="button" onclick="airCopyList()">複製進貨清單</button>
+      <button class="btn ghost" type="button" onclick="airExportCsv()">匯出 CSV</button>
+      <span class="muted" style="font-weight:850;font-size:13px">共 ${res.items.length} 個品項、${allRows.length} 個顏色${ignoredCount?`｜已忽略 ${ignoredCount} 個顏色`:''}</span>
+    </div>
+    <h3 class="air-section-title">推薦進貨</h3>
+    ${res.items.length?res.items.map(airItemHtml).join(''):'<div class="air-empty">目前沒有需要補貨的商品，持續銷售的商品庫存都足夠。</div>'}
+    <h3 class="air-section-title">觀察名單 <span class="muted" style="font-size:13px">近期有銷售、但尚未達持續銷售標準，只列出不建議進貨</span></h3>
+    ${airWatchHtml(res.watch)}
+    <h3 class="air-section-title">已忽略</h3>
+    ${airIgnoredHtml()}
+  </div>`;
+}
+
+/* ---------- 帶入進貨 ---------- */
+function airFirstEmptyBatch(p){
+  const b=p.batches||[];
+  for(let i=0;i<5;i++){const x=b[i]||{};if(toNum(x.ordered)<=0&&toNum(x.arrived)<=0)return i}
+  return -1;
+}
+async function airAddPurchase(code,qty){
+  const p=findProduct(code);
+  if(!p)return appAlert('找不到商品','錯誤',{danger:true});
+  if(showSoldOutLocked(p,'登記進貨'))return;
+  const idx=airFirstEmptyBatch(p);
+  if(idx<0)return appAlert(`${p.itemName} / ${p.color}\n\n五個批次都已使用，請先刪除已完成的批次後再進貨。`,'沒有空的批次',{danger:true});
+  const q=await appPrompt(`${p.itemName} / ${p.color}\n將帶入${batchNames[idx]}\n系統建議：${qty} 件`,String(qty),'帶入進貨',{inputType:'number',required:true,confirmText:'下一步'});
+  if(q===null)return;
+  const n=Math.floor(Number(q));
+  if(!(n>0))return appAlert('進貨數量必須大於 0','數量錯誤',{danger:true});
+  const date=await appPrompt('請輸入進貨日期',todayInputDate(),'進貨日期',{inputType:'date',confirmText:'確認進貨'});
+  if(date===null)return;
+  await callPurchaseFast('addPurchase',{code:p.code,batchIndex:idx,qty:n,orderDate:date||todayInputDate()});
+  airRender();
+}
+async function airAddItemPurchase(i){
+  const item=air.result?.items?.[i];
+  if(!item)return;
+  const plan=item.rows.map(r=>({r,idx:airFirstEmptyBatch(r.p)}));
+  const ok=plan.filter(x=>x.idx>=0);
+  const blocked=plan.filter(x=>x.idx<0);
+  if(!ok.length)return appAlert('這個品項的顏色都沒有空的批次，請先清理批次。','無法帶入',{danger:true});
+  const text=ok.map(x=>`${x.r.color}：${x.r.need} 件 → ${batchNames[x.idx]}`).join('\n')+(blocked.length?`\n\n以下顏色沒有空批次，將略過：\n${blocked.map(x=>x.r.color).join('、')}`:'');
+  const confirmed=await appConfirm(`${item.name}\n\n${text}`,'全部帶入進貨',{confirmText:'下一步'});
+  if(!confirmed)return;
+  const date=await appPrompt('請輸入進貨日期',todayInputDate(),'進貨日期',{inputType:'date',confirmText:'確認進貨'});
+  if(date===null)return;
+  for(const x of ok){
+    await callPurchaseFast('addPurchase',{code:x.r.p.code,batchIndex:x.idx,qty:x.r.need,orderDate:date||todayInputDate()});
+  }
+  airRender();
+  showCopyToast(`已帶入 ${ok.length} 個顏色的進貨`);
+}
+
+/* ---------- 匯出 ---------- */
+function airCopyList(){
+  const items=air.result?.items||[];
+  if(!items.length)return appAlert('目前沒有推薦進貨的商品。','沒有資料');
+  const lines=[`【進貨清單】${formatDateSlash(todayInputDate())}`,''];
+  items.forEach(it=>{lines.push(it.name);it.rows.forEach(r=>lines.push(`  ${r.color} × ${r.need}`));lines.push('')});
+  lines.push(`合計：${items.reduce((s,it)=>s+it.rows.reduce((a,r)=>a+r.need,0),0)} 件`);
+  if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(lines.join('\n')).then(()=>showCopyToast('進貨清單已複製')).catch(()=>{copyTextFallback(lines.join('\n'));showCopyToast('進貨清單已複製')});
+  else{copyTextFallback(lines.join('\n'));showCopyToast('進貨清單已複製')}
+}
+function airExportCsv(){
+  const items=air.result?.items||[];
+  const h=['等級','品項','顏色','編號','現貨','未到貨','近7天','近14天','近30天','日均','可售天數','建議進貨','單件成本','預估成本','推薦理由'];
+  const rows=items.flatMap(it=>it.rows.map(r=>[LEVEL_TEXT[r.level],it.name,r.color,r.code,r.cur,r.pend,r.c7,r.c14,r.c30,r.cAvg.toFixed(2),Number.isFinite(r.daysLeft)?Math.floor(r.daysLeft):'',r.need,r.cost,r.need*r.cost,r.reason]));
+  downloadText('\uFEFF'+[h,...rows].map(r=>r.map(csvEscape).join(',')).join('\n'),`AI進貨推薦_${dateFileName()}.csv`,'text/csv;charset=utf-8');
+}
+
+/* ---------- 開關 ---------- */
+async function airOpen(){
+  if(!currentUser)return appAlert('請先登入系統。','尚未登入');
+  const el=airEnsureOverlay();
+  document.getElementById('airCard').innerHTML='<div class="air-body"><div class="air-empty">正在分析近 30 天銷售資料……</div></div>';
+  el.classList.add('show');
+  await airLoadIgnores();
+  airRender();
+}
+function airClose(){document.getElementById('airOverlay')?.classList.remove('show')}
+
+/* ---------- 安裝按鈕 ---------- */
+function airInstallButton(){
+  const bar=document.querySelector('#purchase .purchase-jump');
+  if(!bar||document.getElementById('btnAiRestock'))return;
+  const btn=document.createElement('button');
+  btn.id='btnAiRestock';
+  btn.type='button';
+  btn.className='btn air-open-btn';
+  btn.textContent='🤖 AI 進貨推薦';
+  btn.onclick=airOpen;
+  bar.appendChild(btn);
+}
+
+window.airOpen=airOpen;
+window.airClose=airClose;
+window.airSaveParams=airSaveParams;
+window.airSetIgnore=airSetIgnore;
+window.airToggleIgnoreMenu=airToggleIgnoreMenu;
+window.airAddPurchase=airAddPurchase;
+window.airAddItemPurchase=airAddItemPurchase;
+window.airCopyList=airCopyList;
+window.airExportCsv=airExportCsv;
+
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',airInstallButton);
+else airInstallButton();
+})();
+</script>
+<!-- ===== AI 進貨推薦 V1 結束 ===== -->
+
 </body>
 </html>
