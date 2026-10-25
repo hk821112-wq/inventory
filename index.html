@@ -7937,11 +7937,24 @@ async function processShipQueue(){
             if(row.action==='退貨'||row.action==='核銷')state.products[idx].totalSales=Math.max(toNum(state.products[idx].totalSales)-1,0);
           }
         }
-        const nowText=new Date().toLocaleString('zh-TW',{hour12:false});
+                const nowText=new Date().toLocaleString('zh-TW',{hour12:false});
         const saleProduct=state.products.find(p=>normalizeCode(p.code)===normalizeCode(target.code));
         const saleCost=saleProduct?toNum(saleProduct.cost):0;
         const salePrice=saleProduct?toNum(saleProduct.price):0;
         const saleTotalStock=saleProduct?totalStock(saleProduct):target.afterStock;
+
+        // 先寫入本機紀錄，再處理退貨同步任務，縮短與 Realtime / 輪詢的競爭時間
+        const localRecord={time:nowText,action:target.action,itemName:target.itemName,color:target.color,code:target.code,cost:saleCost,price:salePrice,profit:signedProfit(target.action,salePrice,saleCost),beforeStock:target.beforeStock,afterStock:target.afterStock,totalStock:saleTotalStock,status:'完成'};
+        // Realtime 或輪詢可能已先把資料庫同一筆加進來，已存在就不再重複加入
+        const localKey=saleRecordKey(localRecord);
+        const alreadySynced=state.sales.slice(-20).some(x=>saleRecordKey(x)===localKey);
+        if(!alreadySynced){
+          state.previews.unshift({...localRecord});
+          state.previews=state.previews.slice(0,100);
+          state.sales.push(localRecord);
+          state.sales=state.sales.slice(-500);
+          applySales60Delta(target.code,target.action);
+        }
 
         if(target.action==='退貨'&&saleProduct){
           const returnTask=await createShopeeStockTaskForReturn(saleProduct,target.beforeStock,target.afterStock);
@@ -7952,12 +7965,6 @@ async function processShipQueue(){
             console.warn('退貨庫存提醒建立失敗：',returnTask?.error||returnTask?.reason||'unknown');
           }
         }
-
-        state.previews.unshift({time:nowText,action:target.action,itemName:target.itemName,color:target.color,code:target.code,beforeStock:target.beforeStock,afterStock:target.afterStock,totalStock:saleTotalStock,status:'完成'});
-        state.previews=state.previews.slice(0,100);
-        state.sales.push({time:nowText,action:target.action,itemName:target.itemName,color:target.color,code:target.code,cost:saleCost,price:salePrice,profit:signedProfit(target.action,salePrice,saleCost),beforeStock:target.beforeStock,afterStock:target.afterStock,totalStock:saleTotalStock,status:'完成'});
-        state.sales=state.sales.slice(-500);
-        applySales60Delta(target.code,target.action);
       }else{
         target.status='失敗';
         target.message=data?.message||'處理失敗';
