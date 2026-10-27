@@ -124,11 +124,14 @@
     .records-filter-btn.active[data-record-action="all"]{background:var(--primary)}
     .records-filter-btn.active[data-record-date]{background:var(--primary)}
     .records-custom-date-text{font-size:13px;font-weight:900;color:#4b5563;padding:0 4px}
-    .records-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 14px}
+    .records-summary{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px;margin:0 0 14px}
     .records-summary-card{border:1px solid var(--line);border-radius:16px;background:#fff;padding:14px}
     .records-summary-card .label{font-size:13px;font-weight:1000;color:#4b5563}
     .records-summary-card .value{margin-top:6px;font-size:26px;line-height:1;font-weight:1000;color:var(--primary)}
     .records-summary-card .value.negative{color:var(--red)}
+    .sales-fee-money{white-space:nowrap}
+    .sales-fee-money .sales-fee-decimal{font-size:.6em;font-weight:700;vertical-align:baseline}
+    @media(min-width:981px) and (max-width:1400px){.records-summary{grid-template-columns:repeat(4,minmax(0,1fr))}}
     @media(max-width:980px){.records-summary{grid-template-columns:1fr}.records-panel{grid-template-columns:1fr}}
     @media(min-width:1281px){
       #product .grid{align-items:start}
@@ -3756,6 +3759,7 @@ body.dark-mode .stock-sales-window-menu button.active{background:#2563eb;color:#
             </div>
           </div>
           <div class="records-summary" id="salesSummary"></div>
+          <div class="muted" style="margin:0 0 10px">各項費用顯示金額（元），保留兩位小數，依目前「設定」估算。每筆均假設買家支付設定運費：金流費＝（售價＋買家運費）× 金流費率；發票手續費＝（售價－其他服務費－成交手續費－金流費）× 發票費率。非出貨當時的實際扣款。費用總和依目前篩選加總，退貨／核銷以負數沖回。</div>
           <div id="salesTable"></div>
         </article>
       </div>
@@ -3766,13 +3770,13 @@ body.dark-mode .stock-sales-window-menu button.active{background:#2563eb;color:#
       <div class="grid">
         <article class="card span-6">
           <h2>費率設定</h2>
-          <div class="notice">公式：售價 - 成本 - 平台費 - 成交手續費 - 金流費 - 固定加成金流費 - 其他費率。</div>
+          <div class="notice">利潤＝售價－成本－其他服務費－成交手續費－金流費－發票手續費。金流費＝（售價＋買家運費）× 金流費率；發票手續費＝（售價－其他服務費－成交手續費－金流費）× 發票費率。每筆均按買家付運費估算，費率以小數輸入（例如 6% 輸入 0.06）。</div>
           <div class="form-grid">
-            <div class="field"><label>平台費率</label><input id="feePlatform" type="number" step="0.001" min="0"></div>
+            <div class="field"><label>平台費率（其他服務費）</label><input id="feePlatform" type="number" step="0.001" min="0"></div>
             <div class="field"><label>成交手續費</label><input id="feeService" type="number" step="0.001" min="0"></div>
             <div class="field"><label>金流費</label><input id="feeExtra" type="number" step="0.001" min="0"></div>
-            <div class="field"><label>其他費率</label><input id="feeOther" type="number" step="0.001" min="0"></div>
-            <div class="field"><label>固定加成</label><input id="shippingBase" type="number" step="1" min="0"></div>
+            <div class="field"><label>其他費率（發票手續費）</label><input id="feeOther" type="number" step="0.001" min="0"></div>
+            <div class="field"><label>買家運費（每筆固定估算）</label><input id="shippingBase" type="number" step="1" min="0"></div>
             <div class="field"><label>低庫存提醒</label><input id="lowStockThreshold" type="number" step="1" min="0"></div>
             <div class="field"><label>商品出貨警示音量</label><input id="shipFailVolume" type="number" step="1" min="0" max="100" placeholder="0～100"></div>
             <div class="field full"><button class="btn primary" id="btnSaveSettings">儲存設定</button></div>
@@ -4591,7 +4595,16 @@ window.showPendingBatchTooltip=showPendingBatchTooltip;
 window.movePendingBatchTooltip=movePendingBatchTooltip;
 window.hidePendingBatchTooltip=hidePendingBatchTooltip;
 function totalStock(p){return toNum(p.currentStock)+pendingQty(p)}
-function profitFromValues(priceValue,costValue){const s=state.settings,price=toNum(priceValue),cost=toNum(costValue);return (price-cost)-(price*toNum(s.feePlatform))-(price*toNum(s.feeService))-(price*toNum(s.feeExtra))-((cost+toNum(s.shippingBase))*toNum(s.feeExtra))-(price*toNum(s.feeOther))}
+function profitFromValues(priceValue,costValue){return toNum(priceValue)-toNum(costValue)-salesFeeAmounts(priceValue).reduce((total,fee)=>total+fee,0)}
+function salesFeeAmounts(priceValue){
+  const s=state.settings,price=toNum(priceValue);
+  const platform=price*toNum(s.feePlatform),service=price*toNum(s.feeService);
+  // 每筆均以買家支付設定運費估算；商品成本不列入金流計費基準。
+  const payment=(price+toNum(s.shippingBase))*toNum(s.feeExtra);
+  const invoice=(price-platform-service-payment)*toNum(s.feeOther);
+  return [platform,service,payment,invoice];
+}
+function salesFeeMoney(value){const [whole,decimal]=toNum(value).toLocaleString('zh-TW',{minimumFractionDigits:2,maximumFractionDigits:2}).split('.');return `<span class="sales-fee-money">$${whole}<span class="sales-fee-decimal">.${decimal}</span></span>`}
 function formatProfitPreviewValue(value){const v=toNum(value);return v<0?`-$${money(Math.abs(v))}`:`$${money(v)}`}
 function updateProductProfitPreview(){const el=$('pProfitPreview');if(!el||!$('pCost')||!$('pPrice'))return;const hasCost=String($('pCost').value||'').trim()!=='';const hasPrice=String($('pPrice').value||'').trim()!=='';if(!hasCost&&!hasPrice){el.value='';el.placeholder='輸入成本與售價後自動計算';el.classList.remove('profit-ok','profit-loss');el.title='';return}const v=profitFromValues($('pPrice').value,$('pCost').value);el.value=formatProfitPreviewValue(v);el.classList.toggle('profit-loss',v<0);el.classList.toggle('profit-ok',v>=0);el.title='依照設定頁費率公式即時計算'}
 function signedProfit(action,priceValue,costValue){const base=profitFromValues(priceValue,costValue);return (action==='退貨'||action==='核銷')?-Math.abs(base):base}
@@ -7290,11 +7303,16 @@ function renderSalesSummary(rows){
   const totalCost=rows.reduce((s,r)=>s+salesSignedCost(r.action,r.cost),0);
   const totalProfit=rows.reduce((s,r)=>s+signedProfit(r.action,r.price,r.cost),0);
   const totalQty=rows.reduce((s,r)=>s+salesSignedQty(r.action),0);
+  const totalFees=rows.reduce((totals,r)=>{
+    salesFeeAmounts(r.price).forEach((fee,index)=>{totals[index]+=fee*salesSignedQty(r.action)});
+    return totals;
+  },[0,0,0,0]);
   const moneyText=v=>v<0?`-$${money(Math.abs(v))}`:`$${money(v)}`;
   $('salesSummary').innerHTML=`
     <div class="records-summary-card"><div class="label">總成本</div><div class="value ${totalCost<0?'negative':''}">${moneyText(totalCost)}</div></div>
     <div class="records-summary-card"><div class="label">總單件利潤</div><div class="value ${totalProfit<0?'negative':''}">${moneyText(totalProfit)}</div></div>
-    <div class="records-summary-card"><div class="label">總累積銷量</div><div class="value ${totalQty<0?'negative':''}">${totalQty}</div></div>`;
+    <div class="records-summary-card"><div class="label">總累積銷量</div><div class="value ${totalQty<0?'negative':''}">${totalQty}</div></div>
+    ${['平台費率總和','成交手續費總和','金流費總和','其他費率總和'].map((label,index)=>`<div class="records-summary-card"><div class="label">${label}</div><div class="value ${totalFees[index]<0?'negative':''}">${totalFees[index]<0?'-':''}${salesFeeMoney(Math.abs(totalFees[index]))}</div></div>`).join('')}`;
 }
 function renderSales(){
   if(salesNeedsFullHistory()&&!salesHistoryRows){
@@ -7312,7 +7330,7 @@ function renderSales(){
     $('salesTable').innerHTML='';
     return;
   }
-  $('salesTable').innerHTML=rows.length?`<div class="table-wrap log-box"><table><thead><tr><th>時間</th><th>動作</th><th>品項</th><th>顏色</th><th>編號</th><th>成本</th><th>售價</th><th>單件利潤</th><th>處理前</th><th>處理後</th><th>進貨庫存</th><th>狀態</th><th>操作</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.time)}</td><td>${shipActionBadge(r.action)}</td><td>${shipItemCell(r)}</td><td>${shipColorCell(r)}</td><td>${copyCodeCell(r.code)}</td><td>${salesSignedCost(r.action,r.cost)<0?`-$${money(Math.abs(salesSignedCost(r.action,r.cost)))}`:`$${money(r.cost)}`}</td><td>$${money(r.price)}</td><td>${profitCurrency(r.action,r.price,r.cost)}</td><td>${esc(r.beforeStock)}</td><td>${esc(r.afterStock)}</td><td>${esc(r.totalStock)}</td><td><span class="status ok">${esc(r.status)}</span></td><td>${r.code?`<button class="btn small primary" type="button" onclick="goToPurchaseFromWarning('${esc(r.code)}')">前往進貨</button>`:''}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">查無符合條件的出貨紀錄。</div>'}
+  $('salesTable').innerHTML=rows.length?`<div class="table-wrap log-box"><table><thead><tr><th>時間</th><th>動作</th><th>品項</th><th>顏色</th><th>編號</th><th>成本</th><th>售價</th><th>單件利潤</th><th>平台費率</th><th>成交手續費</th><th>金流費</th><th>其他費率</th><th>處理前</th><th>處理後</th><th>進貨庫存</th><th>狀態</th><th>操作</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.time)}</td><td>${shipActionBadge(r.action)}</td><td>${shipItemCell(r)}</td><td>${shipColorCell(r)}</td><td>${copyCodeCell(r.code)}</td><td>${salesSignedCost(r.action,r.cost)<0?`-$${money(Math.abs(salesSignedCost(r.action,r.cost)))}`:`$${money(r.cost)}`}</td><td>$${money(r.price)}</td><td>${profitCurrency(r.action,r.price,r.cost)}</td>${salesFeeAmounts(r.price).map(amount=>`<td>${salesFeeMoney(amount)}</td>`).join('')}<td>${esc(r.beforeStock)}</td><td>${esc(r.afterStock)}</td><td>${esc(r.totalStock)}</td><td><span class="status ok">${esc(r.status)}</span></td><td>${r.code?`<button class="btn small primary" type="button" onclick="goToPurchaseFromWarning('${esc(r.code)}')">前往進貨</button>`:''}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">查無符合條件的出貨紀錄。</div>'}
 function setSalesActionFilter(mode){state.salesFilters.actionMode=mode;renderSales()}
 async function setSalesDateFilter(range){
   if(range==='custom'){
@@ -8043,7 +8061,7 @@ function importAppendJson(file){
 }
 function exportInventoryCsv(){const h=['隔日配','長備貨','狀態','品項','顏色','編號','條碼','現貨E','進貨F','未到貨','單件成本','售價','總成本H','過去60天累積銷量','累積銷量I','累積成本J','第一批','第二批','第三批','第四批','第五批'];const rows=state.products.map(p=>[isNextDayItem(p.itemName)?'ON':'',isLongStockItem(p.itemName)?'ON':'',p.isSoldOut?'售罄':(toNum(p.currentStock)<=0?'缺貨':(toNum(p.currentStock)<=toNum(state.settings.lowStockThreshold)?'低庫存':'正常')),p.itemName,p.color,p.code,'*'+p.code+'*',p.currentStock,totalStock(p),pendingQty(p),p.cost,p.price,totalCost(p),sales60Qty(p.code),p.totalSales,salesCost(p),...(p.batches||[]).map(b=>`${toNum(b.arrived)}/${toNum(b.ordered)}${b.orderDate?' '+b.orderDate:''}`)]);downloadText('\uFEFF'+[h,...rows].map(r=>r.map(csvEscape).join(',')).join('\n'),`庫存資料_${dateFileName()}.csv`,'text/csv;charset=utf-8')}
 
-function exportSalesCsv(){const h=['時間','動作','品項','顏色','編號','成本','售價','單件利潤','處理前','處理後','進貨庫存','狀態'];const rows=state.sales.map(r=>[r.time,r.action,r.itemName,r.color,r.code,r.cost,r.price,signedProfit(r.action,r.price,r.cost),r.beforeStock,r.afterStock,r.totalStock,r.status]);downloadText('\uFEFF'+[h,...rows].map(r=>r.map(csvEscape).join(',')).join('\n'),`出貨紀錄_${dateFileName()}.csv`,'text/csv;charset=utf-8')}
+function exportSalesCsv(){const h=['時間','動作','品項','顏色','編號','成本','售價','單件利潤','平台費率','成交手續費','金流費','其他費率','處理前','處理後','進貨庫存','狀態'];const rows=state.sales.map(r=>[r.time,r.action,r.itemName,r.color,r.code,r.cost,r.price,signedProfit(r.action,r.price,r.cost),...salesFeeAmounts(r.price).map(amount=>Number(amount.toFixed(2))),r.beforeStock,r.afterStock,r.totalStock,r.status]);downloadText('\uFEFF'+[h,...rows].map(r=>r.map(csvEscape).join(',')).join('\n'),`出貨紀錄_${dateFileName()}.csv`,'text/csv;charset=utf-8')}
 function exportActionsCsv(){const h=['時間','來源','動作','品項','顏色','編號','舊值','新值','現貨','進貨','備註'];const rows=state.actions.map(r=>[r.time,r.source,r.action,r.itemName,r.color,r.code,r.oldValue,r.newValue,r.currentStock,r.totalStock,r.note]);downloadText('\uFEFF'+[h,...rows].map(r=>r.map(csvEscape).join(',')).join('\n'),`所有動作紀錄_${dateFileName()}.csv`,'text/csv;charset=utf-8')}
 async function printLabelsForCode(code,qty=1){const p=findProduct(code);if(!p)return appAlert('找不到商品','錯誤',{danger:true});if(showSoldOutLocked(p,'列印標籤'))return;const nText=await appPrompt(`${p.itemName} / ${p.color} / ${p.code}\n請輸入列印張數`,String(qty),'補印標籤',{inputType:'number',confirmText:'列印',required:true});if(nText===null)return;const n=Number(nText);if(n>0)printLabels(p,Math.floor(n))}
 window.printLabelsForCode=printLabelsForCode
