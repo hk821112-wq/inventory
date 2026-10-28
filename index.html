@@ -3474,6 +3474,7 @@ body.dark-mode .stock-sales-window-menu button.active{background:#2563eb;color:#
 
     <nav class="tabs">
       <button class="tab-btn active" data-tab="dashboard"><span class="tab-icon">📊</span>總覽</button>
+      <button class="tab-btn" data-tab="handover"><span class="tab-icon">📝</span>交代事項</button>
       <button class="tab-btn" data-tab="ship"><span class="tab-icon">📦</span>商品出貨</button>
       <button class="tab-btn" data-tab="stock"><span class="tab-icon">📋</span>庫存資料</button>
       <button class="tab-btn" data-tab="purchase"><span class="tab-icon">🚚</span>進貨 / 到貨</button>
@@ -3653,6 +3654,20 @@ body.dark-mode .stock-sales-window-menu button.active{background:#2563eb;color:#
           </div>
           <div class="arrival-update-summary" id="arrivalUpdateSummary"></div>
           <div id="arrivalUpdateTable"></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="tab" id="handover">
+      <div class="grid">
+        <article class="card span-12">
+          <h2>📝 交代事項</h2>
+          <p class="muted">輸入事項並新增，完成後勾選即可。</p>
+          <form id="handoverForm" class="handover-simple-form">
+            <input id="handoverText" type="text" maxlength="300" required placeholder="輸入要交代的事項…" aria-label="交代事項">
+            <button class="btn primary" type="submit">新增事項</button>
+          </form>
+          <div id="handoverList" class="handover-simple-list"></div>
         </article>
       </div>
     </section>
@@ -9445,7 +9460,28 @@ window.socialProductImagesCopyUrl=async function(url){try{await navigator.clipbo
 
 <!-- =========================================================
      2026/10/23 AI 進貨推薦 V1
-     貼在 </body> 正上方（所有既有 <script> 之後）
+     貼在 
+
+<script>
+/* 交代事項：依登入使用者保存在本機瀏覽器 */
+(()=>{
+const el=id=>document.getElementById(id);
+const storageKey=()=>`inventoryHandover_v1_${window.currentUser?.id||'local'}`;
+const read=()=>{try{const rows=JSON.parse(localStorage.getItem(storageKey())||'[]');return Array.isArray(rows)?rows:[]}catch(e){return[]}};
+const write=rows=>localStorage.setItem(storageKey(),JSON.stringify(rows));
+const escapeHtml=text=>String(text??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function render(){
+ const rows=read().sort((a,b)=>b.createdAt-a.createdAt);
+ el('handoverList').innerHTML=rows.length?rows.map(item=>`<label class="handover-simple-item ${item.done?'is-done':''}"><input type="checkbox" data-handover-done="${escapeHtml(item.id)}" ${item.done?'checked':''}><span>${escapeHtml(item.text)}</span></label>`).join(''):'<div class="empty">目前沒有交代事項。</div>';
+}
+el('handoverForm').addEventListener('submit',event=>{event.preventDefault();const text=el('handoverText').value.trim();if(!text)return;const rows=read();rows.push({id:`${Date.now()}-${Math.random().toString(36).slice(2,7)}`,text,done:false,createdAt:Date.now()});write(rows);el('handoverText').value='';render();el('handoverText').focus()});
+el('handoverList').addEventListener('change',event=>{const id=event.target.dataset.handoverDone;if(!id)return;const rows=read(),item=rows.find(row=>row.id===id);if(item)item.done=event.target.checked;write(rows);render()});
+const style=document.createElement('style');style.textContent=`.handover-simple-form{display:flex;gap:10px;max-width:900px;margin:16px 0 22px}.handover-simple-form input{flex:1}.handover-simple-list{display:grid;gap:9px;max-width:900px}.handover-simple-item{display:flex;align-items:center;gap:12px;padding:13px 15px;border:1px solid var(--line);border-radius:13px;background:#fff;cursor:pointer}.handover-simple-item input{width:19px;height:19px;min-height:19px;accent-color:var(--green)}.handover-simple-item span{white-space:normal;overflow-wrap:anywhere}.handover-simple-item.is-done span{color:var(--muted);text-decoration:line-through}@media(max-width:600px){.handover-simple-form{align-items:stretch}.handover-simple-form .btn{white-space:nowrap}}`;
+document.head.appendChild(style);if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',render);else render();
+})();
+</script>
+
+</body> 正上方（所有既有 <script> 之後）
      需要先在 Supabase 執行：
      alter table public.products add column if not exists restock_ignore_until timestamptz;
      ========================================================= -->
