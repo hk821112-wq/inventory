@@ -124,7 +124,7 @@
     .records-filter-btn.active[data-record-action="all"]{background:var(--primary)}
     .records-filter-btn.active[data-record-date]{background:var(--primary)}
     .records-custom-date-text{font-size:13px;font-weight:900;color:#4b5563;padding:0 4px}
-    .records-summary{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px;margin:0 0 14px}
+    .records-summary{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:12px;margin:0 0 14px}
     .records-summary-card{border:1px solid var(--line);border-radius:16px;background:#fff;padding:14px}
     .records-summary-card .label{font-size:13px;font-weight:1000;color:#4b5563}
     .records-summary-card .value{margin-top:6px;font-size:26px;line-height:1;font-weight:1000;color:var(--primary)}
@@ -7316,6 +7316,7 @@ function renderSalesFilterUI(){
 }
 function renderSalesSummary(rows){
   const totalCost=rows.reduce((s,r)=>s+salesSignedCost(r.action,r.cost),0);
+  const totalPrice=rows.reduce((s,r)=>s+toNum(r.price)*salesSignedQty(r.action),0);
   const totalProfit=rows.reduce((s,r)=>s+signedProfit(r.action,r.price,r.cost),0);
   const totalQty=rows.reduce((s,r)=>s+salesSignedQty(r.action),0);
   const totalFees=rows.reduce((totals,r)=>{
@@ -7325,7 +7326,8 @@ function renderSalesSummary(rows){
   const moneyText=v=>v<0?`-$${money(Math.abs(v))}`:`$${money(v)}`;
   $('salesSummary').innerHTML=`
     <div class="records-summary-card"><div class="label">總成本</div><div class="value ${totalCost<0?'negative':''}">${moneyText(totalCost)}</div></div>
-    <div class="records-summary-card"><div class="label">總單件利潤</div><div class="value ${totalProfit<0?'negative':''}">${moneyText(totalProfit)}</div></div>
+    <div class="records-summary-card"><div class="label">售價總和</div><div class="value ${totalPrice<0?'negative':''}">${moneyText(totalPrice)}</div></div>
+    <div class="records-summary-card"><div class="label">總單件利潤</div><div class="value ${totalProfit<0?'negative':''}">${moneyText(totalProfit)}${totalPrice?`<span style="font-size:.6em;margin-left:6px;opacity:.8">(${(totalProfit/totalPrice*100).toFixed(1)}%)</span>`:''}</div></div>
     <div class="records-summary-card"><div class="label">總累積銷量</div><div class="value ${totalQty<0?'negative':''}">${totalQty}</div></div>
     ${['平台費率總和','成交手續費總和','金流費總和','其他費率總和'].map((label,index)=>`<div class="records-summary-card"><div class="label">${label}</div><div class="value ${totalFees[index]<0?'negative':''}">${totalFees[index]<0?'-':''}${salesFeeMoney(Math.abs(totalFees[index]))}</div></div>`).join('')}`;
 }
