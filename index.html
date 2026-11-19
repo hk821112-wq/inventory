@@ -9483,7 +9483,7 @@ window.socialProductImagesCopyUrl=async function(url){try{await navigator.clipbo
 .air-params label{margin:0}
 .air-params input{width:110px;min-height:36px;padding:6px 10px}
 .air-params .rule{margin-left:auto;max-width:560px;color:var(--muted);font-size:12px;font-weight:800;line-height:1.6}
-.air-summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.air-summary{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
 .air-sum{border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--panel)}
 .air-sum span{display:block;font-size:12px;font-weight:1000;color:var(--muted)}
 .air-sum strong{display:block;margin-top:6px;font-size:24px;font-weight:1000;color:var(--text)}
@@ -9535,6 +9535,11 @@ const AIR_MIN_NET30=3;        // 品項近30天淨銷量至少 3 件
 const AIR_MIN_DAYS30=4;       // 品項近30天至少 4 天有銷售
 const AIR_SPIKE_SHARE=0.5;    // 單日銷量占比超過 50% 視為單日爆量
 const AIR_LOW_VOLUME=10;      // 近30天少於 10 件，改用 30 天平均，避免近期波動
+const AIR_WINDOW=60;          // 讀取近60天銷售，用來找斷貨前的真實賣速
+const AIR_MIN_INSTOCK=14;     // 校正日均時，有貨天數最少以 14 天計，避免樣本太少暴衝
+const AIR_GEM_MIN_NET60=3;    // 斷貨遺珠：近60天至少賣 3 件
+const AIR_GEM_MIN_DAYS60=2;   // 斷貨遺珠：近60天至少 2 天有銷售（排除單次大量）
+const AIR_GEM_LIMIT=100;      // 斷貨遺珠最多列出筆數
 const AIR_PERMANENT='9999-12-31T00:00:00.000Z';
 const DAY=86400000;
 const LEVEL_RANK={urgent:0,rec:1,normal:2};
@@ -9618,14 +9623,25 @@ function airCompute(){
   const cover=P.lead+P.safety+P.target;
   const today=airTodayStart();
 
-  // 每個編號近30天的每日淨銷量（index 0 = 今天）
+  // 每個編號近60天的每日淨銷量（index 0 = 今天）
   const byCode={};
   (state.salesWindowEvents||[]).forEach(e=>{
     const idx=airDayIndex(e.t,today);
-    if(idx<0||idx>29)return;
+    if(idx<0||idx>=AIR_WINDOW)return;
     const c=normalizeCode(e.code);
-    (byCode[c]||(byCode[c]=new Array(30).fill(0)))[idx]+=toNum(e.delta);
+    (byCode[c]||(byCode[c]=new Array(AIR_WINDOW).fill(0)))[idx]+=toNum(e.delta);
   });
+  // 斷貨校正：現貨為 0 時，以「最後一次賣出」當作斷貨起點，只用有貨的日子算日均
+  const stockoutInfo=(arr,cur)=>{
+    const c60=airSum(arr,0,AIR_WINDOW);
+    const saleDays=arr.filter(v=>v>0).length;
+    if(cur>0)return{c60,saleDays,outDays:0,rate:c60/AIR_WINDOW};
+    let last=arr.findIndex(v=>v>0);
+    if(last<0)last=AIR_WINDOW;
+    const inStock=Math.max(AIR_MIN_INSTOCK,AIR_WINDOW-last);
+    return{c60,saleDays,outDays:last,rate:Math.max(c60,0)/inStock};
+  };
+  const shownCodes=new Set();
 
   // 依品項分組
   const groups=new Map();
@@ -9668,8 +9684,8 @@ function airCompute(){
 
     // 顏色依銷售占比分配
     const colorStats=prods.map(p=>{
-      const arr=byCode[normalizeCode(p.code)]||new Array(30).fill(0);
-      return{p,c30:airSum(arr,0,30),c14:airSum(arr,0,14),c7:airSum(arr,0,7)};
+      const arr=byCode[normalizeCode(p.code)]||new Array(AIR_WINDOW).fill(0);
+      return{p,arr,c30:airSum(arr,0,30),c14:airSum(arr,0,14),c7:airSum(arr,0,7)};
     });
     const posTotal=colorStats.reduce((s,x)=>s+Math.max(x.c30,0),0)||1;
 
@@ -9678,8 +9694,10 @@ function airCompute(){
       const p=x.p;
       if(p.isSoldOut||x.c30<=0)return;
       const share=x.c30/posTotal;
-      const cAvg=avg*share;
       const cur=toNum(p.currentStock),pend=pendingQty(p),avail=cur+pend;
+      const so=stockoutInfo(x.arr,cur);
+      const corrected=cur<=0&&so.outDays>0&&so.rate>avg*share;
+      const cAvg=corrected?so.rate:avg*share;
       const daysLeft=cAvg>0?avail/cAvg:Infinity;
       const need=Math.ceil(cAvg*cover-avail);
       if(need<=0)return;
@@ -9688,12 +9706,14 @@ function airCompute(){
       else if(daysLeft<P.lead+P.safety)level='rec';
       const daysText=Number.isFinite(daysLeft)?Math.floor(daysLeft):'—';
       let reason=`近30天賣 ${x.c30} 件（占品項 ${Math.round(share*100)}%），日均約 ${cAvg.toFixed(2)} 件；現貨 ${cur}、未到貨 ${pend}，約可賣 ${daysText} 天，到貨需 ${P.lead} 天。`;
-      if(cur<=0)reason+=' ⚠ 目前缺貨，實際需求可能更高，可自行加量。';
+      if(corrected)reason+=` ⚠ 已斷貨約 ${so.outDays} 天，日均已扣除斷貨天數校正（近60天賣 ${so.c60} 件 ÷ 有貨約 ${Math.max(AIR_MIN_INSTOCK,AIR_WINDOW-so.outDays)} 天）。`;
+      else if(cur<=0)reason+=' ⚠ 目前缺貨，實際需求可能更高，可自行加量。';
       rows.push({p,code:normalizeCode(p.code),color:p.color,c30:x.c30,c14:x.c14,c7:x.c7,cAvg,cur,pend,daysLeft,need,level,reason,ignored:airIsIgnored(p.code),cost:toNum(p.cost)});
     });
 
     const active=rows.filter(r=>!r.ignored);
     if(!active.length)return;
+    active.forEach(r=>shownCodes.add(r.code));
     active.sort((a,b)=>LEVEL_RANK[a.level]-LEVEL_RANK[b.level]||a.daysLeft-b.daysLeft);
     const level=active[0].level;
     items.push({...base,avg,rows:active,level,minDays:active[0].daysLeft});
@@ -9701,7 +9721,27 @@ function airCompute(){
 
   items.sort((a,b)=>LEVEL_RANK[a.level]-LEVEL_RANK[b.level]||(b.nextDay-a.nextDay)||a.minDays-b.minDays||b.net30-a.net30);
   watch.sort((a,b)=>b.net30-a.net30||b.net14-a.net14);
-  return{P,cover,items,watch:watch.slice(0,50)};
+
+  // 斷貨遺珠：現貨與未到貨都是 0、斷貨前賣得動，但沒出現在上面推薦裡的顏色
+  const gems=[];
+  (state.products||[]).forEach(p=>{
+    if(p.isSoldOut)return;
+    const code=normalizeCode(p.code);
+    if(!code||shownCodes.has(code)||airIsIgnored(p.code))return;
+    const cur=toNum(p.currentStock),pend=pendingQty(p);
+    if(cur>0||pend>0)return;
+    const arr=byCode[code];
+    if(!arr)return;
+    const so=stockoutInfo(arr,cur);
+    if(so.c60<AIR_GEM_MIN_NET60||so.saleDays<AIR_GEM_MIN_DAYS60)return;
+    const unit=profitFromValues(p.price,p.cost);
+    const lostQty=Math.round(so.rate*so.outDays);
+    gems.push({p,code,name:String(p.itemName||'').trim(),color:p.color,c60:so.c60,saleDays:so.saleDays,outDays:so.outDays,rate:so.rate,unit,
+      lostQty,lostProfit:lostQty*Math.max(unit,0),need:Math.max(1,Math.ceil(so.rate*cover)),cost:toNum(p.cost),score:so.rate*Math.max(unit,1)});
+  });
+  gems.sort((a,b)=>b.score-a.score||b.c60-a.c60);
+  airCompute.allGems=gems;
+  return{P,cover,items,watch:watch.slice(0,50),gems:gems.slice(0,AIR_GEM_LIMIT),gemTotal:gems.length};
 }
 
 /* ---------- 畫面 ---------- */
@@ -9754,6 +9794,24 @@ function airWatchHtml(watch){
   ${watch.map(w=>`<tr><td><span class="air-level watch">觀察中</span></td><td>${itemPreviewHtml(w.prods[0],w.name)}</td><td>${w.net30}</td><td>${w.days30}</td><td>${w.net14}</td><td>${esc(w.why)}</td></tr>`).join('')}
   </tbody></table></div></div>`;
 }
+function airGemsHtml(gems,total){
+  if(!gems.length)return '<div class="air-empty">目前沒有斷貨中的好賣商品。</div>';
+  return `<div class="air-item"><div class="air-table-wrap"><table class="air-table"><thead><tr><th>品項</th><th>顏色</th><th>編號</th><th>近60天</th><th>已斷貨</th><th>斷貨前日均</th><th>估計少賣</th><th>估計少賺</th><th>建議進貨</th><th>操作</th></tr></thead><tbody>
+  ${gems.map((g,i)=>`<tr>
+    <td>${itemPreviewHtml(g.p,g.name)}</td>
+    <td>${esc(g.color)}</td>
+    <td>${copyCodeCell(g.code)}</td>
+    <td>${g.c60} 件（${g.saleDays} 天）</td>
+    <td>${g.outDays>=AIR_WINDOW?`超過 ${AIR_WINDOW} 天`:g.outDays+' 天'}</td>
+    <td>${g.rate.toFixed(2)}</td>
+    <td>${g.lostQty} 件</td>
+    <td>$${money(g.lostProfit)}</td>
+    <td><span class="air-qty">${g.need}</span></td>
+    <td><div class="air-actions"><button class="btn small primary" type="button" onclick="airAddGem(${i})">帶入進貨</button><button class="btn small ghost" type="button" onclick="airGoPurchase('${esc(g.code)}')">前往進貨</button>${airIgnoreButtons(g.code)}</div></td>
+  </tr>`).join('')}
+  </tbody></table></div></div>${total>gems.length?`<div class="muted" style="font-size:12px;font-weight:850">共 ${total} 筆，只顯示最值得補的前 ${gems.length} 筆；匯出 CSV 可看全部。</div>`:''}`;
+}
+function airAddGem(i){const g=air.result?.gems?.[i];if(g)airAddPurchase(g.code,g.need)}
 function airIgnoredHtml(){
   const rows=Object.entries(air.ignoreMap).filter(([code])=>airIsIgnored(code)).map(([code,until])=>({code,until,p:findProduct(code)})).filter(x=>x.p);
   if(!rows.length)return '<div class="air-empty">目前沒有忽略中的商品。</div>';
@@ -9793,6 +9851,7 @@ function airRender(){
       <div class="air-sum normal"><span>一般補貨（顏色）</span><strong>${cnt('normal')}</strong></div>
       <div class="air-sum"><span>預估進貨件數</span><strong>${totalQty}</strong></div>
       <div class="air-sum"><span>預估進貨成本</span><strong>$${money(totalCost)}</strong></div>
+      <div class="air-sum urgent"><span>斷貨遺珠（顏色）</span><strong>${res.gemTotal}</strong></div>
     </div>
     <div class="air-toolbar">
       <button class="btn ghost" type="button" onclick="airCopyList()">複製進貨清單</button>
@@ -9801,6 +9860,8 @@ function airRender(){
     </div>
     <h3 class="air-section-title">推薦進貨</h3>
     ${res.items.length?res.items.map(airItemHtml).join(''):'<div class="air-empty">目前沒有需要補貨的商品，持續銷售的商品庫存都足夠。</div>'}
+    <h3 class="air-section-title">💎 斷貨遺珠 <span class="muted" style="font-size:13px">現貨與未到貨都是 0、斷貨前近60天賣 ≥ ${AIR_GEM_MIN_NET60} 件且 ≥ ${AIR_GEM_MIN_DAYS60} 天有銷售；依「斷貨前日均 × 單件利潤」排序</span></h3>
+    ${airGemsHtml(res.gems,res.gemTotal)}
     <h3 class="air-section-title">觀察名單 <span class="muted" style="font-size:13px">近期有銷售、但尚未達持續銷售標準，只列出不建議進貨</span></h3>
     ${airWatchHtml(res.watch)}
     <h3 class="air-section-title">已忽略</h3>
@@ -9876,6 +9937,9 @@ function airExportCsv(){
   const items=air.result?.items||[];
   const h=['等級','品項','顏色','編號','現貨','未到貨','近7天','近14天','近30天','日均','可售天數','建議進貨','單件成本','預估成本','推薦理由'];
   const rows=items.flatMap(it=>it.rows.map(r=>[LEVEL_TEXT[r.level],it.name,r.color,r.code,r.cur,r.pend,r.c7,r.c14,r.c30,r.cAvg.toFixed(2),Number.isFinite(r.daysLeft)?Math.floor(r.daysLeft):'',r.need,r.cost,r.need*r.cost,r.reason]));
+  // 斷貨遺珠全部匯出（不受畫面 100 筆限制）
+  const all=airCompute.allGems||[];
+  all.forEach(g=>rows.push(['斷貨遺珠',g.name,g.color,g.code,0,0,'','',g.c60+'（60天）',g.rate.toFixed(2),0,g.need,g.cost,g.need*g.cost,`已斷貨 ${g.outDays>=AIR_WINDOW?'超過'+AIR_WINDOW:g.outDays} 天，估計少賣 ${g.lostQty} 件、少賺 $${money(g.lostProfit)}`]));
   downloadText('\uFEFF'+[h,...rows].map(r=>r.map(csvEscape).join(',')).join('\n'),`AI進貨推薦_${dateFileName()}.csv`,'text/csv;charset=utf-8');
 }
 
@@ -9883,7 +9947,7 @@ function airExportCsv(){
 async function airOpen(){
   if(!currentUser)return appAlert('請先登入系統。','尚未登入');
   const el=airEnsureOverlay();
-  document.getElementById('airCard').innerHTML='<div class="air-body"><div class="air-empty">正在分析近 30 天銷售資料……</div></div>';
+  document.getElementById('airCard').innerHTML='<div class="air-body"><div class="air-empty">正在分析近 60 天銷售資料……</div></div>';
   el.classList.add('show');
   await airLoadIgnores();
   airRender();
@@ -9909,6 +9973,7 @@ window.airSaveParams=airSaveParams;
 window.airSetIgnore=airSetIgnore;
 window.airToggleIgnoreMenu=airToggleIgnoreMenu;
 window.airAddPurchase=airAddPurchase;
+window.airAddGem=airAddGem;
 window.airGoPurchase=airGoPurchase;
 window.airAddItemPurchase=airAddItemPurchase;
 window.airCopyList=airCopyList;
